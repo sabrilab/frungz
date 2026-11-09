@@ -12,7 +12,11 @@ export const chars = {}; // nom → { scene, clips, k, minY }
 export const guns = {}; // id → Object3D (barre vers +x, poignée à l'origine, longueur réelle)
 const GUN_LEN = { pistol: 0.24, smg: 0.5, shotgun: 0.95, rifle: 0.88, sniper: 1.15, revolver: 0.32 };
 
+// animations Mixamo reciblées hors ligne sur le squelette des Modular Men (outil : bake/ dans le fil du jeu) : course, pas chassés, diagonales, saut, chute, accroupi
+let mxClips = null;
+async function loadMx() { try { const j = await (await fetch('assets/anims/mx.json')).json(); return j.map((c) => THREE.AnimationClip.parse(c)); } catch (e) { console.warn('anims Mixamo absentes', e); return []; } }
 export async function loadChars(names, onEach) {
+  mxClips ||= loadMx(); const mx = await mxClips;
   await Promise.all(names.map(async (n) => {
     const g = await loadGLB(`assets/chars/${n}.glb`);
     const s = g.scene; s.updateMatrixWorld(true);
@@ -21,7 +25,7 @@ export async function loadChars(names, onEach) {
     });
     const box = new THREE.Box3().setFromObject(s); const k = CHAR_H / (box.max.y - box.min.y);
     mergeChar(s);
-    chars[n] = { scene: s, clips: g.animations, k, minY: box.min.y };
+    chars[n] = { scene: s, clips: g.animations.concat(mx), k, minY: box.min.y };
     onEach?.();
   }));
 }

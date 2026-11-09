@@ -258,6 +258,8 @@ export class World {
   }
   _cellBlocked(x, z) {
     const q = { x, z };
+    // barricades posées pendant la partie : les bots les contournent
+    for (const c of this.dynamic) { if (!c.wall) continue; const dx = q.x - c.x, dz = q.z - c.z, lx = dx * c.cs - dz * c.sn, lz = dx * c.sn + dz * c.cs; if (Math.abs(lx) < c.hx + 0.55 && Math.abs(lz) < c.hz + 0.55) return true; }
     for (const c of this.colliders) {
       if (c.off) continue;
       if (c.type === 'poly' && c.tag === 'terrasse') { if (q.x > c.bb[0] - 0.6 && q.x < c.bb[2] + 0.6 && q.z > c.bb[1] - 0.6 && q.z < c.bb[3] + 0.6 && this._polyDist(q, c.poly) < 0.6 && !this._onRamp(q.x, q.z)) return true; continue; }

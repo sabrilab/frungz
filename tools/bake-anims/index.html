@@ -1,0 +1,132 @@
+<!doctype html><meta charset="utf-8"><body>
+<script type="importmap">{"imports":{"three":"/frungz/node_modules/three/build/three.module.js","three/addons/":"/frungz/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+const V = '/mixamo-library/viewer/';
+const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+const CHAR = new URLSearchParams(location.search).get('char') || 'Punk';
+const [index, gltf, srcGltf] = await Promise.all([fetch(V + 'index.json').then(r => r.json()), loader.loadAsync(`/frungz/public/assets/chars/${CHAR}.glb`), loader.loadAsync(V + 'rig-mixamo.glb')]);
+const findHips = r => { let h; r.traverse(o => { if (!h && o.name === 'Hips') h = o; }); return h; };
+const SRC = srcGltf.scene; const HK = findHips(SRC).position.y / index.restHips;
+const base = gltf.scene;
+// Mixamo → Quaternius Modular Men
+const MAP = { Hips: 'Hips', Spine: 'Abdomen', Spine1: 'Torso', Spine2: 'Chest', Neck: 'Neck', Head: 'Head' };
+for (const [s, m] of [['L', 'Left'], ['R', 'Right']]) {
+  Object.assign(MAP, { [`${m}Shoulder`]: `Shoulder${s}`, [`${m}Arm`]: `UpperArm${s}`, [`${m}ForeArm`]: `LowerArm${s}`, [`${m}Hand`]: `Wrist${s}`, [`${m}UpLeg`]: `UpperLeg${s}`, [`${m}Leg`]: `LowerLeg${s}`, [`${m}Foot`]: `Foot${s}` });
+  for (const f of ['Index', 'Middle', 'Ring', 'Pinky']) for (let k = 1; k <= 3; k++) MAP[`${m}Hand${f}${k}`] = `${f}${k}${s}`;
+  for (let k = 1; k <= 3; k++) MAP[`${m}HandThumb${k}`] = `Thumb${k}${s}`;
+}
+let RT;
+function setup() {
+  const src = SRC.clone(true), dst = SkeletonUtils.clone(base);
+  const bones = (r, any) => { const m = {}; r.traverse(o => { if ((o.isBone || any) && o.name && !m[o.name]) m[o.name] = o; }); return m; };
+  const S = bones(src, true), D = bones(dst); src.updateMatrixWorld(true); dst.updateMatrixWorld(true);
+  const wq = o => o.getWorldQuaternion(new THREE.Quaternion()), wp = o => o.getWorldPosition(new THREE.Vector3());
+  const pairs = Object.entries(MAP).filter(([s, d]) => S[s] && D[d]); const toD = Object.fromEntries(pairs);
+  const missing = Object.entries(MAP).filter(([s, d]) => !S[s] || !D[d]); if (missing.length) console.log('missing', JSON.stringify(missing));
+  const fromD = Object.fromEntries(pairs.map(([s, d]) => [d, s]));
+  const lead = b => { const kids = b.children.filter(k => k.isBone && toD[k.name]); return kids.find(k => /^(Spine|Neck|Head)|HandMiddle1$/.test(k.name)) || (/Hand$/.test(b.name) ? null : kids[0]) || null; };
+  const offset = {};
+  for (const [s, d] of pairs) { const sRest = wq(S[s]); let dRest = wq(D[d]); const k = lead(S[s]);
+    if (k) { const ds = wp(k).sub(wp(S[s])).normalize(), dd = wp(D[toD[k.name]]).sub(wp(D[d])).normalize(); dRest = new THREE.Quaternion().setFromUnitVectors(dd, ds).multiply(dRest); }
+    offset[d] = sRest.invert().multiply(dRest); }
+  const order = []; dst.traverse(o => { if (o.isBone) order.push(o); });
+  const restLocal = new Map(order.map(b => [b, b.quaternion.clone()]));
+  const FEET = ['LeftFoot', 'RightFoot'].map(s => [s, MAP[s]]);
+  RT = { src, dst, S, D, wq, wp, pairs, fromD, offset, order, restLocal, FEET, feet0: FEET.map(([s, d]) => [wp(S[s]).y, wp(D[d]).y]), HD: 'Hips', hipsS0: wp(S.Hips), hipsD0: wp(D.Hips), ratio: wp(D.UpperLegL).y / wp(S.LeftUpLeg).y, ARMS: [] };
+  const chS = S.Spine2, chD = D.Chest;
+  for (const m of ['Left', 'Right']) { const [a, b, c] = [`${m}Arm`, `${m}ForeArm`, `${m}Hand`]; RT.ARMS.push({ s: S[c], A: D[MAP[a]], B: D[MAP[b]], C: D[MAP[c]], k: wp(D[MAP[c]]).distanceTo(wp(chD)) / wp(S[c]).distanceTo(wp(chS)) }); }
+  RT.chS = chS; RT.chD = chD;
+}
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _e = new THREE.Vector3(), _d = new THREE.Vector3(), _p = new THREE.Vector3(), _q1 = new THREE.Quaternion(), _qc = new THREE.Quaternion();
+function aim(bone, from, to) { const wq = bone.getWorldQuaternion(new THREE.Quaternion()); _q1.setFromUnitVectors(from, to); wq.premultiply(_q1); const pq = bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert(); bone.quaternion.copy(pq.multiply(wq)); bone.updateMatrixWorld(true); }
+function ik2(A, B, C, t) {
+  A.getWorldPosition(_a); B.getWorldPosition(_b); C.getWorldPosition(_c); C.getWorldQuaternion(_qc);
+  const l1 = _a.distanceTo(_b), l2 = _b.distanceTo(_c); _d.copy(t).sub(_a); const L = THREE.MathUtils.clamp(_d.length(), Math.abs(l1 - l2) + 1e-4, l1 + l2 - 1e-4); _d.normalize();
+  _p.copy(_b).sub(_a); _p.addScaledVector(_d, -_p.dot(_d)); if (_p.lengthSq() < 1e-10) _p.set(0, -1, 0); _p.normalize();
+  const cosA = (l1 * l1 + L * L - l2 * l2) / (2 * l1 * L), sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
+  _e.copy(_a).addScaledVector(_d, l1 * cosA).addScaledVector(_p, l1 * sinA);
+  aim(A, _b.clone().sub(_a).normalize(), _e.clone().sub(_a).normalize());
+  B.getWorldPosition(_b); C.getWorldPosition(_c); const tt = _a.clone().addScaledVector(_d, L);
+  aim(B, _c.clone().sub(_b).normalize(), tt.sub(_b).normalize());
+  const pq = B.getWorldQuaternion(new THREE.Quaternion()).invert(); C.quaternion.copy(pq.multiply(_qc)); C.updateMatrixWorld(true);
+}
+// reciblage ; inPlace : on retire l'avancée horizontale (le jeu déplace le perso lui-même)
+function retarget(clip, { fps = 30, inPlace = true } = {}) {
+  const { src, dst, S, D, wq, wp, pairs, fromD, offset, order, restLocal, FEET, feet0, HD, hipsS0, hipsD0, ratio } = RT;
+  for (const b of order) b.quaternion.copy(restLocal.get(b));
+  const mixer = new THREE.AnimationMixer(src), act = mixer.clipAction(clip); act.setLoop(THREE.LoopOnce, 1); act.clampWhenFinished = true; act.play();
+  const n = Math.max(2, Math.ceil(clip.duration * fps) + 1), times = new Float32Array(n), q = {}, hp = new Float32Array(n * 3);
+  pairs.forEach(([, d]) => { q[d] = new Float32Array(n * 4); });
+  // avancée : position du bassin source au début et à la fin
+  mixer.setTime(0); src.updateMatrixWorld(true); const h0 = wp(S.Hips); mixer.setTime(clip.duration); src.updateMatrixWorld(true); const h1 = wp(S.Hips);
+  const drift = h1.clone().sub(h0); drift.y = 0; act.reset(); act.play();
+  const W = new Map(), tmp = new THREE.Quaternion(), v = new THREE.Vector3(), hipsParent = D[HD].parent;
+  for (let i = 0; i < n; i++) {
+    const t = Math.min(clip.duration, i / fps); times[i] = t; mixer.setTime(t); src.updateMatrixWorld(true);
+    for (const b of order) {
+      const pw = W.has(b.parent) ? W.get(b.parent) : wq(b.parent); const s = fromD[b.name];
+      const w = s ? wq(S[s]).multiply(offset[b.name]) : pw.clone().multiply(restLocal.get(b)); W.set(b, w);
+      if (!s) continue;
+      tmp.copy(pw).invert().multiply(w); const a = q[b.name];
+      if (i > 0 && a[(i - 1) * 4] * tmp.x + a[(i - 1) * 4 + 1] * tmp.y + a[(i - 1) * 4 + 2] * tmp.z + a[(i - 1) * 4 + 3] * tmp.w < 0) tmp.set(-tmp.x, -tmp.y, -tmp.z, -tmp.w);
+      tmp.toArray(a, i * 4);
+    }
+    const hs = wp(S.Hips); if (inPlace) { hs.sub(drift.clone().multiplyScalar(t / clip.duration)); hs.x -= h0.x - hipsS0.x; hs.z -= h0.z - hipsS0.z; }
+    v.copy(hs).sub(hipsS0).multiplyScalar(ratio).add(hipsD0);
+    for (const [, d] of pairs) D[d].quaternion.fromArray(q[d], i * 4);
+    hipsParent.worldToLocal(D[HD].position.copy(v)); dst.updateMatrixWorld(true);
+    let want = Infinity, have = Infinity;
+    FEET.forEach(([s, d], k) => { want = Math.min(want, feet0[k][1] + (wp(S[s]).y - feet0[k][0]) * ratio); have = Math.min(have, wp(D[d]).y); });
+    v.y += want - have; hipsParent.worldToLocal(D[HD].position.copy(v)); dst.updateMatrixWorld(true);
+    const cS = wp(RT.chS), cD = wp(RT.chD);
+    for (const g of RT.ARMS) {
+      ik2(g.A, g.B, g.C, wp(g.s).sub(cS).multiplyScalar(g.k).add(cD));
+      for (const bone of [g.A, g.B, g.C]) { const a = q[bone.name]; tmp.copy(bone.quaternion);
+        if (i > 0 && a[(i - 1) * 4] * tmp.x + a[(i - 1) * 4 + 1] * tmp.y + a[(i - 1) * 4 + 2] * tmp.z + a[(i - 1) * 4 + 3] * tmp.w < 0) tmp.set(-tmp.x, -tmp.y, -tmp.z, -tmp.w);
+        tmp.toArray(a, i * 4); }
+    }
+    hipsParent.worldToLocal(v).toArray(hp, i * 3); W.clear();
+  }
+  mixer.stopAllAction(); mixer.uncacheRoot(src);
+  const tracks = pairs.map(([, d]) => new THREE.QuaternionKeyframeTrack(`${d}.quaternion`, times, q[d]));
+  tracks.push(new THREE.VectorKeyframeTrack(`Hips.position`, times, hp));
+  return new THREE.AnimationClip(clip.name, clip.duration, tracks);
+}
+// haut du corps remplacé par une pose (1re image d'un clip) : arme tenue en joue pendant les pas chassés
+const UPPER = /^(Chest|Neck|Head|Shoulder|UpperArm|LowerArm|Wrist|Index|Middle|Ring|Pinky|Thumb)/;
+function withUpper(clip, upper, name) {
+  const tracks = clip.tracks.map(t => {
+    const bone = t.name.split('.')[0]; if (!UPPER.test(bone) || !t.name.endsWith('quaternion')) return t;
+    const u = upper.tracks.find(x => x.name === t.name); if (!u) return t;
+    // la pose « en joue » suit le temps de la pose source (respiration), bouclée
+    const vals = new Float32Array(t.times.length * 4);
+    for (let i = 0; i < t.times.length; i++) { const tt = t.times[i] % upper.duration; let j = 0; while (j < u.times.length - 1 && u.times[j + 1] <= tt) j++; for (let c = 0; c < 4; c++) vals[i * 4 + c] = u.values[j * 4 + c]; }
+    return new THREE.QuaternionKeyframeTrack(t.name, t.times, vals);
+  });
+  return new THREE.AnimationClip(name, clip.duration, tracks);
+}
+const packs = new Map();
+async function get(n) {
+  const c = index.clips.find(x => x.n === n); if (!c) throw new Error('clip ' + n);
+  if (!packs.has(c.p)) packs.set(c.p, loader.loadAsync(V + 'packs/' + index.packs[c.p].file).then(g => { const m = new Map(); for (const clip of g.animations) { for (const t of clip.tracks) if (t.name.endsWith('.position')) for (let k = 0; k < t.values.length; k++) t.values[k] *= HK; m.set(clip.name, clip); } return m; }));
+  return (await packs.get(c.p)).get(n);
+}
+setup();
+const PLAN = JSON.parse(decodeURIComponent(new URLSearchParams(location.search).get('plan')));
+const out = []; const cache = {};
+for (const p of PLAN) {
+  const src = await get(p.src); let clip = retarget(src, { inPlace: p.inPlace !== false }); clip.name = p.name;
+  if (p.upper) { const u = cache[p.upper] || (cache[p.upper] = retarget(await get(p.upper))); clip = withUpper(clip, u, p.name); }
+  if (p.trim) { clip = THREE.AnimationUtils.subclip(clip, p.name, Math.round(p.trim[0] * 30), Math.round(p.trim[1] * 30), 30); }
+  const j = THREE.AnimationClip.toJSON(clip);
+  for (const t of j.tracks) { t.times = Array.from(t.times, x => +x.toFixed(4)); t.values = Array.from(t.values, x => +x.toFixed(4)); }
+  // pistes immobiles réduites à une clé
+  for (const t of j.tracks) { const st = t.values.length / t.times.length; let flat = true; for (let i = st; i < t.values.length && flat; i++) if (Math.abs(t.values[i] - t.values[i % st]) > 2e-4) flat = false; if (flat) { t.times = [0]; t.values = t.values.slice(0, st); } }
+  out.push(j);
+}
+window.__out = JSON.stringify(out); window.__done = true;
+</script>

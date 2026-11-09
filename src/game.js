@@ -143,7 +143,7 @@ export class Game {
       const arm = ch.bones.UpperArmL; if (arm) { const b = brassard(); const ws = V(); arm.getWorldScale(ws); b.scale.setScalar(1 / ws.x); b.position.set(0, 0.12 / ws.x, 0); arm.add(b); }
     }
     if (bot) { const mk = headMarker(team === this.save.team ? (team === 'ordre' ? '#3d8bff' : '#34c759') : '#ff3030'); mk.position.y = 2.25; mk.visible = team === this.save.team; ch.root.add(mk); a.marker = mk; }
-    for (const k of Object.keys(ch.actions)) { const act = ch.actions[k]; if (/Death/.test(k)) { act.setLoop(THREE.LoopOnce); act.clampWhenFinished = true; } if (/Roll|Gun_Shoot|HitRecieve|Interact|Punch/.test(k)) { act.setLoop(THREE.LoopOnce); act.clampWhenFinished = false; } }
+    for (const k of Object.keys(ch.actions)) { const act = ch.actions[k]; if (/Death|MX_Jump|MX_Land|MX_Vault/.test(k)) { act.setLoop(THREE.LoopOnce); act.clampWhenFinished = true; } if (/Roll|Gun_Shoot|HitRecieve|Interact|Punch/.test(k)) { act.setLoop(THREE.LoopOnce); act.clampWhenFinished = false; } }
     a.ai = { path: null, pi: 0, goal: null, task: null, think: Math.random() * 2, target: null, seeT: 0, react: 0, strafe: 1, strafeT: 0, stuck: 0, lastPos: V(), nadeT: rnd(8, 20), los: false, losT: 0 };
     this.actors.push(a); return a;
   }
@@ -165,13 +165,14 @@ export class Game {
     a.pos.set(x, this.world.groundY(x, z), z); a.vel.set(0, 0, 0); a.yaw = a.team === 'ordre' ? Math.PI / 2 : -Math.PI / 2; a.pitch = 0;
     a.hp = 100; a.armor = a.bot ? (a.team === 'ordre' ? 50 : 25) : 25 * (this.save.upgrades.gilet || 0); a.alive = true; a.bag = []; a.bagKg = 0; a.nades = 2; a.momentum = 0; a.slideT = a.rollT = 0; a.climb = null; a.gasT = 0; a.channel = null;
     if (!a.bot) a.mats = Math.max(a.mats, 30 + 20 * (this.save.upgrades.mats || 0)); else a.mats = 40;
-    a.ch.root.visible = true; a.ch.model.rotation.x = 0; this.loadout(a); this.setAnim(a, 'Idle_Gun', 0);
+    a.ch.root.visible = true; a.ch.model.rotation.x = 0; this.loadout(a); this.setAnim(a, a.ch.actions.MX_Idle ? 'LOCO' : 'Idle_Gun', 0);
     a.ai.path = null; a.ai.task = null; a.ai.think = 0; a.spawnProt = 2.5;
     if (a === this.player) { this.cam.yaw = a.yaw; this.cam.pitch = 0; this.cam.snap = true; if (!first) this.announce('', 'De retour dans la rue', '#fff', 1.2); }
   }
   setAnim(a, name, fade = 0.18, speed = 1) {
+    if (name === 'LOCO') { if (a.anim !== 'LOCO') { a.ch.actions[a.anim]?.fadeOut(fade); a.anim = 'LOCO'; a.locoFade = fade; } return; }
     const act = a.ch.actions[name]; if (!act) return; act.timeScale = speed;
-    if (a.anim === name) return; const prev = a.ch.actions[a.anim];
+    if (a.anim === name) return; const prev = a.ch.actions[a.anim]; if (a.anim === 'LOCO') a.locoFade = fade;
     act.reset().setEffectiveWeight(1).fadeIn(fade).play(); if (prev) prev.fadeOut(fade);
     a.anim = name;
   }
@@ -200,7 +201,7 @@ export class Game {
   kill(t, by, opts) {
     t.alive = false; t.hp = 0; t.respawnT = t.bot ? 6 : 5; t.stats.d++; t.channel = null;
     if (t.inCar) this.exitCar(t, true);
-    this.setAnim(t, 'Death', 0.1); this.audio.play('voxDie', t.pos, 0.9);
+    this.setAnim(t, t.ch.actions.MX_Death ? 'MX_Death' : 'Death', 0.1); this.audio.play('voxDie', t.pos, 0.9);
     // le sac tombe au sol (et l'arme principale, parfois)
     if (by && by !== t && by.team === 'ordre' && t.bag.length) this.scoreEvent('ordre', 4, 'Interpellation', by);
     if (t.bag.length) { this.dropPile(t.pos, t.bag.splice(0)); t.bagKg = 0; this.carryMesh(t); }
@@ -209,6 +210,7 @@ export class Game {
     const w = t.slots[t.cur]; if (w && w.id !== 'pistol' && (Math.random() < 0.6 || !t.bot)) this.dropPile(t.pos.clone().add(V(rnd(-0.6, 0.6), 0, rnd(-0.6, 0.6))), [], { id: w.id, rarity: w.rarity });
     if (by && by !== t) {
       by.stats.k++; this.addStreak(by);
+      if (by === this.player) this.maybeKillcam(t, opts);
       if (by === this.player) { this.medal(opts.head ? 'TIR À LA TÊTE' : 'ÉLIMINÉ', t.name, opts.head); this.stats.kills++; this.earn(50 + (opts.head ? 25 : 0), opts.head ? 'Tir à la tête' : 'Élimination'); this.audio.kill(); this.input.rumble(0.9, 0.6, 160); }
     }
     if (t === this.player) { this.stats.deaths++; this.announce('ÉLIMINÉ', by ? `par ${by.name}` : '', '#ff4a4a', 2.5); }
@@ -435,15 +437,17 @@ export class Game {
     const m = barricade(a.team); m.position.copy(p); m.rotation.y = yaw; m.scale.set(1, 0.05, 1); this.root.add(m);
     const w = { team: a.team, owner: a, hp: 260, mesh: m, t: 0, pos: p };
     w.col = { type: 'box', x: p.x, z: p.z, hx: BARRICADE.w / 2, hz: 0.12, h: BARRICADE.h, yaw, cs: Math.cos(yaw), sn: Math.sin(yaw), y0: p.y, wall: w, holes: BARRICADE.holes };
-    this.world.dynamic.push(w.col); this.walls.push(w); this.audio.build(p);
+    this.world.dynamic.push(w.col); this.walls.push(w); this.audio.build(p); this.wallNav(p);
     if (this.walls.length > 60) this.destroyWall(this.walls[0]);
   }
   wallDelay(a) { return a.bot ? 15 : 15 - 3 * (this.save.upgrades.mats || 0); }
   wallRecharge(a, dt) { if (a.walls == null) a.walls = 3; if (a.walls >= 3) { a.wallT = 0; return; } a.wallT = (a.wallT || this.wallDelay(a)) - dt; if (a.wallT <= 0) { a.walls++; a.wallT = a.walls < 3 ? this.wallDelay(a) : 0; if (a === this.player) this.toast('🧱 Barricade prête', '#9ff59f'); } }
+  // la grille de déplacement des bots suit les barricades ; ceux dont le trajet passe par là recalculent
+  wallNav(p) { this.world.refreshNav(p.x - 3.5, p.z - 3.5, p.x + 3.5, p.z + 3.5); for (const b of this.actors) if (b.bot && b.ai.path && b.pos.distanceTo(p) < 60) b.ai.checkT = 0; }
   hitWall(w, dmg) { w.hp -= dmg; w.mesh.position.x += rnd(-0.02, 0.02); if (w.hp <= 0) this.destroyWall(w); }
   destroyWall(w) {
     const i = this.walls.indexOf(w); if (i < 0) return; this.walls.splice(i, 1); this.root.remove(w.mesh);
-    const j = this.world.dynamic.indexOf(w.col); if (j >= 0) this.world.dynamic.splice(j, 1);
+    const j = this.world.dynamic.indexOf(w.col); if (j >= 0) this.world.dynamic.splice(j, 1); this.wallNav(w.pos);
     this.fx.burst(w.pos.clone().add(V(0, 1, 0)), 14, { color: w.team === 'ordre' ? '#1c2a4a' : '#b48a5a', speed: 4, size: 0.2, life: 1 }); this.audio.play('debris', w.pos, 0.8);
   }
 
@@ -791,7 +795,7 @@ export class Game {
     // glissade (accroupi en sprint) / roulade (accroupi sinon)
     if (a.wantCrouch && a.onGround && a.slideT <= 0 && a.rollT <= 0) {
       const sp = this.feetSpeed(a);
-      if (sp > 6) { this.fx.dust(a.pos, 6, 1); a.slideT = civ ? 1.0 : 0.75; a.slideDir = V(a.vel.x, 0, a.vel.z).normalize(); a.vel.addScaledVector(a.slideDir, 1.5); this.audio.play('cloth', a.pos, 0.7); if (!a.bot) this.cam.trauma += 0.1; }
+      if (sp > 4.6) { this.fx.dust(a.pos, 6, 1); a.slideT = civ ? 1.0 : 0.75; a.slideDir = V(a.vel.x, 0, a.vel.z).normalize(); a.vel.addScaledVector(a.slideDir, 1.5); this.audio.play('cloth', a.pos, 0.7); if (!a.bot) this.cam.trauma += 0.1; }
       else { a.rollT = 0.55; const d = wl > 0.1 ? wish.clone().normalize() : V(Math.sin(a.yaw), 0, Math.cos(a.yaw)); a.vel.x = d.x * (civ ? 8.5 : 7); a.vel.z = d.z * (civ ? 8.5 : 7); a.rollDir = d; this.setAnim(a, 'Roll', 0.08, 1.6); this.audio.play('cloth', a.pos, 0.7); }
       a.wantCrouch = 0;
     }
@@ -855,20 +859,26 @@ export class Game {
   animate(a, dt) {
     const ch = a.ch; const sp = this.feetSpeed(a);
     a.ch.root.position.copy(a.pos); a.ch.root.rotation.y = lerp_angle(a.ch.root.rotation.y, a.slideT > 0 ? Math.atan2(a.slideDir.x, a.slideDir.z) : a.rollT > 0 ? Math.atan2(a.rollDir.x, a.rollDir.z) : a.yaw, 1 - Math.exp(-dt * 18));
-    let name = 'Idle_Gun', speed = 1;
-    const shooting = this.time - (a.lastShot || -9) < 0.35;
-    if (a.climb) { name = 'Interact'; speed = 2; }
+    let name = 'Idle_Gun', speed = 1, fade = 0.15;
+    const shooting = this.time - (a.lastShot || -9) < 0.35, aimingNow = shooting || (a === this.player && this.aiming);
+    const MX = !!ch.actions.MX_Idle;
+    a.airT = a.onGround ? 0 : (a.airT || 0) + dt;
+    if (a.climb) { name = MX ? 'MX_Vault' : 'Interact'; speed = MX ? 3.5 / Math.max(0.3, a.climb.dur) * 0.55 : 2; fade = 0.08; }
     else if (a.rollT > 0) { name = 'Roll'; speed = 1.6; }
     else if (a.channel) { name = a.channel.anim || 'Interact'; }
-    else if (!a.onGround) { name = 'Idle_Gun_Pointing'; }
+    else if (MX && a.slideT > 0) { name = 'MX_CrouchIdle'; fade = 0.1; }
+    else if (!a.onGround && MX && a.airT > 0.06) { name = a.vel.y > 0.5 && a.airT < 0.5 ? 'MX_Jump' : 'MX_Fall'; speed = name === 'MX_Jump' ? 1.4 : 1; fade = 0.12; }
+    else if (!a.onGround && !MX) { name = 'Idle_Gun_Pointing'; }
+    else if (MX) { name = 'LOCO'; }
     else if (sp > 0.8) {
       const lv = V(a.vel.x, 0, a.vel.z); const f = V(Math.sin(a.yaw), 0, Math.cos(a.yaw)); const fd = lv.dot(f) / sp; const sd = lv.dot(V(Math.cos(a.yaw), 0, -Math.sin(a.yaw))) / sp;
-      if (fd > 0.5) { name = shooting || (a === this.player && this.aiming) ? 'Run_Shoot' : 'Run'; speed = clamp(sp / 6, 0.7, 1.6); }
+      if (fd > 0.5) { name = aimingNow ? 'Run_Shoot' : 'Run'; speed = clamp(sp / 6, 0.7, 1.6); }
       else if (fd < -0.5) { name = 'Run_Back'; speed = clamp(sp / 5, 0.7, 1.3); }
       else { name = sd > 0 ? 'Run_Left' : 'Run_Right'; speed = clamp(sp / 5, 0.7, 1.3); }
-      if (sp < 3 && fd > 0.5 && !shooting && !(a === this.player && this.aiming)) { name = 'Walk'; speed = sp / 2.2; }
-    } else if (shooting || (a === this.player && this.aiming)) name = 'Idle_Gun_Pointing';
-    this.setAnim(a, name, 0.15, speed);
+      if (sp < 3 && fd > 0.5 && !aimingNow) { name = 'Walk'; speed = sp / 2.2; }
+    } else if (aimingNow) name = 'Idle_Gun_Pointing';
+    this.setAnim(a, name, fade, speed);
+    if (MX) this.locomotion(a, dt, sp, aimingNow);
     // animation simplifiée pour les bots lointains
     const far = a !== this.player && a.pos.distanceToSquared(this.player.pos) > 3600;
     // on remet le buste dans sa pose d'animation avant le mixer (sinon la correction de visée s'accumule et le buste tourne sur lui-même)
@@ -878,20 +888,49 @@ export class Game {
     a.animAcc = (a.animAcc || 0) + dt; if (!a.lodHidden && (!far || a.animAcc > 0.1)) { ch.mixer.update(a.animAcc); a.animAcc = 0; }
     for (const b of pb) (b.userData.base ||= new THREE.Quaternion()).copy(b.quaternion);
     // glissade : le corps bascule en arrière
-    ch.model.rotation.x = lerp(ch.model.rotation.x, a.slideT > 0 ? -0.9 : 0, 1 - Math.exp(-dt * 14));
+    ch.model.rotation.x = lerp(ch.model.rotation.x, a.slideT > 0 ? (ch.actions.MX_Idle ? -0.45 : -0.9) : 0, 1 - Math.exp(-dt * 14));
     const ck = a.slideT > 0 || a.rollT > 0 || a.climb ? 0 : (a.crouchK || 0);
-    ch.model.position.y = lerp(ch.model.position.y, (a.slideT > 0 ? 0.35 : 0) - ck * 0.42 + (-chars[a.skin].minY * chars[a.skin].k), 1 - Math.exp(-dt * 14));
-    if (ck > 0.02 && !far) this.crouchPose(a, ck);
+    ch.model.position.y = lerp(ch.model.position.y, (a.slideT > 0 ? (ch.actions.MX_Idle ? 0.05 : 0.35) : 0) - (ch.actions.MX_CrouchIdle ? 0 : ck * 0.42) + (-chars[a.skin].minY * chars[a.skin].k), 1 - Math.exp(-dt * 14));
+    if (ck > 0.02 && !far && !ch.actions.MX_CrouchIdle) this.crouchPose(a, ck);
     // le buste suit la visée verticale
     // le buste oriente l'arme vers le point visé (réticule pour le joueur, cible pour les bots)
     const busy = a.climb || a.rollT > 0 || a.slideT > 0 || a.channel || a.inCar || !a.alive;
-    const pointing = name === 'Idle_Gun_Pointing' || name === 'Run_Shoot' || (/^Run_(Left|Right|Back)$/.test(name) && (shooting || (a === this.player && this.aiming)));
+    const pointing = MX ? (name === 'LOCO' && (aimingNow || sp < 2.8 || a.locoRunF < 0.5)) || name === 'MX_CrouchIdle' || (/MX_(Jump|Fall)/.test(name) && aimingNow) : name === 'Idle_Gun_Pointing' || name === 'Run_Shoot' || (/^Run_(Left|Right|Back)$/.test(name) && aimingNow);
     // correction seulement quand l'animation tient l'arme pointée (sinon le buste se cambrerait pour relever une arme baissée)
     const wantW = busy || !pointing ? 0 : 1;
     a.aimW = lerp(a.aimW ?? 0, wantW, 1 - Math.exp(-dt * 14));
     if (spine && ch.gun && a.aimW > 0.02 && !far) this.aimSpine(a, spine);
   }
 
+  // espace de mélange de la marche/course (animations Mixamo) : avant, arrière, gauche, droite pondérés par la direction réelle du déplacement
+  // (les diagonales sont des mélanges), marche ↔ course selon la vitesse, repos ; toutes les allures partagent une même phase de pas
+  locomotion(a, dt, sp, aiming) {
+    const A = a.ch.actions, L = a.loco || (a.loco = { w: 0, phase: 0, acts: new Set() });
+    L.w = a.anim === 'LOCO' ? Math.min(1, L.w + dt / (a.locoFade || 0.15)) : Math.max(0, L.w - dt / (a.locoFade || 0.15));
+    const want = {}; const crouch = (a.crouchK || 0) > 0.5;
+    let fd = 1, sd = 0; if (sp > 0.05) { const vx = a.vel.x / sp, vz = a.vel.z / sp; fd = vx * Math.sin(a.yaw) + vz * Math.cos(a.yaw); sd = vx * Math.cos(a.yaw) - vz * Math.sin(a.yaw); }
+    const move = clamp((sp - 0.25) / 1.1, 0, 1), run = clamp((sp - 2.6) / 1.3, 0, 1);
+    const dirs = [Math.max(0, fd), Math.max(0, -fd), Math.max(0, sd), Math.max(0, -sd)]; const tot = dirs[0] + dirs[1] + dirs[2] + dirs[3] || 1;
+    let D = 0, Wsum = 0;
+    const add = (n, w, dist) => { if (w <= 0.001 || !A[n]) return; want[n] = (want[n] || 0) + w; if (dist) { D += w * dist; Wsum += w; } };
+    if (crouch) { add('MX_CrouchIdle', 1 - move); add('MX_CrouchWalk', move, 0.55 * 1.6); }
+    else {
+      add('MX_Idle', 1 - move);
+      const runF = aiming ? 'MX_RunAim' : 'MX_Run';
+      const W = ['MX_WalkF', 'MX_WalkB', 'MX_WalkL', 'MX_WalkR'], Rn = [runF, 'MX_RunBack', 'MX_RunLeft', 'MX_RunRight'];
+      const WD = [1.28, 1.31, 1.67, 1.81], RD = [2.75, 1.38, 1.91, 1.65];
+      for (let i = 0; i < 4; i++) { const k = move * dirs[i] / tot; add(W[i], k * (1 - run), WD[i]); add(Rn[i], k * run, RD[i]); }
+      a.locoRunF = run * dirs[0] / tot * (aiming ? 0 : 1);
+    }
+    if (Wsum > 0) L.phase = (L.phase + dt * sp / (D / Wsum)) % 1;
+    for (const n of Object.keys(want)) L.acts.add(n);
+    for (const n of L.acts) {
+      const act = A[n], w = (want[n] || 0) * L.w;
+      if (w <= 0.001) { if (act.isRunning()) act.stop(); if (!want[n]) L.acts.delete(n); continue; }
+      if (!act.isRunning()) act.play(); act.enabled = true; act.timeScale = 0; act.setEffectiveWeight(w);
+      act.time = /Idle/.test(n) ? (this.time % act.getClip().duration) : L.phase * act.getClip().duration;
+    }
+  }
   // accroupi : pose procédurale des jambes (cuisses vers l'avant, tibias repliés), autour de l'axe droit du perso
   crouchPose(a, k) {
     const ch = a.ch, b = ch.bones; ch.root.updateMatrixWorld(true);
@@ -1003,7 +1042,14 @@ export class Game {
     // sortie de secours : aucun progrès pendant 6 s sans combat ni action → nouvelle décision, puis recalage sur une case libre
     ai.progT = (ai.progT || 0) + dt; if (!ai.progP) ai.progP = b.pos.clone();
     if (ai.progT > 6) { const moved = b.pos.distanceTo(ai.progP) > 1.5; if (!moved && !b.channel && !(ai.target && ai.los) && !b.inCar) { ai.fails = (ai.fails || 0) + 1; ai.task = null; ai.path = null; ai.think = 0; if (ai.fails >= 2) { const [i, j] = this.world.nearestFree(...this.world.cell(b.pos.x, b.pos.z)); const B = this.world.bounds, S = this.world.nav.S; b.pos.x = B.x0 + (i + 0.5) * S; b.pos.z = B.z0 + (j + 0.5) * S; b.pos.y = this.world.groundY(b.pos.x, b.pos.z); ai.fails = 0; } } else ai.fails = 0; ai.progT = 0; ai.progP.copy(b.pos); }
-    if (b.wish.lengthSq() > 0.1) { if (b.pos.distanceTo(ai.lastPos) < 0.05 * 60 * dt) { ai.stuck += dt; if (ai.stuck > 1.2) { ai.path = null; ai.stuck = 0; b.wantJump = 0.1; } } else ai.stuck = 0; }
+    if (b.wish.lengthSq() > 0.1 && !(ai.backT > 0)) { if (b.pos.distanceTo(ai.lastPos) < 0.05 * 60 * dt) { ai.stuck += dt; if (ai.stuck > 0.8) { ai.stuck = 0; ai.stuckN = (ai.stuckN || 0) + 1;
+      const wall = this.walls.find((w) => w.team !== b.team && w.pos.distanceTo(b.pos) < 4.5);
+      if (wall && !ai.target) { ai.wallTarget = wall; ai.wallT = 2.5; }
+      if (ai.stuckN % 2 === 1) b.wantJump = 0.1; // d'abord tenter de sauter / escalader
+      else { const side = Math.random() < 0.5 ? 1 : -1; ai.backDir = V(-b.wish.x + b.wish.z * side * 0.8, 0, -b.wish.z - b.wish.x * side * 0.8).normalize(); ai.backT = rnd(0.5, 0.9); }
+    } } else { ai.stuck = 0; if (b.pos.distanceTo(ai.lastPos) > 0.1) ai.stuckN = 0; } }
+    // barricade ennemie qui bloque le passage : on la casse
+    if (ai.wallTarget && ai.wallT > 0 && !ai.target) { ai.wallT -= dt; const w = ai.wallTarget; if (!this.walls.includes(w)) ai.wallTarget = null; else { const W2 = this.weapon(b); const o = b.pos.clone().add(V(0, 1.45, 0)); const d = w.pos.clone().add(V(0, 1, 0)).sub(o).normalize(); b.yaw = Math.atan2(d.x, d.z); if (W2.mag <= 0) this.startReload(b); else if (b.fireT <= 0 && b.reloadT <= 0) this.fire(b, o, d); } }
     ai.lastPos.copy(b.pos);
     if (b.marker) b.marker.visible = b.team === this.save.team || this.time - (b.spotted || -99) < 3;
   }
@@ -1041,7 +1087,12 @@ export class Game {
     b.ai.think = task.kind === 'zone' ? rnd(3, 6) : rnd(18, 28);
   }
   followPath(b, dt) {
-    const ai = b.ai; if (!ai.path) return; const P = ai.path;
+    const ai = b.ai;
+    // marche arrière de dégagement (bloqué contre une barricade, une voiture, un autre bot)
+    if (ai.backT > 0) { ai.backT -= dt; b.wish.copy(ai.backDir); if (ai.backT <= 0) { ai.path = null; ai.think = 0; } return; }
+    if (!ai.path) return; const P = ai.path;
+    ai.checkT = (ai.checkT ?? 0.5) - dt;
+    if (ai.checkT <= 0 && ai.pi < P.length) { ai.checkT = 0.6; if (!this.world.gridLos([b.pos.x, b.pos.z], P[ai.pi])) { ai.path = null; ai.think = 0; return; } }
     while (ai.pi < P.length && Math.hypot(P[ai.pi][0] - b.pos.x, P[ai.pi][1] - b.pos.z) < 0.9) ai.pi++;
     if (ai.pi >= P.length) { ai.path = null; return; }
     const tx = P[ai.pi][0], tz = P[ai.pi][1]; const d = V(tx - b.pos.x, 0, tz - b.pos.z); const L = d.length();
@@ -1114,8 +1165,38 @@ export class Game {
   }
 
   // ---------------------------------------------------------------- caméra : TPS / FPS, balancement, tremblement, recul
+  // kill-cam façon caméra de surveillance : plan fixe de côté sur la victime, 1,4 s, sans ralenti (le jeu continue :
+  // compatible multijoueur, c'est un simple point de vue local). Seulement sur un beau tir et quand aucun ennemi n'est proche.
+  maybeKillcam(t, opts) {
+    const a = this.player; if (this.save.settings?.killcam === false || this.killcam || this.time < (this.killcamCd || 0) || !a.alive || a.inCar) return;
+    const dist = a.pos.distanceTo(t.pos); const stylish = opts.head || dist > 32 || a.slideT > 0 || !a.onGround || a.rollT > 0;
+    if (!stylish) return;
+    if (this.actors.some((e) => e.alive && !e.gone && e !== t && e.team !== a.team && (e.pos.distanceTo(a.pos) < 30 || (e.ai.target === a && e.ai.los)))) return;
+    // point de vue : en hauteur, de côté par rapport à la ligne de tir, avec vue dégagée sur la victime
+    const shot = V(t.pos.x - a.pos.x, 0, t.pos.z - a.pos.z).normalize(), side = V(shot.z, 0, -shot.x), head = t.pos.clone().add(V(0, 1.2, 0));
+    let eye = null;
+    for (const [s, back, up] of [[1, 1.5, 2.6], [-1, 1.5, 2.6], [1, -1, 3.2], [-1, -1, 3.2], [1, 3, 1.8], [-1, 3, 1.8]]) {
+      const e = head.clone().addScaledVector(side, s * 4.5).addScaledVector(shot, -back); e.y = this.world.groundY(e.x, e.z) + up;
+      if (this.world.los(e, head)) { eye = e; break; }
+    }
+    if (!eye) return;
+    this.killcam = { t: 0, dur: 1.4, eye, target: t, dist, head: !!opts.head, cam: 1 + ((this.time * 7) | 0) % 9 };
+    this.killcamCd = this.time + 18;
+    const el = $('killcam'); if (el) { el.innerHTML = `<div class="kc-top"><span class="rec">● REC</span> CAM 0${this.killcam.cam} · PLACE FRUNGZ</div><div class="kc-bot">${opts.head ? 'TIR À LA TÊTE' : 'ÉLIMINATION'} · ${Math.round(dist)} m<span class="kc-time"></span></div>`; el.classList.add('on'); }
+    this.audio.play('click', null, 0.6);
+  }
   updateCamera(dt) {
     const a = this.player, C = this.cam, cam = this.camera;
+    if (this.killcam) {
+      const K = this.killcam; K.t += dt; const head = K.target.pos.clone().add(V(0, K.target.alive ? 1.2 : 0.5, 0));
+      cam.fov = 48; cam.updateProjectionMatrix(); cam.position.copy(K.eye); cam.lookAt(head);
+      this.renderer.domElement.style.filter = 'grayscale(.8) contrast(1.25) sepia(.3) hue-rotate(55deg) brightness(1.05)'; $('hud').classList.add('kc');
+      const tt = $('killcam')?.querySelector('.kc-time'); if (tt) { const d = new Date(); tt.textContent = ' · ' + d.toLocaleTimeString('fr-FR') + '.' + String(((K.t * 100) | 0) % 100).padStart(2, '0'); }
+      // on rend la main tout de suite si un ennemi surgit ou si on se fait toucher
+      const danger = this.time - (a.lastHit || -9) < 0.2 || this.actors.some((e) => e.alive && e.team !== a.team && e.pos.distanceTo(a.pos) < 18);
+      if (K.t < K.dur && !danger && a.alive) return;
+      this.killcam = null; $('killcam')?.classList.remove('on'); $('hud').classList.remove('kc'); this.renderer.domElement.style.filter = ''; C.snap = true;
+    }
     C.trauma = Math.max(0, C.trauma - dt * 1.4);
     C.kickP *= Math.exp(-dt * 9); C.kickY *= Math.exp(-dt * 9); C.dip *= Math.exp(-dt * 7);
     const sp = a.alive && !a.inCar ? this.feetSpeed(a) : 0; const fps = C.fps && !a.inCar && a.alive;
