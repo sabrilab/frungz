@@ -207,7 +207,7 @@ function frame() {
     else { input.poll(); if (input.pressed('pause') && !pause.classList.contains('hidden')) closePause(); else if (input.pressed('shop') && !$('shop').classList.contains('hidden')) closeShop(); input.endFrame(); }
   } else if (world) {
     // menu : survol lent de la place
-    menuT += dt * 0.05; camera.position.set(Math.cos(menuT) * 38, 16, Math.sin(menuT) * 22); camera.lookAt(0, 3, 0); followShadow(camera.position);
+    menuT += dt * 0.04; camera.position.set(Math.cos(menuT) * 150, 55, Math.sin(menuT) * 150); camera.lookAt(0, 4, 0); // au-dessus des toits, jamais dans les bâtiments followShadow(camera.position);
     input.poll(); if (input.st.usingPad && input.pressed('jump') && !$('menu').classList.contains('hidden') && !$('play').disabled) start(); input.endFrame();
   }
   if (composer) composer.render(); else renderer.render(scene, camera); window.__frames = (window.__frames || 0) + 1;
