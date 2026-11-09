@@ -13,25 +13,49 @@ const fmt = (n) => Math.round(n).toLocaleString('fr-FR');
 const Q = new URLSearchParams(location.search);
 
 // ---------- sauvegarde ----------
-const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Punk', settings: { sens: 1, padSens: 1, assist: true, fps: false, teamSize: 50, invertY: false, shadows: true, post: true } };
+const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Punk', settings: { sens: 1, padSens: 1, assist: true, fps: false, teamSize: 50, invertY: false, dynres: true } };
 let save; try { save = { ...DEFAULT, ...JSON.parse(localStorage.getItem('frungz-save') || '{}') }; save.settings = { ...DEFAULT.settings, ...save.settings }; save.upgrades ||= {}; } catch { save = structuredClone(DEFAULT); }
 const persist = () => { try { localStorage.setItem('frungz-save', JSON.stringify(save)); } catch {} };
 if ((save.sv || 1) < 2) { save.sv = 2; save.settings.teamSize = 50; } // passage au 50 contre 50 par défaut
 
+// ---------- qualité graphique ----------
+// préréglages : bas (PC modestes), moyen, haut ; « auto » choisit selon la carte graphique, puis la résolution s'adapte aux images/s
+const QUALITY = {
+  bas: { pr: 0.75, prMin: 0.5, aa: false, shadows: false, shadowSize: 1024, soft: false, post: false, far: 480, fog: [90, 380], lod: 90, lodShadow: 0 },
+  moyen: { pr: 1, prMin: 0.6, aa: true, shadows: true, shadowSize: 1024, soft: false, post: false, far: 900, fog: [130, 520], lod: 150, lodShadow: 30 },
+  haut: { pr: 1.5, prMin: 0.7, aa: true, shadows: true, shadowSize: 2048, soft: true, post: true, far: 1700, fog: [150, 620], lod: 200, lodShadow: 45 },
+};
+function detectTier() {
+  try {
+    const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl'); if (!gl) return 'bas';
+    const ext = gl.getExtension('WEBGL_debug_renderer_info'); const r = (ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) || '';
+    const cores = navigator.hardwareConcurrency || 4, mem = navigator.deviceMemory || 8, mobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (/SwiftShader|llvmpipe|Software|Mali|Adreno|PowerVR|GMA|HD Graphics [2-6]\d{2}\b|HD Graphics$/i.test(r) || cores <= 2 || mem <= 2 || mobile) return 'bas';
+    if (/RTX|GTX 1[06-9]\d0|GTX [2-9]\d{3}|RX [5-9]\d{2,3}|Radeon Pro|Apple (M\d|GPU)|Arc/i.test(r) && cores >= 6) return 'haut';
+    return 'moyen';
+  } catch { return 'moyen'; }
+}
+if (!save.settings.quality || save.settings.quality === 'auto') { const t = detectTier(); save.settings.qualityAuto = t; if (!save.settings.quality) { save.settings.quality = 'auto'; if (t === 'bas' && save.settings.teamSize > 25) save.settings.teamSize = 25; } }
+const QN = Q.get('q') || (save.settings.quality === 'auto' ? save.settings.qualityAuto : save.settings.quality) || 'moyen';
+const QS = { ...(QUALITY[QN] || QUALITY.moyen) }; if (Q.has('noshadow')) QS.shadows = false; if (Q.has('nopost')) QS.post = false; if (Q.has('lowres')) QS.pr = Math.min(QS.pr, 1);
+window.__quality = QN;
+
 // ---------- rendu ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, Q.has('lowres') ? 1 : 1.5)); renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = save.settings.shadows && !Q.has('noshadow'); renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const renderer = new THREE.WebGLRenderer({ antialias: QS.aa, powerPreference: 'high-performance' });
+const prMax = Math.min(devicePixelRatio, QS.pr); let prCur = prMax;
+renderer.setPixelRatio(prCur); renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = QS.shadows; renderer.shadowMap.type = QS.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.outputColorSpace = THREE.SRGBColorSpace;
 $('app').appendChild(renderer.domElement);
 const { scene, sun, followShadow } = setupScene(renderer);
+sun.shadow.mapSize.set(QS.shadowSize, QS.shadowSize); sun.castShadow = QS.shadows; scene.fog.near = QS.fog[0]; scene.fog.far = QS.fog[1];
 const pm = new THREE.PMREMGenerator(renderer);
 import('three/examples/jsm/environments/RoomEnvironment.js').then(({ RoomEnvironment }) => { scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.35; });
-const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 1700); scene.add(camera);
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, QS.far); scene.add(camera);
 // post-traitement : bloom léger (éclairs de bouche, néons, soleil), étalonnage et vignette dans un seul passage final
 let composer = null;
 async function setupPost() {
-  if (Q.has('nopost') || save.settings.post === false) return;
+  if (!QS.post) return;
   const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }, { ShaderPass }] = await Promise.all([
     import('three/examples/jsm/postprocessing/EffectComposer.js'), import('three/examples/jsm/postprocessing/RenderPass.js'), import('three/examples/jsm/postprocessing/UnrealBloomPass.js'), import('three/examples/jsm/postprocessing/OutputPass.js'), import('three/examples/jsm/postprocessing/ShaderPass.js')]);
   composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, camera));
@@ -66,6 +90,8 @@ async function loadAll() {
   ]);
   $('loadtxt').textContent = 'Préparation du quartier…'; await new Promise((r) => setTimeout(r, 30));
   mapRoot = root; scene.add(root);
+  // allègements selon la qualité : pas d'ombre des feuillages en moyenne, pas de décor lointain en basse (caché par le brouillard)
+  root.traverse((o) => { if (!o.isMesh) return; const n = o.name || ''; if (QN !== 'haut' && /leaf/.test(n)) o.castShadow = false; if (QN === 'bas' && /decor_lointain/.test(n)) o.visible = false; });
   const tw = performance.now(); world = new World(gp, ground); console.log('monde prêt en', (performance.now() - tw).toFixed(0), 'ms'); window.__world = world; window.__ground = ground;
   $('loading').classList.add('hidden'); $('play').disabled = false;
   window.__loaded = true;
@@ -117,8 +143,9 @@ pause.innerHTML = `<h2>PAUSE</h2>
 <label><input type="checkbox" id="s-assist"> Visée assistée (manette)</label>
 <label><input type="checkbox" id="s-inv"> Inverser l'axe vertical</label>
 <label><input type="checkbox" id="s-fps"> Vue première personne (V / R3)</label>
-<label><input type="checkbox" id="s-shadows"> Ombres (recharger)</label>
-<label><input type="checkbox" id="s-post"> Effets visuels : bloom, étalonnage (recharger)</label>
+<label>Qualité graphique <select id="s-quality"><option value="auto">Auto</option><option value="bas">Basse (PC modestes)</option><option value="moyen">Moyenne</option><option value="haut">Haute</option></select></label>
+<label><input type="checkbox" id="s-dynres"> Résolution adaptée aux images/s</label>
+<label>Images/s <b id="s-fpsn">–</b></label>
 <label>Joueurs par camp (prochaine partie) <select id="s-team"><option value="5">5 contre 5</option><option value="10">10 contre 10</option><option value="15">15 contre 15</option><option value="20">20 contre 20</option><option value="35">35 contre 35</option><option value="50">50 contre 50</option></select></label>
 </div>
 <div class="row-btns"><button class="big" id="resume">REPRENDRE</button><button class="ghost" id="quit">Quitter la partie</button></div>
@@ -127,7 +154,8 @@ document.body.appendChild(pause);
 const st = document.createElement('style'); st.textContent = `.settings{display:grid;gap:10px;text-align:left;background:rgba(255,255,255,.06);padding:16px;border-radius:12px;min-width:min(420px,100%)}.settings label{display:flex;justify-content:space-between;gap:12px;align-items:center;font-weight:700}#minimap.big{width:min(700px,90vw);height:min(350px,45vw);left:50%;top:50%;transform:translate(-50%,-50%)}body.scoped #app canvas{}body.scoped::after{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 30vh,#000 30.5vh);z-index:1}body.scoped::before{content:'';position:fixed;left:50%;top:0;bottom:0;width:1px;background:#000;z-index:2;box-shadow:0 0 0 0 #000}`;
 document.head.appendChild(st);
 const bindSet = (id, key, prop = 'value', conv = Number) => { const el = $(id); el[prop] = save.settings[key]; el.addEventListener('input', () => { save.settings[key] = conv(el[prop]); input.settings[key] = save.settings[key]; persist(); if (key === 'fps' && game) { game.cam.fps = save.settings.fps; game.viewGun(); } }); };
-bindSet('s-sens', 'sens'); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-shadows', 'shadows', 'checked', Boolean); bindSet('s-post', 'post', 'checked', Boolean); bindSet('s-team', 'teamSize');
+bindSet('s-sens', 'sens'); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); bindSet('s-team', 'teamSize');
+{ const el = $('s-quality'); el.value = save.settings.quality || 'auto'; el.addEventListener('change', () => { save.settings.quality = el.value; persist(); location.reload(); }); }
 function openPause() { if (!game || game.over) return; game.paused = true; pause.classList.remove('hidden'); document.exitPointerLock?.(); $('s-fps').checked = game.cam.fps; }
 function closePause() { pause.classList.add('hidden'); if (game) game.paused = false; renderer.domElement.requestPointerLock?.(); }
 $('resume').addEventListener('click', closePause);
@@ -141,7 +169,7 @@ function start() {
   audio.init(); persist();
   $('menu').classList.add('hidden'); $('hud').classList.remove('hidden');
   if (game) { scene.remove(game.root); world.dynamic.length = 0; }
-  game = new Game({ mapRoot, renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts: { teamSize: +(Q.get('n') || save.settings.teamSize), botSkill: 1, cars: carDefs } });
+  game = new Game({ mapRoot, renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts: { teamSize: +(Q.get('n') || save.settings.teamSize), botSkill: 1, cars: carDefs, lod: QS.lod, lodShadow: QS.lodShadow } });
   game.onShop = openShop; game.onPause = openPause; game.onEnd = (r) => endGame(r);
   game.build(); window.__game = game;
   renderer.domElement.requestPointerLock?.();
@@ -158,9 +186,18 @@ window.__start = start; window.__THREE = THREE;
 
 // ---------- boucle ----------
 const clock = new THREE.Clock(); let menuT = 0;
+// résolution dynamique : baisse si on passe sous ~45 images/s, remonte quand il y a de la marge
+let ftAvg = 1 / 60, ftT = 0, fpsShown = 0;
+function dynRes(raw) {
+  ftAvg += (Math.min(raw, 0.2) - ftAvg) * 0.05; ftT += raw; if (ftT < 1) return; ftT = 0;
+  fpsShown = Math.round(1 / ftAvg); const el = $('s-fpsn'); if (el) el.textContent = fpsShown + ' (résolution ' + Math.round(prCur * 100) + ' %)';
+  if (save.settings.dynres === false || !game || game.paused) return;
+  let n = prCur; if (ftAvg > 1 / 45) n = Math.max(QS.prMin, prCur - 0.1); else if (ftAvg < 1 / 57) n = Math.min(prMax, prCur + 0.05);
+  if (Math.abs(n - prCur) > 0.01) { prCur = n; renderer.setPixelRatio(prCur); composer?.setPixelRatio?.(prCur); }
+}
 function frame() {
   requestAnimationFrame(frame);
-  const dt = Math.min(clock.getDelta(), 0.05);
+  const raw = clock.getDelta(); dynRes(raw); const dt = Math.min(raw, 0.05);
   if (game) {
     if (!game.paused) { game.update(dt); }
     else { input.poll(); if (input.pressed('pause') && !pause.classList.contains('hidden')) closePause(); else if (input.pressed('shop') && !$('shop').classList.contains('hidden')) closeShop(); input.endFrame(); }

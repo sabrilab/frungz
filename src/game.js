@@ -1,7 +1,7 @@
 // Frungz : la partie. Acteurs (joueur et bots), parkour, tir, Domination, casse et butin, planques, receleur, voitures,
 // lacrymogènes et fumigènes, barricades, interface.
 import * as THREE from 'three';
-import { makeCharacter, attachGun, gunInstance, chars } from './assets.js';
+import { makeCharacter, attachGun, gunInstance, chars, tintBrigade } from './assets.js';
 import { TEAMS, WEAPONS, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COMMERCE_TYPES, SHOP_NAMES, SKIN_NAMES } from './data.js';
 import { shopCase, lootMesh, beam, socle, baseSign, receleur, barricade, grenadeMesh, policeBadge, brassard, headMarker, textTex } from './props.js';
 import { pointInPoly } from './world.js';
@@ -125,7 +125,7 @@ export class Game {
     a.cap = 20 + (bot ? 8 : (this.save.upgrades.sac || 0) * 8);
     // tenue : police nationale (bleu marine, brassard orange, POLICE dans le dos) ou civils loufoques
     if (team === 'ordre') {
-      ch.model.traverse((o) => { if (o.isMesh && o.material) { const n = o.material.name || ''; if (/^Swat$|Grey|Suit$|Adventurer|Worker/.test(n) && !/Skin|Hair|Eye|Black|Visor/.test(n)) o.material.color.lerp(new THREE.Color('#1c2a4a'), 0.75); } });
+      tintBrigade(ch.model, skin);
       const back = policeBadge(); const chest = ch.bones.Chest || ch.bones.Torso; if (chest) { const ws = V(); ch.model.updateMatrixWorld(true); chest.getWorldScale(ws); back.scale.setScalar(1 / ws.x); back.position.set(0, 0.25 / ws.x, -0.17 / ws.x); back.rotation.y = Math.PI; chest.add(back); }
       const arm = ch.bones.UpperArmL; if (arm) { const b = brassard(); const ws = V(); arm.getWorldScale(ws); b.scale.setScalar(1 / ws.x); b.position.set(0, 0.12 / ws.x, 0); arm.add(b); }
     }
@@ -765,7 +765,7 @@ export class Game {
       if (fd > 0.5) { name = shooting || (a === this.player && this.aiming) ? 'Run_Shoot' : 'Run'; speed = clamp(sp / 6, 0.7, 1.6); }
       else if (fd < -0.5) { name = 'Run_Back'; speed = clamp(sp / 5, 0.7, 1.3); }
       else { name = sd > 0 ? 'Run_Left' : 'Run_Right'; speed = clamp(sp / 5, 0.7, 1.3); }
-      if (sp < 3 && fd > 0.5 && !shooting) { name = 'Walk'; speed = sp / 2.2; }
+      if (sp < 3 && fd > 0.5 && !shooting && !(a === this.player && this.aiming)) { name = 'Walk'; speed = sp / 2.2; }
     } else if (shooting || (a === this.player && this.aiming)) name = 'Idle_Gun_Pointing';
     this.setAnim(a, name, 0.15, speed);
     // animation simplifiée pour les bots lointains
@@ -784,7 +784,7 @@ export class Game {
     // le buste suit la visée verticale
     // le buste oriente l'arme vers le point visé (réticule pour le joueur, cible pour les bots)
     const busy = a.climb || a.rollT > 0 || a.slideT > 0 || a.channel || a.inCar || !a.alive;
-    const pointing = name === 'Idle_Gun_Pointing' || name === 'Run_Shoot';
+    const pointing = name === 'Idle_Gun_Pointing' || name === 'Run_Shoot' || (/^Run_(Left|Right|Back)$/.test(name) && (shooting || (a === this.player && this.aiming)));
     // correction seulement quand l'animation tient l'arme pointée (sinon le buste se cambrerait pour relever une arme baissée)
     const wantW = busy || !pointing ? 0 : 1;
     a.aimW = lerp(a.aimW ?? 0, wantW, 1 - Math.exp(-dt * 14));
@@ -805,7 +805,7 @@ export class Game {
     const cp = this.camera.position;
     for (const a of this.actors) {
       if (a === this.player) continue; const d2 = a.pos.distanceToSquared(cp);
-      a.lodHidden = d2 > 200 * 200; a.ch.model.visible = !a.lodHidden; const sh = d2 < 45 * 45;
+      const L = this.opts.lod || 200, LS = this.opts.lodShadow ?? 45; a.lodHidden = d2 > L * L; a.ch.model.visible = !a.lodHidden; const sh = d2 < LS * LS;
       if (!a.ch.meshes) { a.ch.meshes = []; a.ch.root.traverse((o) => { if (o.isMesh) a.ch.meshes.push(o); }); }
       if (a.lodShadow !== sh) { a.lodShadow = sh; for (const m of a.ch.meshes) m.castShadow = sh; }
     }
