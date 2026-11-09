@@ -1,7 +1,7 @@
 // Données de jeu : camps, armes, raretés, butin, améliorations.
 export const TEAMS = {
   ordre: { name: 'LA BRIGADE', short: 'Brigade', color: '#3d8bff', base: 'Commissariat', skins: ['Swat', 'Suit', 'Adventurer', 'Worker'] },
-  civils: { name: 'LES FRUNGZ', short: 'Frungz', color: '#ff7a2f', base: 'Planque', skins: ['Beach', 'King', 'Punk', 'Farmer', 'Casual_Hoodie', 'Casual_2', 'Spacesuit'] },
+  civils: { name: 'LES FRUNGZ', short: 'Frungz', color: '#34c759', base: 'Planque', skins: ['Beach', 'King', 'Punk', 'Farmer', 'Casual_Hoodie', 'Casual_2', 'Spacesuit'] },
 };
 export const SKIN_NAMES = { Swat: 'CRS', Suit: 'BAC en civil', Adventurer: 'Gendarme rando', Worker: 'Agent de voirie', Beach: 'Touriste en tongs', King: 'Roi du quartier', Punk: 'Punk à chien', Farmer: 'Fermier égaré', Casual_Hoodie: 'Le Sweat', Casual_2: 'Le Voisin', Spacesuit: 'Cosmonaute' };
 

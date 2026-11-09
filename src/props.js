@@ -79,14 +79,14 @@ export function shopCase(shop) {
 
 // ---------- socle de planque ----------
 export function socle(team) {
-  const g = new THREE.Group(); const c = team === 'ordre' ? '#3d8bff' : '#ff7a2f';
+  const g = new THREE.Group(); const c = team === 'ordre' ? '#3d8bff' : '#34c759';
   g.add(cyl(0.5, 0.6, 0.5, 8, M('#e8e1d4'), 0, 0.25));
   const top = cyl(0.52, 0.52, 0.05, 8, M(c, { e: c, ei: 0.35 }), 0, 0.52); g.add(top);
   return g;
 }
 // pancarte de base
 export function baseSign(text, team) {
-  const c = team === 'ordre' ? '#1c2a4a' : '#ff7a2f';
+  const c = team === 'ordre' ? '#1c2a4a' : '#34c759';
   const g = new THREE.Group(); g.add(box(0.1, 2.6, 0.1, M('#333'), 0, 1.3));
   const p = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.7), new THREE.MeshStandardMaterial({ map: textTex(text, { bg: c, fg: '#fff', border: '#fff' }), side: THREE.DoubleSide }));
   p.position.y = 2.6; g.add(p); return g;

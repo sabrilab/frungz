@@ -6,8 +6,13 @@ export function createAudio() {
   const bufs = {}; const last = {};
   const listener = { x: 0, y: 0, z: 0, yaw: 0 };
   function init() {
-    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    if (ctx) { if (ctx.state !== 'running') ctx.resume().catch(() => {}); return; }
     ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // le navigateur suspend parfois le son (onglet caché, veille, casque débranché, Safari « interrupted ») : on le relance dès que possible
+    const wake = () => { if (ctx.state !== 'running' && document.visibilityState === 'visible') ctx.resume().catch(() => {}); };
+    ctx.onstatechange = () => setTimeout(wake, 300); document.addEventListener('visibilitychange', wake);
+    for (const ev of ['pointerdown', 'keydown', 'touchstart']) addEventListener(ev, wake, true);
+    setInterval(wake, 2000);
     comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6; comp.connect(ctx.destination);
     master = ctx.createGain(); master.gain.value = 0.8; master.connect(comp);
     sfx = ctx.createGain(); sfx.connect(master);
@@ -21,7 +26,9 @@ export function createAudio() {
     setTimeout(() => { loop('town', 0.5); loop('crowdFar', 0.35); }, 1500);
   }
   // panoramique + atténuation
+  let voices = 0;
   function spatial(pos, vol = 1, ref = 6) {
+    if (voices > 56 && pos) return null; voices++; setTimeout(() => voices--, 1500);
     const g = ctx.createGain(); let out = g;
     if (pos) {
       const dx = pos.x - listener.x, dz = pos.z - listener.z, d = Math.hypot(dx, dz, (pos.y || 0) - listener.y);

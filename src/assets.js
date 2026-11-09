@@ -65,25 +65,42 @@ function mergeChar(scene) {
   mesh.updateMatrixWorld(true); mesh.computeBoundingSphere(); mesh.boundingSphere.radius *= 1.7; mesh.frustumCulled = true;
 }
 
-// teinte des tenues de la Brigade (bleu marine), calculée une fois par skin et partagée
+// tenues d'équipe : Brigade en bleu police, Frungz en vert ; peau, cheveux, yeux, métal et noir gardent leur couleur
+const NOT_CLOTH = /Skin|Hair|Eye|Moustache|Earrings|Gold|Visor|Metal|Tie|Black/;
+const TEAM_HUE = { ordre: new THREE.Color('#1f4fd1'), civils: new THREE.Color('#1fa83f') };
 const tinted = {};
-export function tintBrigade(model, skin) {
+export function tintTeam(model, skin, team) {
+  const key = skin + '#' + team, base = TEAM_HUE[team]; const hb = {}; base.getHSL(hb);
   model.traverse((o) => {
-    if (!o.isSkinnedMesh) return;
-    if (!o.geometry.userData.ranges) { if (o.material) { const n = o.material.name || ''; if (/^Swat$|Grey|Suit$|Adventurer|Worker/.test(n) && !/Skin|Hair|Eye|Black|Visor/.test(n)) o.material.color.lerp(new THREE.Color('#1c2a4a'), 0.75); } return; }
-    if (!tinted[skin]) {
-      const g = o.geometry.clone(); g.userData = o.geometry.userData; const col = g.attributes.color, navy = new THREE.Color('#1c2a4a'), c = new THREE.Color();
-      for (const r of g.userData.ranges) if (/^Swat$|Grey|Suit$|Adventurer|Worker/.test(r.name) && !/Skin|Hair|Eye|Black|Visor/.test(r.name)) for (const v of r.verts) { c.fromBufferAttribute(col, v).lerp(navy, 0.75); col.setXYZ(v, c.r, c.g, c.b); }
-      tinted[skin] = g;
+    if (!o.isSkinnedMesh || !o.geometry.userData.ranges) return;
+    if (!tinted[key]) {
+      const g = o.geometry.clone(); g.userData = o.geometry.userData; const col = g.attributes.color, c = new THREE.Color(), hsl = {};
+      for (const r of g.userData.ranges) if (!NOT_CLOTH.test(r.name)) for (const v of r.verts) {
+        c.fromBufferAttribute(col, v); c.getHSL(hsl); c.setHSL(hb.h, Math.max(0.55, hb.s * 0.9), Math.min(0.42, Math.max(0.12, hsl.l * 0.55 + 0.08))); col.setXYZ(v, c.r, c.g, c.b);
+      }
+      tinted[key] = g;
     }
-    o.geometry = tinted[skin];
+    o.geometry = tinted[key];
   });
+}
+// point du dos à hauteur de poitrine (pour l'écusson POLICE), mesuré sur le maillage animé en pose de repos, dans le repère de ch.root
+const backCache = {};
+export function backPoint(ch, skin) {
+  if (backCache[skin] !== undefined) return backCache[skin];
+  let mesh = null; ch.model.traverse((o) => { if (o.isSkinnedMesh && o.name === 'corps') mesh = o; }); if (!mesh) return (backCache[skin] = null);
+  ch.root.updateMatrixWorld(true); mesh.skeleton.update(); const inv = ch.root.matrixWorld.clone().invert(), m = inv.multiply(mesh.matrixWorld);
+  const pos = mesh.geometry.attributes.position, v = new THREE.Vector3(), pts = []; let y0 = 1e9, y1 = -1e9;
+  for (let i = 0; i < pos.count; i += 2) { mesh.getVertexPosition(i, v); v.applyMatrix4(m); pts.push(v.x, v.y, v.z); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y); }
+  const H = y1 - y0, lo = y0 + H * 0.66, hi = y0 + H * 0.74; let zmin = 1e9;
+  for (let i = 0; i < pts.length; i += 3) { const x = pts[i], y = pts[i + 1], z = pts[i + 2]; if (y < lo || y > hi || Math.abs(x) > 0.08) continue; zmin = Math.min(zmin, z); }
+  return (backCache[skin] = zmin > 1e8 ? null : { y: y0 + H * 0.70, z: zmin });
 }
 
 export function makeCharacter(name) {
   const C = chars[name];
   const root = new THREE.Group();
   const model = cloneSkinned(C.scene); model.scale.setScalar(C.k); model.position.y = -C.minY * C.k; root.add(model);
+  model.traverse((o) => { if (o.isSkinnedMesh && o.name === 'corps') o.material = o.material.clone(); });
   const mixer = new THREE.AnimationMixer(model);
   const actions = {}; for (const c of C.clips) actions[c.name] = mixer.clipAction(c);
   const bones = {}; model.traverse((o) => { if (o.isBone) bones[o.name] = o; });

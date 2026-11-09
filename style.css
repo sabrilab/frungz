@@ -1,5 +1,5 @@
 :root {
-  --ordre: #3d8bff; --civils: #ff7a2f; --ink: #fff; --dim: rgba(255,255,255,.7);
+  --ordre: #3d8bff; --civils: #34c759; --ink: #fff; --dim: rgba(255,255,255,.7);
   --panel: rgba(14, 16, 22, .72); --gold: #ffcc3d;
   --commun: #b9c0c9; --rare: #3da5ff; --epique: #b45cff; --legendaire: #ffb321;
 }
@@ -24,7 +24,9 @@ kbd { display: inline-block; padding: 0 6px; border-radius: 5px; background: rgb
 #hitmark { position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; opacity: 0; }
 #hitmark::before, #hitmark::after { content: ''; position: absolute; left: 11px; top: -2px; width: 2px; height: 28px; background: #fff; transform: rotate(45deg); box-shadow: 0 0 3px #000; }
 #hitmark::after { transform: rotate(-45deg); }
-#hitmark.on { animation: hm .22s; }
+#hitmark.on { animation: hm .28s ease-out; }
+#hitmark.kill { width: 34px; height: 34px; left: -17px; top: -17px; } #hitmark.kill::before, #hitmark.kill::after { left: 16px; height: 38px; width: 3px; }
+#hitmark.kill.on { animation: hm .5s ease-out; }
 #hitmark.kill::before, #hitmark.kill::after { background: #ff3b3b; }
 #hitmark.head::before, #hitmark.head::after { background: var(--gold); }
 @keyframes hm { 0% { opacity: 1; transform: scale(1.5); } 100% { opacity: 0; transform: scale(1); } }
@@ -65,9 +67,9 @@ kbd { display: inline-block; padding: 0 6px; border-radius: 5px; background: rgb
 
 #minimap { position: absolute; left: 16px; top: 16px; width: 260px; height: 130px; border-radius: 10px; overflow: hidden; border: 2px solid rgba(255,255,255,.25); box-shadow: 0 4px 18px rgba(0,0,0,.4); }
 #minimap canvas { width: 100%; height: 100%; display: block; }
-#money { position: absolute; left: 16px; top: 156px; background: var(--panel); padding: 4px 12px; border-radius: 8px; font: 22px Bungee; color: var(--gold); }
+#money { position: absolute; left: 16px; top: 222px; background: var(--panel); padding: 4px 12px; border-radius: 8px; font: 22px Bungee; color: var(--gold); }
 #money .eur { margin-right: 4px; } #money small { font: 700 12px Inter; color: #9ff59f; margin-left: 8px; }
-#mats { position: absolute; left: 16px; top: 196px; background: var(--panel); padding: 3px 10px; border-radius: 8px; font: 700 15px Inter; }
+#mats { position: absolute; left: 16px; top: 262px; background: var(--panel); padding: 3px 10px; border-radius: 8px; font: 700 15px Inter; }
 #bag { position: absolute; right: 16px; bottom: 150px; width: 230px; background: var(--panel); padding: 8px 10px; border-radius: 10px; }
 #bag .lbl { font: 900 11px Inter; letter-spacing: .1em; color: var(--dim); display: flex; justify-content: space-between; }
 #bag .lbl b { color: #fff; }
@@ -102,7 +104,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 .side b { font: 22px Bungee; } .side span { color: var(--dim); font-size: 13px; }
 .side.ordre b { color: var(--ordre); } .side.civils b { color: var(--civils); }
 .side.on.ordre { border-color: var(--ordre); background: rgba(61,139,255,.15); transform: scale(1.03); }
-.side.on.civils { border-color: var(--civils); background: rgba(255,122,47,.15); transform: scale(1.03); }
+.side.on.civils { border-color: var(--civils); background: rgba(52,199,89,.15); transform: scale(1.03); }
 .skins { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 640px; }
 .skins button { padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,.08); font-weight: 700; font-size: 12px; border: 2px solid transparent; }
 .skins button.on { border-color: #fff; }
@@ -124,4 +126,25 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 .small { font-size: 12px; color: var(--dim); max-width: 640px; }
 #endStats { display: grid; grid-template-columns: repeat(3, auto); gap: 6px 24px; font-weight: 700; }
 #endStats span { color: var(--dim); font-weight: 500; }
-@media (max-width: 760px) { #bag, #keys, #weapons { display: none; } #minimap { width: 180px; height: 90px; } #money { top: 112px; } #mats { top: 150px; } }
+@media (max-width: 760px) { #bag, #keys, #weapons { display: none; } #minimap { width: 180px; height: 90px; } #money { top: 152px; } #mats { top: 190px; } }
+
+/* boussole (cap, zones, tirs) */
+#compass { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); width: min(460px, 70vw); height: 50px; pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); }
+#compass canvas { width: 100%; height: 100%; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.8)); }
+/* tirs entendus autour du réticule */
+#shotring { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+#shotring i { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
+#shotring i b { position: absolute; left: -11px; top: -132px; width: 22px; height: 26px; background: radial-gradient(circle at 50% 70%, #fff 0 22%, rgba(255,255,255,.0) 23%), conic-gradient(from 200deg at 50% 70%, transparent 0 10deg, rgba(255,255,255,.95) 10deg 26deg, transparent 26deg 34deg, rgba(255,255,255,.95) 34deg 50deg, transparent 50deg); border-radius: 50% 50% 40% 40%; filter: drop-shadow(0 0 3px rgba(0,0,0,.9)); }
+#shotring i.e b { background: radial-gradient(circle at 50% 70%, #ff3b30 0 24%, transparent 25%), conic-gradient(from 200deg at 50% 70%, transparent 0 10deg, #ff5a4a 10deg 26deg, transparent 26deg 34deg, #ff5a4a 34deg 50deg, transparent 50deg); }
+/* médaille d'élimination */
+#medal { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); text-align: center; opacity: 0; pointer-events: none; }
+#medal b { display: block; font: 18px Bungee, Inter; color: #fff; text-shadow: 0 2px 6px #000; letter-spacing: .04em; }
+#medal small { font: 700 12px Inter; color: #ffb3b3; text-shadow: 0 1px 3px #000; }
+#medal.gold b { color: var(--gold); }
+#medal.on { animation: medal 1.6s ease-out forwards; }
+@keyframes medal { 0% { opacity: 0; transform: translateX(-50%) scale(1.6); } 10% { opacity: 1; transform: translateX(-50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-10px); } }
+/* minimap ronde, centrée sur le joueur et qui tourne avec lui */
+#minimap { width: 190px !important; height: 190px !important; border-radius: 50% !important; border: 3px solid rgba(255,255,255,.35) !important; background: #3d4250; }
+#minimap.big { border-radius: 14px !important; width: min(760px, 92vw) !important; height: min(720px, 86vh) !important; }
+@media (max-width: 760px) { #minimap { width: 130px !important; height: 130px !important; } }

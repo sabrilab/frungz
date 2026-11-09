@@ -138,8 +138,8 @@ $('shopList').addEventListener('click', (e) => {
 const pause = document.createElement('div'); pause.id = 'pause'; pause.className = 'screen panel hidden';
 pause.innerHTML = `<h2>PAUSE</h2>
 <div class="settings">
-<label>Sensibilité souris <input type="range" min="0.3" max="3" step="0.05" id="s-sens"></label>
-<label>Sensibilité manette <input type="range" min="0.3" max="3" step="0.05" id="s-pad"></label>
+<label>Sensibilité souris <input type="range" min="0.3" max="5" step="0.05" id="s-sens"></label>
+<label>Sensibilité manette <input type="range" min="0.3" max="5" step="0.05" id="s-pad"></label>
 <label><input type="checkbox" id="s-assist"> Visée assistée (manette)</label>
 <label><input type="checkbox" id="s-inv"> Inverser l'axe vertical</label>
 <label><input type="checkbox" id="s-fps"> Vue première personne (V / R3)</label>
@@ -149,9 +149,13 @@ pause.innerHTML = `<h2>PAUSE</h2>
 <label>Joueurs par camp (prochaine partie) <select id="s-team"><option value="5">5 contre 5</option><option value="10">10 contre 10</option><option value="15">15 contre 15</option><option value="20">20 contre 20</option><option value="35">35 contre 35</option><option value="50">50 contre 50</option></select></label>
 </div>
 <div class="row-btns"><button class="big" id="resume">REPRENDRE</button><button class="ghost" id="quit">Quitter la partie</button></div>
-<p class="small">Manette PS4 : branche-la et appuie sur un bouton. Options = pause.</p>`;
+<div class="controls"><div><h3>🎮 Manette</h3>
+<p><kbd>L</kbd> se déplacer · <kbd>R</kbd> regarder</p><p><kbd>R2</kbd> tirer · <kbd>L2</kbd> viser</p><p><kbd>✕</kbd> sauter / escalader · <kbd>○</kbd> roulade / glissade</p>
+<p><kbd>L1</kbd> s'accroupir · <kbd>R1</kbd> grenade</p><p><kbd>□</kbd> agir, ramasser, voler une voiture · <kbd>△</kbd> changer d'arme</p>
+<p><kbd>L3</kbd> sprint · <kbd>R3</kbd> vue FPS / TPS</p><p><kbd>⬅</kbd> recharger · <kbd>⬆</kbd> armurerie · <kbd>⬇</kbd> barricade</p><p><kbd>PAVÉ</kbd> carte · <kbd>SHARE</kbd> sac · <kbd>OPTIONS</kbd> pause</p></div>
+<div><h3>⌨️ Clavier</h3><p><kbd>ZQSD</kbd>/<kbd>WASD</kbd> · souris pour regarder</p><p><kbd>Clic</kbd> tirer · <kbd>Clic droit</kbd> viser</p><p><kbd>Espace</kbd> saut · <kbd>Ctrl</kbd> roulade / glissade</p><p><kbd>C</kbd> accroupi · <kbd>G</kbd> grenade · <kbd>Maj</kbd> sprint</p><p><kbd>E</kbd> agir · <kbd>F</kbd> voiture · <kbd>R</kbd> recharger</p><p><kbd>1-4</kbd> armes · <kbd>Q</kbd> barricade · <kbd>B</kbd> armurerie</p><p><kbd>M</kbd> carte · <kbd>Tab</kbd> sac · <kbd>V</kbd> vue · <kbd>Échap</kbd> pause</p></div></div>`;
 document.body.appendChild(pause);
-const st = document.createElement('style'); st.textContent = `.settings{display:grid;gap:10px;text-align:left;background:rgba(255,255,255,.06);padding:16px;border-radius:12px;min-width:min(420px,100%)}.settings label{display:flex;justify-content:space-between;gap:12px;align-items:center;font-weight:700}#minimap.big{width:min(700px,90vw);height:min(350px,45vw);left:50%;top:50%;transform:translate(-50%,-50%)}body.scoped #app canvas{}body.scoped::after{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 30vh,#000 30.5vh);z-index:1}body.scoped::before{content:'';position:fixed;left:50%;top:0;bottom:0;width:1px;background:#000;z-index:2;box-shadow:0 0 0 0 #000}`;
+const st = document.createElement('style'); st.textContent = `.settings{display:grid;gap:10px;text-align:left;background:rgba(255,255,255,.06);padding:16px;border-radius:12px;min-width:min(420px,100%)}.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left;margin-top:10px;font-size:13px}.controls h3{margin:0 0 6px;font:800 14px Inter}.controls p{margin:3px 0}@media(max-width:760px){.controls{grid-template-columns:1fr}}.settings label{display:flex;justify-content:space-between;gap:12px;align-items:center;font-weight:700}#minimap.big{width:min(700px,90vw);height:min(350px,45vw);left:50%;top:50%;transform:translate(-50%,-50%)}body.scoped #app canvas{}body.scoped::after{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 30vh,#000 30.5vh);z-index:1}body.scoped::before{content:'';position:fixed;left:50%;top:0;bottom:0;width:1px;background:#000;z-index:2;box-shadow:0 0 0 0 #000}`;
 document.head.appendChild(st);
 const bindSet = (id, key, prop = 'value', conv = Number) => { const el = $(id); el[prop] = save.settings[key]; el.addEventListener('input', () => { save.settings[key] = conv(el[prop]); input.settings[key] = save.settings[key]; persist(); if (key === 'fps' && game) { game.cam.fps = save.settings.fps; game.viewGun(); } }); };
 bindSet('s-sens', 'sens'); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); bindSet('s-team', 'teamSize');
