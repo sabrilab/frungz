@@ -16,17 +16,22 @@ export function createNight({ scene, sun, hemi, renderer, world, mapRoot, fx, qu
   const lit = []; mapRoot.traverse((o) => { if (o.isMesh && o.material && /glow|glassLit/.test(o.material.name || '')) lit.push([o.material, o.material.emissive?.clone(), o.material.emissiveIntensity]); });
   const group = new THREE.Group(); group.visible = false; scene.add(group);
   // lampadaires : ampoules (une seule géométrie instanciée) et halos
-  const lamps = world.colliders.filter((c) => /lampadaire|candelabre/.test(c.tag || '') && c.x !== undefined).map((c) => V(c.x, world.groundY(c.x, c.z) + (c.tag === 'candelabre' ? 3.6 : 4.4), c.z));
+  const lampCols = world.colliders.filter((c) => /lampadaire|candelabre/.test(c.tag || '') && c.x !== undefined && (c.y0 || 0) > -1);
+  const lamps = lampCols.map((c) => V(c.x, world.groundY(c.x, c.z) + (c.tag === 'candelabre' ? 3.6 : 4.4), c.z));
   const bulbs = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffd59a' }), Math.max(1, lamps.length));
   lamps.forEach((p, i) => bulbs.setMatrixAt(i, new THREE.Matrix4().makeTranslation(p.x, p.y, p.z))); bulbs.count = lamps.length; group.add(bulbs);
   const haloTex = glowTex('rgba(255,220,160,0.9)', 'rgba(255,150,60,0.25)');
   const haloMat = new THREE.SpriteMaterial({ map: haloTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: true });
-  for (const p of lamps) { const s = new THREE.Sprite(haloMat); s.position.copy(p); s.scale.setScalar(2.6); group.add(s); }
+  const halos = lamps.map((p) => { const s = new THREE.Sprite(haloMat); s.position.copy(p); s.scale.setScalar(2.6); group.add(s); return s; });
+  const lampOff = new Uint8Array(lamps.length); const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+  // lampadaire cassé : ampoule et halo éteints (et rallumés à la réparation)
+  const checkLamps = () => { let ch = false; lampCols.forEach((c, i) => { const off = c.off ? 1 : 0; if (off !== lampOff[i]) { lampOff[i] = off; halos[i].visible = !off; bulbs.setMatrixAt(i, off ? zero : new THREE.Matrix4().makeTranslation(lamps[i].x, lamps[i].y, lamps[i].z)); ch = true; } }); if (ch) bulbs.instanceMatrix.needsUpdate = true; };
   // voitures en feu et barricades qui brûlent
   const fireTex = glowTex('rgba(255,240,180,1)', 'rgba(255,90,20,0.6)');
-  const spots = world.colliders.filter((c) => /voiture|barricade|fourgon/.test(c.tag || ''));
+  // barricades (voitures renversées, palettes), braseros, puis poubelles et conteneurs qui brûlent
+  const gp = world.gp; const spots = [...(gp.parkings || []).filter((p) => p.renversee), ...world.colliders.filter((c) => /voiture|barricade|fourgon|brasero/.test(c.tag || '') && (c.y0 || 0) > -1), ...(gp.cassables || []).filter((c) => /poubelle|conteneur/.test(c.type)).map((c) => ({ x: c.pos[0], z: c.pos[2] }))];
   const fires = [];
-  for (const c of spots.sort(() => Math.random() - 0.5)) {
+  for (const c of spots.map((c, i) => [c, i < 6 ? -1 : Math.random()]).sort((a, b) => a[1] - b[1]).map((e) => e[0])) {
     const x = c.x ?? (c.bb ? (c.bb[0] + c.bb[2]) / 2 : null), z = c.z ?? (c.bb ? (c.bb[1] + c.bb[3]) / 2 : null); if (x == null) continue;
     if (fires.some((f) => Math.hypot(f.p.x - x, f.p.z - z) < 45)) continue;
     const p = V(x, world.groundY(x, z) + 1.1, z); const g = new THREE.Group(); g.position.copy(p);
@@ -54,8 +59,8 @@ export function createNight({ scene, sun, hemi, renderer, world, mapRoot, fx, qu
   function update(dt, camPos, cars) {
     if (!on) return; t += dt; assignT -= dt;
     if (assignT <= 0) {
-      assignT = 0.35;
-      const cand = fires.map((f) => ({ p: f.p, fire: true, d: f.p.distanceToSquared(camPos) * 0.35 })).concat(lamps.map((p) => ({ p, fire: false, d: p.distanceToSquared(camPos) })));
+      assignT = 0.35; checkLamps();
+      const cand = fires.map((f) => ({ p: f.p, fire: true, d: f.p.distanceToSquared(camPos) * 0.35 })).concat(lamps.filter((p, i) => !lampOff[i]).map((p) => ({ p, fire: false, d: p.distanceToSquared(camPos) })));
       cand.sort((a, b) => a.d - b.d);
       lights.forEach((l, i) => { const c = cand[i]; if (!c) { l.intensity = 0; return; } l.position.copy(c.p); l.position.y += c.fire ? 0.8 : -0.3; l.userData.fire = c.fire; l.color.set(c.fire ? '#ff7a2a' : '#ffad5c'); l.distance = c.fire ? 22 : 17; });
     }

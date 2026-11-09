@@ -6,6 +6,8 @@ import { createAudio } from './audio.js';
 import { createFX } from './fx.js';
 import { createInput } from './input.js';
 import { createNight } from './night.js';
+import { createCassables } from './cassables.js';
+import { createMetro } from './metro.js';
 import { Game } from './game.js';
 import { TEAMS, WEAPONS, UPGRADES, SKIN_NAMES } from './data.js';
 
@@ -83,7 +85,7 @@ let progress = { map: 0, chars: 0, guns: 0, cars: 0 };
 const showProgress = () => { const p = progress.map * 0.6 + progress.chars / ALL_SKINS.length * 0.25 + progress.guns / 6 * 0.05 + progress.cars / CARS.length * 0.1; $('loadbar').style.width = (p * 100).toFixed(0) + '%'; };
 async function loadAll() {
   const gp = await fetch('assets/gameplay.json').then((r) => r.json());
-  const [{ root, ground }] = await Promise.all([
+  const [{ root, ground, cassables, rame }] = await Promise.all([
     loadMap('assets/map.glb', (p) => { progress.map = p; showProgress(); }),
     loadChars(ALL_SKINS, () => { progress.chars++; showProgress(); }),
     loadGuns(() => { progress.guns++; showProgress(); }),
@@ -94,6 +96,7 @@ async function loadAll() {
   // allègements selon la qualité : pas d'ombre des feuillages en moyenne, pas de décor lointain en basse (caché par le brouillard)
   root.traverse((o) => { if (!o.isMesh) return; const n = o.name || ''; if (QN !== 'haut' && /leaf/.test(n)) o.castShadow = false; if (QN === 'bas' && /decor_lointain/.test(n)) o.visible = false; });
   const tw = performance.now(); world = new World(gp, ground); console.log('monde prêt en', (performance.now() - tw).toFixed(0), 'ms'); window.__world = world; window.__ground = ground;
+  const tc = performance.now(); world.cass = createCassables({ nodes: cassables, scene, world, fx, audio }); world.metro = createMetro({ rame, gp, audio }); world.cass.onBreak((e, by, d) => game?.onCassable(e, by, d)); console.log('cassables', world.cass.list.length, 'fusionnés en', world.cass.merged.length, 'maillages,', (performance.now() - tc).toFixed(0), 'ms');
   night = createNight({ scene, sun, hemi, renderer, world, mapRoot: root, fx, quality: QN }); night.set(!!save.settings.night); renderMenu();
   $('loading').classList.add('hidden'); $('play').disabled = false;
   window.__loaded = true;
@@ -244,7 +247,8 @@ function frame() {
     else { input.poll(); if (input.pressed('pause') && !pause.classList.contains('hidden')) closePause(); else if (!input.st.usingPad && input.pressed('shop') && !$('shop').classList.contains('hidden')) closeShop(); else padMenu(dt); input.endFrame(); }
   } else if (world) {
     // menu : survol lent de la place
-    menuT += dt * 0.04; camera.position.set(Math.cos(menuT) * 150, 55, Math.sin(menuT) * 150); camera.lookAt(0, 4, 0); // au-dessus des toits, jamais dans les bâtiments followShadow(camera.position);
+    menuT += dt * 0.04; camera.position.set(Math.cos(menuT) * 150, 55, Math.sin(menuT) * 150); camera.lookAt(0, 4, 0); // au-dessus des toits, jamais dans les bâtiments
+    followShadow(camera.position); world.metro?.update(menuT * 25, dt, null);
     input.poll(); padMenu(dt); input.endFrame(); night?.update(dt, camera.position, null);
   }
   if (composer) composer.render(); else renderer.render(scene, camera); window.__frames = (window.__frames || 0) + 1;

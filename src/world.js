@@ -54,16 +54,20 @@ export async function loadMap(url, onProgress) {
   root.traverse((o) => {
     if (!o.isMesh) return;
     const n = o.name || '';
-    o.castShadow = !/glass|glow|lamp|decor_lointain|sol_|zones/.test(n);
+    o.castShadow = /^metro_(murs|voutes)/.test(n) || !/glass|glow|lamp|decor_lointain|sol_|zones|eau/.test(n);
     o.receiveShadow = true;
-    if (/^sol_/.test(n)) ground.push(o);
+    if (/^(metro_)?sol_/.test(n)) ground.push(o);
     // skyline lointaine : hors brouillard, sans ombre
     let inHorizon = false; for (let q = o; q; q = q.parent) if (q.name === 'horizon') { inHorizon = true; break; }
     if (inHorizon || o.material?.name === 'horizon') { o.castShadow = false; o.receiveShadow = false; for (const m of [].concat(o.material)) if (m) m.fog = false; }
     if (o.material?.name === 'glow') { o.material.emissive?.set('#ffb070'); o.material.emissiveIntensity = 0.25; }
   });
   const marks = root.getObjectByName('zones_marquage'); if (marks) marks.visible = false;
-  return { root, ground };
+  // les voûtes du métro sont vues de l'intérieur : elles doivent quand même projeter leur ombre (sinon le soleil traverse la rue)
+  for (const nm of ['metro_voutes', 'metro_murs']) root.getObjectByName(nm)?.traverse((o) => { if (o.isMesh) { o.castShadow = true; for (const m of [].concat(o.material)) if (m) m.shadowSide = THREE.DoubleSide; } });
+  const cassables = []; root.traverse((o) => { if (/^CASSABLE_/.test(o.name) && o.userData?.cassable) cassables.push(o); });
+  const water = root.getObjectByName('seine_eau'); if (water) water.traverse((o) => { if (o.isMesh) { o.castShadow = false; for (const m of [].concat(o.material)) if (m) { m.transparent = true; m.opacity = 0.86; m.depthWrite = false; } } });
+  return { root, ground, cassables, rame: root.getObjectByName('METRO_RAME') };
 }
 
 // ---------- géométrie 2D ----------
@@ -84,7 +88,10 @@ export class World {
   buildHeight(ground) {
     const B = this.bounds, S = 0.5, nx = Math.ceil((B.x1 - B.x0) / S) + 1, nz = Math.ceil((B.z1 - B.z0) / S) + 1;
     // on « rasterise » les triangles du sol sur la grille (au lieu de 240 000 lancers de rayons, qui bloquaient le chargement)
-    const H = new Float32Array(nx * nz).fill(-1e9), v = new THREE.Vector3();
+    // jusqu'à NL couches par case (rue, couloirs à -5, quais à -8, quai bas sous le pont), triées de la plus haute à la plus basse
+    const NL = this.NL = 4, H = new Float32Array(nx * nz * NL).fill(-1e9), v = new THREE.Vector3();
+    const put = (k, y) => { const b = k * NL; for (let l = 0; l < NL; l++) { const h = H[b + l]; if (h < -1e8) { H[b + l] = y; return; } if (Math.abs(h - y) < 0.5) { if (y > h) H[b + l] = y; return; } if (y > h) { for (let m = NL - 1; m > l; m--) H[b + m] = H[b + m - 1]; H[b + l] = y; return; } } };
+    const drop = (k, lo, hi) => { const b = k * NL; let w = 0; for (let l = 0; l < NL; l++) { const h = H[b + l]; if (h > -1e8 && (h < lo || h > hi)) H[b + w++] = h; } for (; w < NL; w++) H[b + w] = -1e9; };
     for (const m of ground) {
       m.updateMatrixWorld(true); const pos = m.geometry.attributes.position, idx = m.geometry.index; if (!pos) continue;
       const P = new Float32Array(pos.count * 3); for (let k = 0; k < pos.count; k++) { v.fromBufferAttribute(pos, k).applyMatrix4(m.matrixWorld); P[k * 3] = v.x; P[k * 3 + 1] = v.y; P[k * 3 + 2] = v.z; }
@@ -99,27 +106,49 @@ export class World {
         for (let j = j0; j <= j1; j++) { const z = B.z0 + j * S; for (let i = i0; i <= i1; i++) {
           const x = B.x0 + i * S; const l1 = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / den, l2 = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / den, l3 = 1 - l1 - l2;
           if (l1 < -1e-6 || l2 < -1e-6 || l3 < -1e-6) continue;
-          const y = l1 * ay + l2 * by + l3 * cy, k = j * nx + i; if (y > H[k]) H[k] = y;
+          put(j * nx + i, l1 * ay + l2 * by + l3 * cy);
         } }
       }
     }
-    for (let k = 0; k < H.length; k++) if (H[k] < -1e8) H[k] = 0;
+    // lit de la Seine sous l'eau (pas de maillage de sol) ; ailleurs, sol par défaut à 0
+    const eau = this.gp.seine?.eau;
+    for (let k = 0; k < nx * nz; k++) if (H[k * NL] < -1e8) { const x = B.x0 + (k % nx) * S, z = B.z0 + ((k / nx) | 0) * S; H[k * NL] = eau && pointInPoly(x, z, eau.poly) ? (eau.fond ?? eau.y - 1.1) : 0; }
     // sols surélevés (butte, bases) et escaliers
     const ter = this.colliders.filter((c) => c.type === 'poly' && c.tag === 'terrasse').map((t) => { let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (const [x, z] of t.poly) { x0 = Math.min(x0, x); z0 = Math.min(z0, z); x1 = Math.max(x1, x); z1 = Math.max(z1, z); } return { t, x0, z0, x1, z1 }; });
-    const ramps = this.gp.rampes || [];
+    this.ramps = (this.gp.rampes || []).map((r) => { const dx = r.b[0] - r.a[0], dz = r.b[2] - r.a[2], L = Math.hypot(dx, dz); const lo = Math.min(r.a[1], r.b[1]), hi = Math.max(r.a[1], r.b[1]);
+      // palier : coordonnées le long de l'axe principal de la volée (plat entre les deux)
+      let p0 = null, p1 = null; if (r.palier) { const ax = Math.abs(dx) > Math.abs(dz) ? 0 : 2; const a0 = r.a[ax], sg = Math.sign(r.b[ax] - a0) || 1; p0 = Math.min(...r.palier.map((v) => (v - a0) * sg)); p1 = Math.max(...r.palier.map((v) => (v - a0) * sg)); if (p0 < 0.05 || p1 > L - 0.05) p0 = p1 = null; }
+      return { r, ux: dx / L, uz: dz / L, L, lo, hi, p0, p1, under: lo < -0.5 }; });
+    const rampY = (R, along) => { const t = Math.max(0, Math.min(R.L, along)), r = R.r; if (R.p0 == null) return r.a[1] + (r.b[1] - r.a[1]) * t / R.L; const run = R.p0 + (R.L - R.p1); const d = t < R.p0 ? t : t < R.p1 ? R.p0 : t - (R.p1 - R.p0); return r.a[1] + (r.b[1] - r.a[1]) * d / run; };
+    this.rampY = rampY;
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
-      const x = B.x0 + i * S, z = B.z0 + j * S; let h = H[j * nx + i];
-      for (const { t, x0, z0, x1, z1 } of ter) if (x >= x0 && x <= x1 && z >= z0 && z <= z1 && pointInPoly(x, z, t.poly)) h = Math.max(h, t.sol_y ?? (t.y0 || 0) + t.h);
-      for (const r of ramps) { const dx = r.b[0] - r.a[0], dz = r.b[2] - r.a[2], L = Math.hypot(dx, dz); const ux = dx / L, uz = dz / L; const px = x - r.a[0], pz = z - r.a[2]; const along = px * ux + pz * uz, side = Math.abs(-px * uz + pz * ux); if (along >= -0.3 && along <= L + 0.3 && side <= r.largeur / 2 + 0.1) { const t = Math.max(0, Math.min(1, along / L)); h = Math.max(h, r.a[1] + (r.b[1] - r.a[1]) * t); } }
-      H[j * nx + i] = h;
+      const x = B.x0 + i * S, z = B.z0 + j * S, k = j * nx + i, b = k * NL;
+      if (H[b] > -1) for (const { t, x0, z0, x1, z1 } of ter) if (x >= x0 && x <= x1 && z >= z0 && z <= z1 && pointInPoly(x, z, t.poly)) H[b] = Math.max(H[b], t.sol_y ?? (t.y0 || 0) + t.h);
+      for (const R of this.ramps) { const px = x - R.r.a[0], pz = z - R.r.a[2]; const along = px * R.ux + pz * R.uz, side = Math.abs(-px * R.uz + pz * R.ux); if (along >= -0.3 && along <= R.L + 0.3 && side <= R.r.largeur / 2 + 0.1) {
+        const y = rampY(R, along);
+        // escalier qui descend sous la rue : on retire ce qui est dans la tranche de la volée (trémie), on garde la rue au-dessus des escaliers des quais
+        if (R.under || R.lo < -1) { drop(k, R.lo - 0.3, R.hi + 0.3); put(k, y); } else if (H[b] > R.lo - 1) H[b] = Math.max(H[b], y); else put(k, y);
+      } }
     }
     this.H = H; this.hnx = nx; this.hnz = nz; this.hS = S;
+    // la Seine : on nage à la surface (tête hors de l'eau)
+    const sn = this.gp.seine; this.water = sn?.eau ? { poly: sn.eau.poly, y: sn.eau.y } : null;
   }
-  groundY(x, z) {
-    const B = this.bounds, S = this.hS; const fx = (x - B.x0) / S, fz = (z - B.z0) / S;
-    const i = Math.max(0, Math.min(this.hnx - 1, Math.round(fx))), j = Math.max(0, Math.min(this.hnz - 1, Math.round(fz)));
-    return this.H[j * this.hnx + i];
+  hk(x, z) { const B = this.bounds, S = this.hS; const i = Math.max(0, Math.min(this.hnx - 1, Math.round((x - B.x0) / S))), j = Math.max(0, Math.min(this.hnz - 1, Math.round((z - B.z0) / S))); return (j * this.hnx + i) * this.NL; }
+  // sol sous un point : la couche la plus haute sous (ref + 0,7 m) ; sans ref, la plus haute (la rue)
+  groundY(x, z, ref = 1e9) {
+    const b = this.hk(x, z), H = this.H; let low = H[b];
+    for (let l = 0; l < this.NL; l++) { const y = H[b + l]; if (y < -1e8) break; if (y <= ref + 0.7) return y; low = y; }
+    return low;
   }
+  // plafond au-dessus d'un point (la couche du dessus), ou Infinity
+  ceilY(x, z, ref) { const b = this.hk(x, z), H = this.H; let c = Infinity; for (let l = 0; l < this.NL; l++) { const y = H[b + l]; if (y < -1e8) break; if (y > ref + 0.7) c = y; else break; } return c; }
+  // point dans la masse (dalle entre la rue et le métro, ou terre sous une case sans métro)
+  solid(x, y, z) { if (y > -0.6) return false; const b = this.hk(x, z), H = this.H; let up = null;
+    for (let l = 0; l < this.NL; l++) { const h = H[b + l]; if (h < -1e8) break; if (h <= y + 0.3) return up != null && y > up - 1.8; up = h; }
+    return !this.inWater(x, z); }
+  inWater(x, z) { const w = this.water; return !!w && pointInPoly(x, z, w.poly); }
+  underground(p) { return p.y < -2.5 && !this.inWater(p.x, p.z) && this.groundY(p.x, p.z) > p.y + 2; }
   *allColliders() { yield* this.colliders; yield* this.dynamic; }
   // grille spatiale (cases de 8 m) : on ne teste que les colliders proches au lieu des ~750 de la map
   buildHash() {
@@ -160,6 +189,7 @@ export class World {
     let hit = false;
     for (const c of this.near(p.x, p.z, R + 0.5)) {
       if (c === ignore || c.off) continue;
+      if (feetY + 1.9 < (c.y0 || 0)) continue;
       if (c.type === 'poly') {
         if (feetY > (c.y0 || 0) + c.h - 0.4) continue;
         if (c.bb && (p.x < c.bb[0] - R || p.x > c.bb[2] + R || p.z < c.bb[1] - R || p.z > c.bb[3] + R)) continue;
@@ -187,7 +217,7 @@ export class World {
   }
   // hauteur du dessus d'un mobilier sous les pieds (pour monter sur un banc, une voiture…)
   standY(x, z, feetY) {
-    let y = this.groundY(x, z);
+    let y = this.groundY(x, z, feetY);
     for (const c of [...this.near(x, z, 0.5), ...this.plats]) {
       if (c.off || c.type === 'poly') continue;
       const top = c.type === 'plat' ? c.y : (c.y0 || 0) + c.h; if (top > feetY + 0.45 || top <= y) continue;
@@ -201,7 +231,10 @@ export class World {
   ray(o, d, far) {
     let best = far, bn = null, bc = null;
     // sol
-    if (d.y < -1e-4) { let t = (this.groundY(o.x, o.z) - o.y) / d.y; if (t > 0 && t < best) { const gy = this.groundY(o.x + d.x * t, o.z + d.z * t); t = (gy - o.y) / d.y; if (t > 0 && t < best) { best = t; bn = [0, 1, 0]; bc = null; } } }
+    if (d.y < -1e-4) { let t = (this.groundY(o.x, o.z, o.y) - o.y) / d.y; if (t > 0 && t < best) { const gy = this.groundY(o.x + d.x * t, o.z + d.z * t, o.y); t = (gy - o.y) / d.y; if (t > 0 && t < best) { best = t; bn = [0, 1, 0]; bc = null; } } }
+    else if (d.y > 1e-4 && o.y < -1) { const cy = this.ceilY(o.x, o.z, o.y); if (cy < Infinity) { const t = (cy - 1.8 - o.y) / d.y; if (t > 0 && t < best) { best = t; bn = [0, -1, 0]; bc = null; } } }
+    // métro et rue ne se voient pas à travers la dalle : on échantillonne le trajet sous la rue (rare : seulement si un bout est sous terre)
+    if (o.y < -1 || o.y + d.y * best < -1) { const n = Math.min(300, Math.ceil(best)); for (let k = 1; k < n; k++) { const t = best * k / n; if (this.solid(o.x + d.x * t, o.y + d.y * t, o.z + d.z * t)) { best = t; bn = [0, 1, 0]; bc = null; break; } } }
     const h2 = Math.hypot(d.x, d.z);
     for (const c of this.rayCands(o, d, far)) {
       if (c.off) continue;
@@ -258,10 +291,13 @@ export class World {
   }
   _cellBlocked(x, z) {
     const q = { x, z };
+    if (this.H && this.groundY(x, z) < -1) return true; // trémies, quai bas, Seine
+    if (this.inWater?.(x, z)) return true;
+    for (const R of this.ramps || []) if (R.lo < -1) { const px = x - R.r.a[0], pz = z - R.r.a[2]; const along = px * R.ux + pz * R.uz, side = Math.abs(-px * R.uz + pz * R.ux); if (along >= -1.5 && along <= R.L + 1.5 && side <= R.r.largeur / 2 + 0.6) return true; }
     // barricades posées pendant la partie : les bots les contournent
     for (const c of this.dynamic) { if (!c.wall) continue; const dx = q.x - c.x, dz = q.z - c.z, lx = dx * c.cs - dz * c.sn, lz = dx * c.sn + dz * c.cs; if (Math.abs(lx) < c.hx + 0.55 && Math.abs(lz) < c.hz + 0.55) return true; }
-    for (const c of this.colliders) {
-      if (c.off) continue;
+    for (const c of this.near(x, z, 1.2, this._navA || (this._navA = []))) {
+      if (c.off || c.car || c.metro || c.wall || (c.y0 || 0) + c.h < -0.5) continue;
       if (c.type === 'poly' && c.tag === 'terrasse') { if (q.x > c.bb[0] - 0.6 && q.x < c.bb[2] + 0.6 && q.z > c.bb[1] - 0.6 && q.z < c.bb[3] + 0.6 && this._polyDist(q, c.poly) < 0.6 && !this._onRamp(q.x, q.z)) return true; continue; }
       if (c.type === 'poly') { if (q.x > c.bb[0] - 0.6 && q.x < c.bb[2] + 0.6 && q.z > c.bb[1] - 0.6 && q.z < c.bb[3] + 0.6) { if (pointInPoly(q.x, q.z, c.poly) || this._polyDist(q, c.poly) < 0.6) return true; } }
       else if (c.type === 'circle') { if (c.h > 0.6 && Math.hypot(q.x - c.x, q.z - c.z) < c.r + 0.55) return true; }
@@ -278,10 +314,11 @@ export class World {
       while (h < t) { const k = q[h++], i = k % N.nx, j = (k / N.nx) | 0;
         for (let d = 0; d < 4; d++) { const ni = i + (d === 0 ? 1 : d === 1 ? -1 : 0), nj = j + (d === 2 ? 1 : d === 3 ? -1 : 0); if (ni < 0 || nj < 0 || ni >= N.nx || nj >= N.nz) continue; const nk = nj * N.nx + ni; if (!N.g[nk] && !L[nk]) { L[nk] = id; q[t++] = nk; } } } }
   }
-  refreshNav(x0, z0, x1, z1) { const N = this.nav, B = this.bounds; const g = N.g;
+  refreshNav(x0, z0, x1, z1) { const q = this._navQ || (this._navQ = []); q.push([x0, z0, x1, z1]); }
+  flushNav() { const q = this._navQ; if (!q || !q.length) return; for (const r of q) this._refreshNav(...r); q.length = 0; this.labelNav(); }
+  _refreshNav(x0, z0, x1, z1) { const N = this.nav, B = this.bounds; const g = N.g;
     const [i0, j0] = [Math.max(0, Math.floor((x0 - B.x0) / N.S)), Math.max(0, Math.floor((z0 - B.z0) / N.S))], [i1, j1] = [Math.min(N.nx - 1, Math.floor((x1 - B.x0) / N.S)), Math.min(N.nz - 1, Math.floor((z1 - B.z0) / N.S))];
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) g[j * N.nx + i] = this._cellBlocked(B.x0 + (i + 0.5) * N.S, B.z0 + (j + 0.5) * N.S) ? 1 : 0;
-    this.labelNav();
   }
   _polyDist(p, poly) {
     let bd = Infinity;

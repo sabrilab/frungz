@@ -75,7 +75,7 @@ export function createFX(scene, camera) {
   function casing(pos, right, big = false) {
     const m = new THREE.Mesh(casingGeo, big ? shellMat : casingMat); if (big) m.scale.set(2.2, 2.2, 2.2); m.position.copy(pos); scene.add(m);
     const v = right.clone().multiplyScalar(1.8 + Math.random() * 1.2); v.y += 1.6 + Math.random(); v.x += (Math.random() - 0.5) * 0.6; v.z += (Math.random() - 0.5) * 0.6;
-    const spin = new THREE.Vector3(Math.random() * 30, Math.random() * 30, Math.random() * 30); const gy = groundFn ? groundFn(pos.x, pos.z) : 0; let bounces = 0;
+    const spin = new THREE.Vector3(Math.random() * 30, Math.random() * 30, Math.random() * 30); const gy = groundFn ? groundFn(pos.x, pos.z, pos.y) : 0; let bounces = 0;
     casings.push(m); if (casings.length > 70) { const o = casings.shift(); scene.remove(o); }
     items.push({ o: null, t: 0, life: 6, upd: (it, k, dt) => { if (bounces > 2) return; v.y -= 12 * dt; m.position.addScaledVector(v, dt); m.rotation.x += spin.x * dt; m.rotation.y += spin.y * dt;
       if (m.position.y < gy + 0.01) { m.position.y = gy + 0.01; v.y = Math.abs(v.y) * 0.35; v.x *= 0.5; v.z *= 0.5; spin.multiplyScalar(0.5); bounces++; if (bounces === 1) onTink?.(m.position, big); if (bounces > 2) { m.rotation.x = Math.PI / 2 * Math.round(m.rotation.x / (Math.PI / 2)); } } } });
