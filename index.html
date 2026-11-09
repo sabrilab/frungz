@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Frungz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app"></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="vignette"></div>
+  <div id="dmgdir"></div>
+  <div id="cross"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i><div id="hitmark"></div></div>
+  <div id="score">
+    <div class="team ordre"><span class="name">BRIGADE</span><b id="sc-ordre">0</b></div>
+    <div id="zones"></div>
+    <div class="team civils"><b id="sc-civils">0</b><span class="name">FRUNGZ</span></div>
+    <div id="timer">10:00</div>
+  </div>
+  <div id="feed"></div>
+  <div id="toasts"></div>
+  <div id="center"></div>
+  <div id="prompt"></div>
+  <div id="channel"><div class="bar"><i></i></div><span></span></div>
+  <div id="minimap"><canvas></canvas></div>
+  <div id="money"><span class="eur">€</span><b id="cash">0</b><small id="income"></small></div>
+  <div id="mats" title="Matériaux pour les barricades"><span>🧱</span><b id="matsN">0</b></div>
+  <div id="bag"><div class="lbl">SAC <b id="bagkg">0/20 kg</b></div><div id="bagitems"></div></div>
+  <div id="vitals">
+    <div class="row"><div class="bar armor"><i id="armorbar"></i></div></div>
+    <div class="row"><div class="bar hp"><i id="hpbar"></i></div><b id="hpn">100</b></div>
+  </div>
+  <div id="weapons"></div>
+  <div id="ammo"><b id="mag">12</b><span id="reserve">/ ∞</span><div id="wname"></div></div>
+  <div id="car"><b id="kmh">0</b> km/h<div class="bar"><i id="carhp"></i></div></div>
+  <div id="keys"><kbd>E</kbd> ramasser / agir · <kbd>F</kbd> voler une voiture · <kbd>Q</kbd> barricade · <kbd>1-4</kbd> armes · <kbd>B</kbd> boutique (à la base) · <kbd>Tab</kbd> sac</div>
+</div>
+
+<!-- écrans -->
+<div id="menu" class="screen">
+  <div class="logo">FRUNGZ</div>
+  <div class="tag">Place Frungz · Domination · Casse · Revente</div>
+  <div class="pick">
+    <button class="side ordre" data-team="ordre"><b>LA BRIGADE</b><span>Tiens les zones, saisis le butin, coffre les casseurs.</span></button>
+    <button class="side civils" data-team="civils"><b>LES FRUNGZ</b><span>Casse les vitrines, remplis ta planque, revends au receleur.</span></button>
+  </div>
+  <div class="skins" id="skins"></div>
+  <div class="row-btns">
+    <button id="play" class="big">JOUER</button>
+    <button id="openShop" class="ghost">Armurerie</button>
+  </div>
+  <div class="bank">Banque : <b id="bank">0</b> € · Niveau <b id="lvl">1</b></div>
+  <div class="help">Clic pour viser · <kbd>ZQSD</kbd>/<kbd>WASD</kbd> · <kbd>Maj</kbd> sprint · <kbd>Espace</kbd> saut · <kbd>Ctrl</kbd> roulade · clic droit : viser · <kbd>R</kbd> recharger</div>
+  <div id="loading"><div class="bar"><i id="loadbar"></i></div><span id="loadtxt">Chargement…</span></div>
+</div>
+
+<div id="shop" class="screen panel hidden">
+  <h2>ARMURERIE & PLANQUE</h2>
+  <div class="bank">Banque : <b class="bankN">0</b> €</div>
+  <div id="shopList"></div>
+  <button class="ghost" id="closeShop">Fermer (B)</button>
+</div>
+
+<div id="inv" class="screen panel hidden">
+  <h2>TON SAC</h2>
+  <div id="invList"></div>
+  <p class="small">Revends au <b>receleur</b> (icône 💰 sur la carte) ou dépose à ta base : chaque objet exposé rapporte de l'argent chaque seconde… tant qu'on ne te le vole pas.</p>
+</div>
+
+<div id="end" class="screen hidden">
+  <div class="logo" id="endTitle">VICTOIRE</div>
+  <div id="endStats"></div>
+  <button id="again" class="big">REJOUER</button>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "frungz",
+  "version": "1.0.0",
+  "description": "Frungz, jeu de tir Domination dans un quartier de Paris (Three.js)",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs && http-server dist -p 8124"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "esbuild": "^0.25.10",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "@gltf-transform/cli": "^4.2.1",
+    "@gltf-transform/core": "^4.2.1",
+    "@gltf-transform/extensions": "^4.2.1",
+    "@gltf-transform/functions": "^4.2.1",
+    "meshoptimizer": "^0.22.0"
+  },
+  "private": true
+}

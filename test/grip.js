@@ -1,0 +1,18 @@
+import * as THREE from 'three';
+import { loadChars, makeCharacter, loadGuns, gunInstance, chars } from '../src/assets.js';
+const r = new THREE.WebGLRenderer({ preserveDrawingBuffer: true }); r.setSize(900, 600); document.body.appendChild(r.domElement);
+const s = new THREE.Scene(); s.background = new THREE.Color('#888'); s.add(new THREE.HemisphereLight('#fff', '#444', 2)); const dl = new THREE.DirectionalLight('#fff', 2); dl.position.set(3, 5, 4); s.add(dl);
+const cam = new THREE.PerspectiveCamera(30, 1.5, 0.1, 100);
+const Q = new URLSearchParams(location.search);
+await loadChars(['Swat']); await loadGuns();
+const c = makeCharacter('Swat'); s.add(c.root);
+c.model.traverse(o => { if (o.isMesh && /Pistol/.test(o.name)) o.visible = Q.has('pistol'); });
+const a = c.actions[Q.get('anim') || 'Idle_Gun_Pointing']; a.play(); c.mixer.update(0.3);
+const rot = (Q.get('rot') || '0,0,0').split(',').map(Number), pos = (Q.get('pos') || '0,0,0').split(',').map(Number);
+const g = gunInstance(Q.get('gun') || 'rifle'); const w = c.bones['WristR']; c.root.updateMatrixWorld(true);
+const ws = new THREE.Vector3(); w.getWorldScale(ws); g.scale.multiplyScalar(1 / ws.x); const wq = new THREE.Quaternion(); w.getWorldQuaternion(wq); const want = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), -Math.PI/2); const lq = wq.clone().invert().multiply(want); const e = new THREE.Euler().setFromQuaternion(lq); console.log('EULER', e.x.toFixed(3), e.y.toFixed(3), e.z.toFixed(3)); if (Q.has('rot')) g.rotation.set(...rot); else g.quaternion.copy(lq); g.position.set(...pos.map(v => v / ws.x)); w.add(g);
+console.log('wristscale', ws.x);
+const v = Q.get('view') || 'side';
+const P = { side: [3.5, 1.3, 0], front: [0, 1.3, 4], top: [0.5, 5, 0.01], back: [0, 1.6, -4] }[v];
+cam.position.set(...P); cam.lookAt(0, 1.1, 0.2);
+r.render(s, cam); window.__ready = true;
