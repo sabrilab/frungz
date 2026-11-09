@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
-import { loader } from './world.js';
+import { loader, loadGLB } from './world.js';
 import { WEAPONS } from './data.js';
 
 const CHAR_H = 1.8;
@@ -13,7 +13,7 @@ const GUN_LEN = { pistol: 0.24, smg: 0.5, shotgun: 0.95, rifle: 0.88, sniper: 1.
 
 export async function loadChars(names, onEach) {
   await Promise.all(names.map(async (n) => {
-    const g = await loader.loadAsync(`assets/chars/${n}.glb`);
+    const g = await loadGLB(`assets/chars/${n}.glb`);
     const s = g.scene; s.updateMatrixWorld(true);
     s.traverse((o) => {
       if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false; if (/Pistol|Sword|Knife/i.test(o.name)) o.visible = false; if (o.material) { o.material = o.material.clone(); o.material.roughness = Math.max(0.55, o.material.roughness ?? 0.8); o.material.metalness = 0; } }

@@ -1,6 +1,6 @@
 // Point d'entrée : chargement, menu (camp, skin), armurerie, réglages, partie, écran de fin.
 import * as THREE from 'three';
-import { setupScene, loadMap, World, loader } from './world.js';
+import { setupScene, loadMap, loadGLB, World, loader } from './world.js';
 import { loadChars, loadGuns, makeCharacter, attachGun } from './assets.js';
 import { createAudio } from './audio.js';
 import { createFX } from './fx.js';
@@ -62,11 +62,11 @@ async function loadAll() {
     loadMap('assets/map.glb', (p) => { progress.map = p; showProgress(); }),
     loadChars(ALL_SKINS, () => { progress.chars++; showProgress(); }),
     loadGuns(() => { progress.guns++; showProgress(); }),
-    Promise.all(CARS.map(async ([f, classe, nom]) => { try { const g = await loader.loadAsync(`assets/cars/${f}.glb`); const s = g.scene; const box = new THREE.Box3().setFromObject(s); const sz = s.userData.size || [box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z]; carDefs.push({ scene: s, classe, nom, size: sz }); } catch (e) { console.warn('voiture', f, e); } progress.cars++; showProgress(); })),
+    Promise.all(CARS.map(async ([f, classe, nom]) => { try { const g = await loadGLB(`assets/cars/${f}.glb`); const s = g.scene; const box = new THREE.Box3().setFromObject(s); const sz = s.userData.size || [box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z]; carDefs.push({ scene: s, classe, nom, size: sz }); } catch (e) { console.warn('voiture', f, e); } progress.cars++; showProgress(); })),
   ]);
   $('loadtxt').textContent = 'Préparation du quartier…'; await new Promise((r) => setTimeout(r, 30));
   mapRoot = root; scene.add(root);
-  world = new World(gp, ground);
+  const tw = performance.now(); world = new World(gp, ground); console.log('monde prêt en', (performance.now() - tw).toFixed(0), 'ms'); window.__world = world; window.__ground = ground;
   $('loading').classList.add('hidden'); $('play').disabled = false;
   window.__loaded = true;
 }

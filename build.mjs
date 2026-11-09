@@ -5,7 +5,8 @@ await build({ entryPoints: ['src/main.js'], bundle: true, minify: true, format: 
 fs.copyFileSync('index.html', 'dist/index.html'); fs.copyFileSync('style.css', 'dist/style.css');
 fs.cpSync('public/assets', 'dist/assets', { recursive: true });
 // carte pré-compressée (le CDN ne compresse pas les .glb)
-const zlib = await import('zlib'); fs.writeFileSync('dist/assets/map.glb.gz', zlib.gzipSync(fs.readFileSync('dist/assets/map.glb'), { level: 9 }));
+const zlib = await import('zlib');
+for (const d of ['dist/assets', 'dist/assets/chars', 'dist/assets/cars']) for (const f of fs.readdirSync(d)) if (f.endsWith('.glb')) fs.writeFileSync(`${d}/${f}.gz`, zlib.gzipSync(fs.readFileSync(`${d}/${f}`), { level: 9 }));
 console.log('dist ok', (fs.statSync('dist/app.js').size / 1e6).toFixed(2), 'Mo');
 // en-têtes Vercel : cache long pour les assets
-fs.writeFileSync('dist/vercel.json', JSON.stringify({ headers: [{ source: '/assets/(.*)', headers: [{ key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' }] }] }, null, 2));
+fs.writeFileSync('dist/vercel.json', JSON.stringify({ headers: [{ source: '/assets/(.*)', headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }] }] }, null, 2));

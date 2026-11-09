@@ -33,19 +33,22 @@ export function setupScene(renderer) {
   return { scene, sun, hemi, followShadow };
 }
 
-export async function loadMap(url, onProgress) {
-  // version compressée en gzip (34 Mo → ~10 Mo à télécharger), décompressée dans le navigateur ; sinon le .glb brut
-  let g = null;
+// charge un .glb en préférant sa version .gz (le CDN ne compresse pas les .glb : 3 à 4 fois moins à télécharger), décompressée dans le navigateur
+export async function loadGLB(url, onProgress) {
   if (typeof DecompressionStream !== 'undefined') try {
     const r = await fetch(url + '.gz'); const total = +r.headers.get('content-length') || 0;
     if (r.ok) {
       const chunks = []; let got = 0; const rd = r.body.getReader(); for (;;) { const { done, value } = await rd.read(); if (done) break; chunks.push(value); got += value.length; if (total) onProgress?.(Math.min(0.99, got / total)); }
       let buf = new Blob(chunks); const head = new Uint8Array(await buf.slice(0, 2).arrayBuffer());
       if (head[0] === 0x1f && head[1] === 0x8b) buf = new Blob([await new Response(buf.stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()]);
-      const ab = await buf.arrayBuffer(); g = await new Promise((res, rej) => loader.parse(ab, url.replace(/[^/]*$/, ''), res, rej));
+      const ab = await buf.arrayBuffer(); const g = await new Promise((res, rej) => loader.parse(ab, url.replace(/[^/]*$/, ''), res, rej)); onProgress?.(1); return g;
     }
-  } catch (e) { console.warn('map.glb.gz indisponible, repli sur le .glb', e); g = null; }
-  if (!g) g = await loader.loadAsync(url, (e) => e.total && onProgress?.(e.loaded / e.total));
+  } catch (e) { console.warn(url + '.gz indisponible, repli sur le .glb', e); }
+  return loader.loadAsync(url, (e) => e.total && onProgress?.(e.loaded / e.total));
+}
+
+export async function loadMap(url, onProgress) {
+  const g = await loadGLB(url, onProgress);
   const root = g.scene;
   const ground = [];
   root.traverse((o) => {
@@ -80,20 +83,33 @@ export class World {
   // hauteur du sol (grille de 0,5 m lancée une fois sur les maillages du sol)
   buildHeight(ground) {
     const B = this.bounds, S = 0.5, nx = Math.ceil((B.x1 - B.x0) / S) + 1, nz = Math.ceil((B.z1 - B.z0) / S) + 1;
-    const H = new Float32Array(nx * nz), ray = new THREE.Raycaster(), o = new THREE.Vector3(), d = new THREE.Vector3(0, -1, 0);
-    ray.far = 40;
-    for (const m of ground) { m.updateMatrixWorld(true); m.geometry.computeBoundingSphere(); }
-    // le sol est presque plat : on lance une ligne de rayons sur 4 et on remplit (assez précis pour les bordures)
-    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
-      o.set(B.x0 + i * S, 20, B.z0 + j * S); ray.set(o, d);
-      const h = ray.intersectObjects(ground, false)[0]; H[j * nx + i] = h ? h.point.y : 0;
+    // on « rasterise » les triangles du sol sur la grille (au lieu de 240 000 lancers de rayons, qui bloquaient le chargement)
+    const H = new Float32Array(nx * nz).fill(-1e9), v = new THREE.Vector3();
+    for (const m of ground) {
+      m.updateMatrixWorld(true); const pos = m.geometry.attributes.position, idx = m.geometry.index; if (!pos) continue;
+      const P = new Float32Array(pos.count * 3); for (let k = 0; k < pos.count; k++) { v.fromBufferAttribute(pos, k).applyMatrix4(m.matrixWorld); P[k * 3] = v.x; P[k * 3 + 1] = v.y; P[k * 3 + 2] = v.z; }
+      const nt = idx ? idx.count / 3 : pos.count / 3;
+      for (let t = 0; t < nt; t++) {
+        const a = (idx ? idx.getX(t * 3) : t * 3) * 3, b = (idx ? idx.getX(t * 3 + 1) : t * 3 + 1) * 3, c = (idx ? idx.getX(t * 3 + 2) : t * 3 + 2) * 3;
+        const ax = P[a], ay = P[a + 1], az = P[a + 2], bx = P[b], by = P[b + 1], bz = P[b + 2], cx = P[c], cy = P[c + 1], cz = P[c + 2];
+        if (ay > 20 || by > 20 || cy > 20) continue;
+        const den = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz); if (Math.abs(den) < 1e-9) continue; // triangle vertical
+        const i0 = Math.max(0, Math.ceil((Math.min(ax, bx, cx) - B.x0) / S)), i1 = Math.min(nx - 1, Math.floor((Math.max(ax, bx, cx) - B.x0) / S));
+        const j0 = Math.max(0, Math.ceil((Math.min(az, bz, cz) - B.z0) / S)), j1 = Math.min(nz - 1, Math.floor((Math.max(az, bz, cz) - B.z0) / S));
+        for (let j = j0; j <= j1; j++) { const z = B.z0 + j * S; for (let i = i0; i <= i1; i++) {
+          const x = B.x0 + i * S; const l1 = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / den, l2 = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / den, l3 = 1 - l1 - l2;
+          if (l1 < -1e-6 || l2 < -1e-6 || l3 < -1e-6) continue;
+          const y = l1 * ay + l2 * by + l3 * cy, k = j * nx + i; if (y > H[k]) H[k] = y;
+        } }
+      }
     }
+    for (let k = 0; k < H.length; k++) if (H[k] < -1e8) H[k] = 0;
     // sols surélevés (butte, bases) et escaliers
-    const ter = this.colliders.filter((c) => c.type === 'poly' && c.tag === 'terrasse');
+    const ter = this.colliders.filter((c) => c.type === 'poly' && c.tag === 'terrasse').map((t) => { let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (const [x, z] of t.poly) { x0 = Math.min(x0, x); z0 = Math.min(z0, z); x1 = Math.max(x1, x); z1 = Math.max(z1, z); } return { t, x0, z0, x1, z1 }; });
     const ramps = this.gp.rampes || [];
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
       const x = B.x0 + i * S, z = B.z0 + j * S; let h = H[j * nx + i];
-      for (const t of ter) if (pointInPoly(x, z, t.poly)) h = Math.max(h, t.sol_y ?? (t.y0 || 0) + t.h);
+      for (const { t, x0, z0, x1, z1 } of ter) if (x >= x0 && x <= x1 && z >= z0 && z <= z1 && pointInPoly(x, z, t.poly)) h = Math.max(h, t.sol_y ?? (t.y0 || 0) + t.h);
       for (const r of ramps) { const dx = r.b[0] - r.a[0], dz = r.b[2] - r.a[2], L = Math.hypot(dx, dz); const ux = dx / L, uz = dz / L; const px = x - r.a[0], pz = z - r.a[2]; const along = px * ux + pz * uz, side = Math.abs(-px * uz + pz * ux); if (along >= -0.3 && along <= L + 0.3 && side <= r.largeur / 2 + 0.1) { const t = Math.max(0, Math.min(1, along / L)); h = Math.max(h, r.a[1] + (r.b[1] - r.a[1]) * t); } }
       H[j * nx + i] = h;
     }
