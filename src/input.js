@@ -3,15 +3,15 @@
 const KEYMAP = {
   fire: ['Mouse0'], aim: ['Mouse2'], jump: ['Space'], sprint: ['ShiftLeft', 'ShiftRight'], crouch: ['ControlLeft'], duck: ['KeyC'],
   interact: ['KeyE'], car: ['KeyF'], reload: ['KeyR'], build: ['KeyQ'], grenade: ['KeyG'], view: ['KeyV'], shop: ['KeyB'], inv: ['Tab'],
-  w1: ['Digit1'], w2: ['Digit2'], w3: ['Digit3'], w4: ['Digit4'], next: [], horn: ['KeyH'], pause: ['Escape', 'KeyP'], map: ['KeyM'],
+  w1: ['Digit1'], w2: ['Digit2'], w3: ['Digit3'], w4: ['Digit4'], next: [], horn: ['KeyH'], streak: ['KeyX'], pause: ['Escape', 'KeyP'], map: ['KeyM'],
 };
 // DualShock 4 (mapping « standard ») : 0 ✕, 1 ○, 2 □, 3 △, 4 L1, 5 R1, 6 L2, 7 R2, 8 Share, 9 Options, 10 L3, 11 R3, 12-15 croix, 16 PS, 17 pavé
 const PADMAP = {
   jump: [0], crouch: [1], interact: [2], next: [3], duck: [4], grenade: [5], build: [13], aim: [6], fire: [7], inv: [8], pause: [9],
-  sprint: [10], view: [11], shop: [12], horn: [13], w1: [], map: [17, 15], car: [2], reload: [14],
+  sprint: [10], view: [11], shop: [12], horn: [13], w1: [], map: [17], streak: [15], car: [2], reload: [14],
 };
-export const PS = { jump: '✕', crouch: '○', duck: 'L1', interact: '□', next: '△', grenade: 'R1', build: '⬇', aim: 'L2', fire: 'R2', sprint: 'L3', view: 'R3', shop: '⬆', reload: '⬅', car: '□', inv: 'SHARE', pause: 'OPTIONS', map: 'PAVÉ', horn: '⬇' };
-export const KB = { jump: 'Espace', crouch: 'Ctrl', duck: 'C', interact: 'E', next: '1-4', grenade: 'G', build: 'Q', aim: 'Clic droit', fire: 'Clic', sprint: 'Maj', view: 'V', shop: 'B', reload: 'R', car: 'F', inv: 'Tab', pause: 'Échap', map: 'M', horn: 'H' };
+export const PS = { jump: '✕', crouch: '○', duck: 'L1', interact: '□', next: '△', grenade: 'R1', build: '⬇', aim: 'L2', fire: 'R2', sprint: 'L3', view: 'R3', shop: '⬆', reload: '⬅', car: '□', inv: 'SHARE', pause: 'OPTIONS', map: 'PAVÉ', horn: '⬇', streak: '➡' };
+export const KB = { jump: 'Espace', crouch: 'Ctrl', duck: 'C', interact: 'E', next: '1-4', grenade: 'G', build: 'Q', aim: 'Clic droit', fire: 'Clic', sprint: 'Maj', view: 'V', shop: 'B', reload: 'R', car: 'F', inv: 'Tab', pause: 'Échap', map: 'M', horn: 'H', streak: 'X' };
 
 export function createInput(dom) {
   const keys = new Set(); const pressedQ = new Set();
@@ -49,6 +49,8 @@ export function createInput(dom) {
     return false;
   }
   function pressed(a) { return KEYMAP[a]?.some((k) => pressedQ.has(k)) || PADMAP[a]?.some((i) => padPressed.has(i)) || false; }
+  // boutons bruts de la manette (navigation dans les menus)
+  const padHit = (i) => padPressed.has(i);
   function endFrame() { pressedQ.clear(); st.mx = 0; st.my = 0; }
   // déplacement clavier (ZQSD et WASD : codes physiques)
   function move() {
@@ -60,5 +62,5 @@ export function createInput(dom) {
   }
   function rumble(strong = 0.5, weak = 0.5, ms = 80) { try { st.pad?.vibrationActuator?.playEffect?.('dual-rumble', { duration: ms, strongMagnitude: strong, weakMagnitude: weak }); } catch {} }
   const label = (a) => (st.usingPad ? PS[a] : KB[a]);
-  return { st, settings, poll, down, pressed, endFrame, move, rumble, label, keys };
+  return { st, settings, poll, down, pressed, endFrame, move, rumble, label, keys, padHit };
 }

@@ -145,6 +145,51 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 #medal.on { animation: medal 1.6s ease-out forwards; }
 @keyframes medal { 0% { opacity: 0; transform: translateX(-50%) scale(1.6); } 10% { opacity: 1; transform: translateX(-50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-10px); } }
 /* minimap ronde, centrée sur le joueur et qui tourne avec lui */
-#minimap { width: 190px !important; height: 190px !important; border-radius: 50% !important; border: 3px solid rgba(255,255,255,.35) !important; background: #3d4250; }
-#minimap.big { border-radius: 14px !important; width: min(760px, 92vw) !important; height: min(720px, 86vh) !important; }
-@media (max-width: 760px) { #minimap { width: 130px !important; height: 130px !important; } }
+#minimap { top: auto !important; bottom: 22px; left: 18px; width: 240px !important; height: 240px !important; border-radius: 50% !important; border: 3px solid rgba(255,255,255,.35) !important; background: #3d4250; }
+#minimap.big { bottom: auto; top: 50% !important; left: 50%; transform: translate(-50%, -50%); z-index: 5; border-radius: 14px !important; width: min(760px, 92vw) !important; height: min(720px, 86vh) !important; }
+@media (max-width: 760px) { #minimap { width: 150px !important; height: 150px !important; } }
+
+/* Domination : lettres des zones à l'écran */
+#hud { --me: #5ad1ff; --foe: #ff4a3d; }
+#zmarks { position: absolute; inset: 0; pointer-events: none; }
+.zm { position: absolute; left: 0; top: 0; margin: -22px 0 0 -22px; width: 44px; text-align: center; transition: opacity .2s; }
+.zm b { display: grid; place-items: center; width: 38px; height: 38px; margin: 0 auto; border-radius: 50%; font: 18px Bungee, Inter; color: #fff; text-shadow: 0 1px 2px #000;
+  background: radial-gradient(circle, rgba(10,14,22,.75) 58%, transparent 60%), conic-gradient(var(--pc) var(--p, 0deg), rgba(255,255,255,.25) 0); box-shadow: 0 0 10px rgba(0,0,0,.4); }
+.zm.allie b { color: var(--me); } .zm.ennemi b { color: var(--foe); }
+.zm small { display: block; font: 800 11px Inter; color: #fff; text-shadow: 0 1px 3px #000; margin-top: 2px; }
+.zm.alerte b { animation: zmpulse .45s infinite alternate; } .zm.cache { opacity: 0; }
+@keyframes zmpulse { to { transform: scale(1.18); box-shadow: 0 0 18px var(--foe); } }
+/* bloc de capture quand on est dans une zone */
+#capbox { position: absolute; left: 50%; top: 128px; transform: translateX(-50%) scale(.9); display: flex; align-items: center; gap: 12px; padding: 8px 16px 8px 8px; border-radius: 40px; background: rgba(8,12,20,.6); opacity: 0; transition: opacity .15s, transform .15s; pointer-events: none; }
+#capbox.on { opacity: 1; transform: translateX(-50%) scale(1); }
+#capbox .ring { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle, rgba(10,14,22,.95) 60%, transparent 62%), conic-gradient(var(--pc) var(--p, 0deg), rgba(255,255,255,.18) 0); }
+#capbox .ring b { font: 28px Bungee, Inter; color: #fff; }
+#capbox.allie .ring b { color: var(--me); } #capbox.ennemi .ring b { color: var(--foe); }
+#capbox strong { display: block; font: 900 16px Inter; letter-spacing: .08em; color: #fff; }
+#capbox small { font: 700 12px Inter; color: rgba(255,255,255,.75); }
+#capbox.conteste { animation: capc .4s infinite alternate; } #capbox.conteste strong { color: #ffcf3d; }
+@keyframes capc { to { background: rgba(120,20,10,.6); } }
+
+/* argent et barricades en haut à gauche (la carte est en bas à gauche) */
+#money { top: 16px !important; } #mats { top: 56px !important; }
+/* classement en direct : gros compteur d'éliminations, rang, 3 au-dessus et 3 en dessous */
+#rank { position: absolute; left: 16px; top: 96px; width: 250px; padding: 10px 12px 10px; border-radius: 14px; background: linear-gradient(180deg, rgba(8,10,16,.72), rgba(20,24,34,.62)); box-shadow: inset 0 3px 10px rgba(0,0,0,.75), inset 0 -1px 0 rgba(255,255,255,.08), 0 2px 10px rgba(0,0,0,.35); pointer-events: none; }
+#rank .top { display: flex; align-items: center; gap: 12px; }
+#rank .kills { font: 44px/1 Bungee; color: #fff; text-shadow: 0 2px 0 #000, 0 0 14px rgba(255,80,80,.45); display: flex; align-items: center; gap: 6px; }
+#rank .kills small { font: 900 10px Inter; letter-spacing: .12em; color: var(--dim); display: block; text-shadow: none; }
+#rank .pos { margin-left: auto; text-align: right; font: 30px/1 Bungee; color: var(--gold); text-shadow: 0 2px 0 #000; }
+#rank .pos small { display: block; font: 900 10px Inter; letter-spacing: .1em; color: var(--dim); text-shadow: none; }
+#rank .sub { font: 700 11px Inter; color: #cfd6e0; margin: 6px 0 6px; display: flex; gap: 10px; }
+#rank .sub b { color: #fff; }
+#rank table { width: 100%; border-collapse: collapse; font: 700 12px Inter; }
+#rank td { padding: 2px 4px; white-space: nowrap; } #rank td.n { width: 26px; color: var(--dim); text-align: right; } #rank td.k, #rank td.p { text-align: right; width: 34px; }
+#rank td.p { color: var(--dim); width: 52px; } #rank td.nm { overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+#rank tr.o .nm { color: var(--ordre); } #rank tr.c .nm { color: var(--civils); }
+#rank tr.me { background: rgba(255,204,61,.18); box-shadow: inset 3px 0 0 var(--gold); } #rank tr.me td { color: #fff; font-weight: 900; }
+#rank .streak { margin-top: 7px; font: 700 11px Inter; color: #cfd6e0; border-top: 1px solid rgba(255,255,255,.1); padding-top: 6px; }
+#rank .streak .rdy { display: inline-block; background: var(--gold); color: #111; border-radius: 6px; padding: 1px 6px; font-weight: 900; animation: pulse 1s infinite alternate; }
+@keyframes pulse { to { transform: scale(1.06); } }
+@media (max-width: 760px) { #rank { width: 190px; top: 92px; } #rank table { display: none; } #rank .kills { font-size: 30px; } }
+#inv .invh { font: 900 12px Inter; letter-spacing: .1em; color: var(--dim); text-transform: uppercase; margin: 12px 0 6px; text-align: left; }
+#inv .invrow { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+#inv { overflow-y: auto; max-height: 100vh; }

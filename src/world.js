@@ -231,6 +231,8 @@ export class World {
         const t1x = (-c.hx - lx) / vx, t2x = (c.hx - lx) / vx, t1z = (-c.hz - lz) / vz, t2z = (c.hz - lz) / vz, t1y = (y0 - o.y) / d.y, t2y = (y1 - o.y) / d.y;
         const tmin = Math.max(Math.min(t1x, t2x), Math.min(t1z, t2z), Math.min(t1y, t2y)), tmax = Math.min(Math.max(t1x, t2x), Math.max(t1z, t2z), Math.max(t1y, t2y));
         if (tmax >= tmin && tmin > 0 && tmin < best) {
+          // meurtrières des barricades : la balle passe par les fentes
+          if (c.holes) { const hx = lx + vx * tmin, hy = o.y + d.y * tmin - y0; if (c.holes.some((h) => hx > h[0] && hx < h[1] && hy > h[2] && hy < h[3])) continue; }
           best = tmin; bc = c;
           const ax = Math.min(t1x, t2x), az = Math.min(t1z, t2z), ay = Math.min(t1y, t2y);
           if (tmin === ay) bn = [0, d.y > 0 ? -1 : 1, 0];

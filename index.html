@@ -25,6 +25,8 @@
   <div id="compass"><canvas></canvas></div>
   <div id="shotring"></div>
   <div id="medal"></div>
+  <div id="zmarks"></div>
+  <div id="capbox"></div>
   <div id="feed"></div>
   <div id="toasts"></div>
   <div id="center"></div>
@@ -32,8 +34,9 @@
   <div id="channel"><div class="bar"><i></i></div><span></span></div>
   <div id="minimap"><canvas></canvas></div>
   <div id="money"><span class="eur">€</span><b id="cash">0</b><small id="income"></small></div>
-  <div id="mats" title="Matériaux pour les barricades"><span>🧱</span><b id="matsN">0</b></div>
-  <div id="bag"><div class="lbl">SAC <b id="bagkg">0/20 kg</b></div><div id="bagitems"></div></div>
+  <div id="mats" title="Barricades disponibles (une revient toutes les 15 s)"><span>🧱</span><b id="matsN">0</b></div>
+  <div id="rank"></div>
+  <div id="bag"><div class="lbl">PORTÉ <b id="bagkg">0/20 kg</b></div><div id="bagitems"></div></div>
   <div id="vitals">
     <div class="row"><div class="bar armor"><i id="armorbar"></i></div></div>
     <div class="row"><div class="bar hp"><i id="hpbar"></i></div><b id="hpn">100</b></div>
@@ -70,7 +73,7 @@
 </div>
 
 <div id="inv" class="screen panel hidden">
-  <h2>TON SAC</h2>
+  <h2>INVENTAIRE</h2>
   <div id="invList"></div>
   <p class="small">Revends au <b>receleur</b> (icône 💰 sur la carte) ou dépose à ta base : chaque objet exposé rapporte de l'argent chaque seconde… tant qu'on ne te le vole pas.</p>
 </div>

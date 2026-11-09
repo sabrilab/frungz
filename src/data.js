@@ -62,8 +62,8 @@ export const SHOP_NAMES = {
 
 // améliorations permanentes (banque)
 export const UPGRADES = {
-  sac: { name: 'Grand sac', desc: '+8 kg de capacité par niveau', icon: '🎒', max: 4, price: (l) => 800 * (l + 1) },
+  sac: { name: 'Bras solides', desc: 'Moins ralenti quand tu portes un objet', icon: '🎒', max: 4, price: (l) => 800 * (l + 1) },
   gilet: { name: 'Gilet renforcé', desc: '+25 armure au départ par niveau', icon: '🦺', max: 4, price: (l) => 1000 * (l + 1) },
   socles: { name: 'Socles de planque', desc: '+2 emplacements d\'exposition', icon: '🏛️', max: 3, price: (l) => 1500 * (l + 1) },
-  mats: { name: 'Caisse à outils', desc: '+20 matériaux au départ', icon: '🧰', max: 3, price: (l) => 600 * (l + 1) },
+  mats: { name: 'Caisse à outils', desc: 'Barricades : −3 s de recharge par niveau', icon: '🧰', max: 3, price: (l) => 600 * (l + 1) },
 };

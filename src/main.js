@@ -134,6 +134,37 @@ $('shopList').addEventListener('click', (e) => {
   persist(); renderShop(); renderMenu();
 });
 
+
+// ---------- navigation manette dans les menus ----------
+// croix / stick : déplacer le focus vers le contrôle le plus proche dans la direction ; ✕ valider ; ○ retour ; ⬅ ➡ régler curseurs et listes
+let padFocus = null, navRep = 0;
+function activeScreen() { for (const id of ['pause', 'shop', 'end', 'menu']) { const el = $(id); if (el && !el.classList.contains('hidden')) return el; } return null; }
+function focusables(scr) { return [...scr.querySelectorAll('button, input, select')].filter((e) => !e.disabled && e.offsetParent !== null); }
+function setPadFocus(el) { padFocus?.classList.remove('padfocus'); padFocus = el; if (el) { el.classList.add('padfocus'); el.scrollIntoView?.({ block: 'nearest' }); } }
+function padMenu(dt) {
+  if (!input.st.pad) { setPadFocus(null); return; }
+  const scr = activeScreen(); if (!scr) { setPadFocus(null); return; }
+  const list = focusables(scr); if (!list.length) return;
+  if (!padFocus || !list.includes(padFocus)) { if (!input.st.usingPad) return; setPadFocus(list.find((e) => e.id === 'play' || e.id === 'resume' || e.id === 'again') || list[0]); }
+  const H = input.padHit, ax = input.st.moveX, ay = input.st.moveY;
+  let dx = H(15) ? 1 : H(14) ? -1 : 0, dy = H(13) ? 1 : H(12) ? -1 : 0;
+  navRep -= dt;
+  if (!dx && !dy && Math.hypot(ax, ay) > 0.6) { if (navRep <= 0) { navRep = 0.22; if (Math.abs(ax) > Math.abs(ay)) dx = Math.sign(ax); else dy = Math.sign(ay); } } else if (Math.hypot(ax, ay) < 0.3) navRep = 0;
+  const f = padFocus;
+  if (dx && (f.type === 'range' || f.tagName === 'SELECT')) {
+    if (f.type === 'range') { const st = +f.step || 0.1; f.value = Math.min(+f.max, Math.max(+f.min, +f.value + dx * st * 4)); f.dispatchEvent(new Event('input')); }
+    else { f.selectedIndex = (f.selectedIndex + dx + f.options.length) % f.options.length; f.dataset.dirty = '1'; f.dispatchEvent(new Event('input')); }
+    audio.play('uiTick'); return;
+  }
+  if (dx || dy) {
+    const r = f.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2; let best = null, bs = 1e9;
+    for (const e of list) { if (e === f) continue; const q = e.getBoundingClientRect(); const ex = q.left + q.width / 2 - cx, ey = q.top + q.height / 2 - cy; const along = dx ? ex * dx : ey * dy, across = dx ? Math.abs(ey) : Math.abs(ex); if (along <= 4) continue; const sc = along + across * 2.5; if (sc < bs) { bs = sc; best = e; } }
+    if (best) { setPadFocus(best); audio.play('uiTick'); } return;
+  }
+  if (H(0)) { if (f.tagName === 'SELECT') { if (f.dataset.dirty) { delete f.dataset.dirty; f.dispatchEvent(new Event('change')); } } else if (f.type !== 'range') { f.click(); audio.play('uiSelect'); } return; }
+  if (H(1)) { if (scr.id === 'pause') closePause(); else if (scr.id === 'shop') closeShop(); }
+}
+
 // ---------- pause et réglages ----------
 const pause = document.createElement('div'); pause.id = 'pause'; pause.className = 'screen panel hidden';
 pause.innerHTML = `<h2>PAUSE</h2>
@@ -152,10 +183,10 @@ pause.innerHTML = `<h2>PAUSE</h2>
 <div class="controls"><div><h3>🎮 Manette</h3>
 <p><kbd>L</kbd> se déplacer · <kbd>R</kbd> regarder</p><p><kbd>R2</kbd> tirer · <kbd>L2</kbd> viser</p><p><kbd>✕</kbd> sauter / escalader · <kbd>○</kbd> roulade / glissade</p>
 <p><kbd>L1</kbd> s'accroupir · <kbd>R1</kbd> grenade</p><p><kbd>□</kbd> agir, ramasser, voler une voiture · <kbd>△</kbd> changer d'arme</p>
-<p><kbd>L3</kbd> sprint · <kbd>R3</kbd> vue FPS / TPS</p><p><kbd>⬅</kbd> recharger · <kbd>⬆</kbd> armurerie · <kbd>⬇</kbd> barricade</p><p><kbd>PAVÉ</kbd> carte · <kbd>SHARE</kbd> sac · <kbd>OPTIONS</kbd> pause</p></div>
-<div><h3>⌨️ Clavier</h3><p><kbd>ZQSD</kbd>/<kbd>WASD</kbd> · souris pour regarder</p><p><kbd>Clic</kbd> tirer · <kbd>Clic droit</kbd> viser</p><p><kbd>Espace</kbd> saut · <kbd>Ctrl</kbd> roulade / glissade</p><p><kbd>C</kbd> accroupi · <kbd>G</kbd> grenade · <kbd>Maj</kbd> sprint</p><p><kbd>E</kbd> agir · <kbd>F</kbd> voiture · <kbd>R</kbd> recharger</p><p><kbd>1-4</kbd> armes · <kbd>Q</kbd> barricade · <kbd>B</kbd> armurerie</p><p><kbd>M</kbd> carte · <kbd>Tab</kbd> sac · <kbd>V</kbd> vue · <kbd>Échap</kbd> pause</p></div></div>`;
+<p><kbd>L3</kbd> sprint · <kbd>R3</kbd> vue FPS / TPS</p><p><kbd>⬅</kbd> recharger · <kbd>⬆</kbd> armurerie · <kbd>⬇</kbd> barricade · <kbd>➡</kbd> série</p><p><kbd>PAVÉ</kbd> carte · <kbd>SHARE</kbd> sac · <kbd>OPTIONS</kbd> pause</p><p>Menus : croix ou stick pour choisir, <kbd>✕</kbd> valider, <kbd>○</kbd> retour, <kbd>⬅</kbd><kbd>➡</kbd> régler</p></div>
+<div><h3>⌨️ Clavier</h3><p><kbd>ZQSD</kbd>/<kbd>WASD</kbd> · souris pour regarder</p><p><kbd>Clic</kbd> tirer · <kbd>Clic droit</kbd> viser</p><p><kbd>Espace</kbd> saut · <kbd>Ctrl</kbd> roulade / glissade</p><p><kbd>C</kbd> accroupi · <kbd>G</kbd> grenade · <kbd>Maj</kbd> sprint</p><p><kbd>E</kbd> agir · <kbd>F</kbd> voiture · <kbd>R</kbd> recharger</p><p><kbd>1-4</kbd> armes · <kbd>Q</kbd> barricade · <kbd>B</kbd> armurerie · <kbd>X</kbd> série</p><p><kbd>M</kbd> carte · <kbd>Tab</kbd> sac · <kbd>V</kbd> vue · <kbd>Échap</kbd> pause</p></div></div>`;
 document.body.appendChild(pause);
-const st = document.createElement('style'); st.textContent = `.settings{display:grid;gap:10px;text-align:left;background:rgba(255,255,255,.06);padding:16px;border-radius:12px;min-width:min(420px,100%)}.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left;margin-top:10px;font-size:13px}.controls h3{margin:0 0 6px;font:800 14px Inter}.controls p{margin:3px 0}@media(max-width:760px){.controls{grid-template-columns:1fr}}.settings label{display:flex;justify-content:space-between;gap:12px;align-items:center;font-weight:700}#minimap.big{width:min(700px,90vw);height:min(350px,45vw);left:50%;top:50%;transform:translate(-50%,-50%)}body.scoped #app canvas{}body.scoped::after{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 30vh,#000 30.5vh);z-index:1}body.scoped::before{content:'';position:fixed;left:50%;top:0;bottom:0;width:1px;background:#000;z-index:2;box-shadow:0 0 0 0 #000}`;
+const st = document.createElement('style'); st.textContent = `.padfocus{outline:3px solid #ffcc3d!important;outline-offset:3px;box-shadow:0 0 0 7px rgba(255,204,61,.22)!important}.settings{display:grid;gap:10px;text-align:left;background:rgba(255,255,255,.06);padding:16px;border-radius:12px;min-width:min(420px,100%)}.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left;margin-top:10px;font-size:13px}.controls h3{margin:0 0 6px;font:800 14px Inter}.controls p{margin:3px 0}@media(max-width:760px){.controls{grid-template-columns:1fr}}.settings label{display:flex;justify-content:space-between;gap:12px;align-items:center;font-weight:700}#minimap.big{width:min(700px,90vw);height:min(350px,45vw);left:50%;top:50%;transform:translate(-50%,-50%)}body.scoped #app canvas{}body.scoped::after{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 30vh,#000 30.5vh);z-index:1}body.scoped::before{content:'';position:fixed;left:50%;top:0;bottom:0;width:1px;background:#000;z-index:2;box-shadow:0 0 0 0 #000}`;
 document.head.appendChild(st);
 const bindSet = (id, key, prop = 'value', conv = Number) => { const el = $(id); el[prop] = save.settings[key]; el.addEventListener('input', () => { save.settings[key] = conv(el[prop]); input.settings[key] = save.settings[key]; persist(); if (key === 'fps' && game) { game.cam.fps = save.settings.fps; game.viewGun(); } }); };
 bindSet('s-sens', 'sens'); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); bindSet('s-team', 'teamSize');
@@ -204,11 +235,11 @@ function frame() {
   const raw = clock.getDelta(); dynRes(raw); const dt = Math.min(raw, 0.05);
   if (game) {
     if (!game.paused) { game.update(dt); }
-    else { input.poll(); if (input.pressed('pause') && !pause.classList.contains('hidden')) closePause(); else if (input.pressed('shop') && !$('shop').classList.contains('hidden')) closeShop(); input.endFrame(); }
+    else { input.poll(); if (input.pressed('pause') && !pause.classList.contains('hidden')) closePause(); else if (!input.st.usingPad && input.pressed('shop') && !$('shop').classList.contains('hidden')) closeShop(); else padMenu(dt); input.endFrame(); }
   } else if (world) {
     // menu : survol lent de la place
     menuT += dt * 0.04; camera.position.set(Math.cos(menuT) * 150, 55, Math.sin(menuT) * 150); camera.lookAt(0, 4, 0); // au-dessus des toits, jamais dans les bâtiments followShadow(camera.position);
-    input.poll(); if (input.st.usingPad && input.pressed('jump') && !$('menu').classList.contains('hidden') && !$('play').disabled) start(); input.endFrame();
+    input.poll(); padMenu(dt); input.endFrame();
   }
   if (composer) composer.render(); else renderer.render(scene, camera); window.__frames = (window.__frames || 0) + 1;
 }
