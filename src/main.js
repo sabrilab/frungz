@@ -5,6 +5,7 @@ import { loadChars, loadGuns, makeCharacter, attachGun } from './assets.js';
 import { createAudio } from './audio.js';
 import { createFX } from './fx.js';
 import { createInput } from './input.js';
+import { createNight } from './night.js';
 import { Game } from './game.js';
 import { TEAMS, WEAPONS, UPGRADES, SKIN_NAMES } from './data.js';
 
@@ -47,7 +48,7 @@ renderer.setPixelRatio(prCur); renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = QS.shadows; renderer.shadowMap.type = QS.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.outputColorSpace = THREE.SRGBColorSpace;
 $('app').appendChild(renderer.domElement);
-const { scene, sun, followShadow } = setupScene(renderer);
+const { scene, sun, hemi, followShadow } = setupScene(renderer);
 sun.shadow.mapSize.set(QS.shadowSize, QS.shadowSize); sun.castShadow = QS.shadows; scene.fog.near = QS.fog[0]; scene.fog.far = QS.fog[1];
 const pm = new THREE.PMREMGenerator(renderer);
 import('three/examples/jsm/environments/RoomEnvironment.js').then(({ RoomEnvironment }) => { scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.35; });
@@ -77,7 +78,7 @@ const fx = createFX(scene, camera);
 // ---------- chargement ----------
 const ALL_SKINS = [...TEAMS.ordre.skins, ...TEAMS.civils.skins];
 const CARS = [['sportscar', 'sport', 'Coupé sport orange'], ['sportscar2', 'sport', 'Coupé sport blanc'], ['sports', 'sport', 'Coupé sport rouge'], ['roadster', 'sport', 'Cabriolet bleu'], ['muscle', 'sport', 'Muscle car jaune'], ['sports-armored', 'blinde', 'Sportive blindée'], ['cop', 'police', 'Voiture de police'], ['police-sedan', 'police', 'Berline de police'], ['suv-luxury', 'civil', 'SUV de luxe']];
-let world, mapRoot, carDefs = [];
+let world, mapRoot, carDefs = [], night = null;
 let progress = { map: 0, chars: 0, guns: 0, cars: 0 };
 const showProgress = () => { const p = progress.map * 0.6 + progress.chars / ALL_SKINS.length * 0.25 + progress.guns / 6 * 0.05 + progress.cars / CARS.length * 0.1; $('loadbar').style.width = (p * 100).toFixed(0) + '%'; };
 async function loadAll() {
@@ -93,6 +94,7 @@ async function loadAll() {
   // allègements selon la qualité : pas d'ombre des feuillages en moyenne, pas de décor lointain en basse (caché par le brouillard)
   root.traverse((o) => { if (!o.isMesh) return; const n = o.name || ''; if (QN !== 'haut' && /leaf/.test(n)) o.castShadow = false; if (QN === 'bas' && /decor_lointain/.test(n)) o.visible = false; });
   const tw = performance.now(); world = new World(gp, ground); console.log('monde prêt en', (performance.now() - tw).toFixed(0), 'ms'); window.__world = world; window.__ground = ground;
+  night = createNight({ scene, sun, hemi, renderer, world, mapRoot: root, fx, quality: QN }); night.set(!!save.settings.night); renderMenu();
   $('loading').classList.add('hidden'); $('play').disabled = false;
   window.__loaded = true;
 }
@@ -103,6 +105,7 @@ function renderMenu() {
   document.querySelectorAll('.side').forEach((b) => b.classList.toggle('on', b.dataset.team === save.team));
   const skins = TEAMS[save.team].skins; if (!skins.includes(save.skin)) save.skin = skins[0];
   $('skins').innerHTML = skins.map((s) => `<button data-skin="${s}" class="${s === save.skin ? 'on' : ''}">${SKIN_NAMES[s] || s}</button>`).join('');
+  $('nightBtn').textContent = save.settings.night ? '☀️ Jour' : '🌙 Nuit (émeute)';
   $('bank').textContent = fmt(save.bank); $('lvl').textContent = save.lvl || 1;
 }
 document.querySelectorAll('.side').forEach((b) => b.addEventListener('click', () => { save.team = b.dataset.team; persist(); renderMenu(); audio.init(); audio.play('uiSelect'); }));
@@ -110,6 +113,7 @@ $('skins').addEventListener('click', (e) => { const s = e.target.dataset?.skin; 
 $('play').disabled = true;
 $('play').addEventListener('click', () => start());
 $('openShop').addEventListener('click', () => openShop());
+$('nightBtn').addEventListener('click', () => { save.settings.night = !save.settings.night; persist(); night?.set(save.settings.night); renderMenu(); audio.init(); audio.play('uiTick'); });
 $('closeShop').addEventListener('click', () => closeShop());
 $('again').addEventListener('click', () => { $('end').classList.add('hidden'); $('menu').classList.remove('hidden'); renderMenu(); });
 
@@ -235,12 +239,13 @@ function frame() {
   requestAnimationFrame(frame);
   const raw = clock.getDelta(); dynRes(raw); const dt = Math.min(raw, 0.05);
   if (game) {
+    night?.update(dt, camera.position, game.cars);
     if (!game.paused) { game.update(dt); }
     else { input.poll(); if (input.pressed('pause') && !pause.classList.contains('hidden')) closePause(); else if (!input.st.usingPad && input.pressed('shop') && !$('shop').classList.contains('hidden')) closeShop(); else padMenu(dt); input.endFrame(); }
   } else if (world) {
     // menu : survol lent de la place
     menuT += dt * 0.04; camera.position.set(Math.cos(menuT) * 150, 55, Math.sin(menuT) * 150); camera.lookAt(0, 4, 0); // au-dessus des toits, jamais dans les bâtiments followShadow(camera.position);
-    input.poll(); padMenu(dt); input.endFrame();
+    input.poll(); padMenu(dt); input.endFrame(); night?.update(dt, camera.position, null);
   }
   if (composer) composer.render(); else renderer.render(scene, camera); window.__frames = (window.__frames || 0) + 1;
 }

@@ -512,10 +512,16 @@ export class Game {
     for (let rad = 0; rad < 10; rad += 1) for (let k = 0; k < Math.max(1, rad * 6); k++) { const a = k / Math.max(1, rad * 6) * Math.PI * 2; const px = x + Math.cos(a) * rad, pz = z + Math.sin(a) * rad; if (ok(px, pz)) return [px, pz]; }
     return null;
   }
+  bodySize(def) {
+    const xs = [], zs = [], v = V(); let ymax = 0; def.scene.updateMatrixWorld(true);
+    def.scene.traverse((o) => { if (!o.isMesh) return; const p = o.geometry.attributes.position; for (let i = 0; i < p.count; i += 3) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); xs.push(v.x); zs.push(v.z); ymax = Math.max(ymax, v.y); } });
+    if (xs.length < 20) return def.size; xs.sort((a, b) => a - b); zs.sort((a, b) => a - b); const q = (a, t) => a[Math.floor(t * (a.length - 1))];
+    return [Math.min(def.size[0], q(xs, 0.985) - q(xs, 0.015)), def.size[1], Math.min(def.size[2], q(zs, 0.995) - q(zs, 0.005))];
+  }
   addCar(def, x, z, yaw) {
     const obj = def.scene.clone(true); obj.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     this.root.add(obj);
-    const size = def.size; const wheels = ['wheel-front-left', 'wheel-front-right', 'wheel-back-left', 'wheel-back-right'].map((n) => obj.getObjectByName(n) || obj.getObjectByName(n.replace(/-/g, '_')));
+    const size = def.body || (def.body = this.bodySize(def)); const wheels = ['wheel-front-left', 'wheel-front-right', 'wheel-back-left', 'wheel-back-right'].map((n) => obj.getObjectByName(n) || obj.getObjectByName(n.replace(/-/g, '_')));
     const car = { def, obj, wheels, pos: V(x, this.world.groundY(x, z), z), yaw, speed: 0, steer: 0, hp: def.classe === 'blinde' ? 600 : 320, maxHp: def.classe === 'blinde' ? 600 : 320, driver: null, spawn: [x, z, yaw], dead: 0, W: size[0], L: size[2], H: size[1], max: { sport: 34, blinde: 26, police: 30, civil: 24 }[def.classe] || 26, accel: { sport: 15, blinde: 10, police: 13, civil: 9 }[def.classe] || 11, police: def.classe === 'police' };
     car.col = { type: 'box', x, z, hx: car.W / 2, hz: car.L / 2, h: car.H, yaw, cs: Math.cos(yaw), sn: Math.sin(yaw), y0: car.pos.y, car };
     this.world.dynamic.push(car.col); this.cars.push(car); this.syncCar(car);
@@ -547,7 +553,7 @@ export class Game {
     c.obj.visible = false; const j = this.world.dynamic.indexOf(c.col); if (j >= 0) this.world.dynamic.splice(j, 1);
   }
   updateCar(c, dt) {
-    if (c.dead) { c.dead -= dt; if (c.dead <= 0) { c.dead = 0; [c.pos.x, c.pos.z, c.yaw] = c.spawn; c.pos.y = this.world.groundY(c.pos.x, c.pos.z); c.hp = c.maxHp; c.speed = 0; c.obj.visible = true; this.world.dynamic.push(c.col); this.syncCar(c); } return; }
+    if (c.dead) { c.dead -= dt; if (c.dead <= 0) { c.dead = 0; [c.pos.x, c.pos.z, c.yaw] = c.spawn; c.pos.y = this.world.groundY(c.pos.x, c.pos.z); c.hp = c.maxHp; c.speed = 0; c.vel = null; c.obj.visible = true; this.world.dynamic.push(c.col); this.syncCar(c); } return; }
     const drv = c.driver;
     let thr = 0, brk = 0, st = 0, hand = false;
     if (drv === this.player && !this.paused) {
@@ -555,45 +561,74 @@ export class Game {
       thr = Math.max(-m.y, I.st.triggerR); brk = Math.max(m.y > 0 ? m.y : 0, I.st.triggerL); st = -m.x; hand = I.down('jump');
       if (I.pressed('horn')) this.audio.horn();
     }
-    const f = V(Math.sin(c.yaw), 0, Math.cos(c.yaw));
-    if (thr > 0) c.speed += thr * c.accel * dt * (c.speed < 0 ? 2.5 : 1);
-    if (brk > 0) c.speed -= brk * (c.speed > 0.5 ? 26 : 9) * dt;
-    c.speed -= c.speed * (hand ? 1.2 : 0.35) * dt; if (!thr && !brk) c.speed -= Math.sign(c.speed) * Math.min(Math.abs(c.speed), 3 * dt);
-    c.speed = clamp(c.speed, -10, c.max);
-    const maxSt = 0.6 - 0.32 * Math.min(1, Math.abs(c.speed) / c.max);
-    c.steer = lerp(c.steer, st * maxSt, 1 - Math.exp(-dt * 8));
-    const wb = c.L * 0.62; const yawRate = c.speed / wb * Math.tan(c.steer) * (hand ? 1.6 : 1);
-    c.yaw += yawRate * dt;
-    // dérive au frein à main : la voiture glisse un peu de côté
-    c.slip = lerp(c.slip || 0, hand ? yawRate * Math.abs(c.speed) * 0.08 : 0, 1 - Math.exp(-dt * 4));
-    const side = V(Math.cos(c.yaw), 0, -Math.sin(c.yaw));
-    const before = c.pos.clone();
-    c.pos.addScaledVector(V(Math.sin(c.yaw), 0, Math.cos(c.yaw)), c.speed * dt).addScaledVector(side, c.slip * dt);
-    // collisions : trois cercles sur la longueur
-    const fwd = V(Math.sin(c.yaw), 0, Math.cos(c.yaw)); let bump = 0;
-    for (const k of [-0.32, 0, 0.32]) {
-      const q = c.pos.clone().addScaledVector(fwd, k * c.L); const q0 = q.clone();
-      this.world.pushOut(q, c.W * 0.5, c.pos.y + 0.2, c.col); const dx = q.x - q0.x, dz = q.z - q0.z;
-      if (dx || dz) { c.pos.x += dx; c.pos.z += dz; bump = Math.max(bump, Math.hypot(dx, dz)); }
+    // modèle arcade : vitesse dans le monde, décomposée en avant / côté ; l'adhérence latérale ramène la voiture dans l'axe
+    // (forte sur route, faible au frein à main : dérive contrôlable), direction plus douce et moins braquée à haute vitesse
+    const f = V(Math.sin(c.yaw), 0, Math.cos(c.yaw)), side = V(Math.cos(c.yaw), 0, -Math.sin(c.yaw));
+    if (!c.vel) c.vel = f.clone().multiplyScalar(c.speed);
+    let vf = c.vel.dot(f), vs = c.vel.dot(side);
+    if (thr > 0) vf += thr * c.accel * dt * (vf < 0 ? 2.5 : 1) * (1 - 0.35 * Math.max(0, vf / c.max));
+    if (brk > 0) vf -= brk * (vf > 0.5 ? 24 : 9) * dt;
+    vf -= vf * (hand ? 0.9 : 0.25) * dt; if (!thr && !brk) vf -= Math.sign(vf) * Math.min(Math.abs(vf), 2.5 * dt);
+    vf = clamp(vf, -10, c.max);
+    const maxSt = 0.58 - 0.36 * Math.min(1, Math.abs(vf) / c.max);
+    c.steer = lerp(c.steer, st * maxSt, 1 - Math.exp(-dt * (Math.abs(st) > Math.abs(c.steer / maxSt) ? 5 : 7)));
+    const wb = c.L * 0.62; const yawRate = vf / wb * Math.tan(c.steer) * (hand ? 1.55 : 1);
+    const grip = hand ? 1.6 : Math.abs(vs) > 5 ? 4.5 : 9; vs *= Math.exp(-grip * dt);
+    c.slipV = vs; c.vel.copy(f).multiplyScalar(vf).addScaledVector(side, vs);
+    c.yaw += yawRate * dt; c.speed = vf;
+    c.pos.addScaledVector(c.vel, dt);
+    // collisions : cercles sur la longueur, à la largeur réelle de la carrosserie (sans rétroviseurs)
+    const fwd = V(Math.sin(c.yaw), 0, Math.cos(c.yaw)); let bump = 0; const n = V();
+    const r = c.W * 0.46, reach = Math.max(0, c.L / 2 - r);
+    for (const k of [-1, -0.5, 0, 0.5, 1]) {
+      const q = c.pos.clone().addScaledVector(fwd, k * reach); const q0 = q.clone();
+      this.world.pushOut(q, r, c.pos.y + 0.2, c.col); const dx = q.x - q0.x, dz = q.z - q0.z;
+      if (dx || dz) { c.pos.x += dx; c.pos.z += dz; const L = Math.hypot(dx, dz); n.x += dx; n.z += dz; bump = Math.max(bump, L); }
     }
+    if (bump > 0.01) { n.normalize(); const into = c.vel.dot(n); if (into < 0) { c.vel.addScaledVector(n, -into * 1.35); c.speed = c.vel.dot(fwd); } }
     if (bump > 0.02 && Math.abs(c.speed) > 3) {
       const imp = Math.abs(c.speed); if (imp > 9) { this.hitCar(c, imp * 2.2, null); this.audio.play('slam', c.pos, Math.min(1.2, imp / 20)); this.fx.burst(c.pos.clone().addScaledVector(fwd, c.L / 2 * Math.sign(c.speed)).add(V(0, 0.6, 0)), 8, { color: '#ffd27a', speed: 5, size: 0.03, emissive: true, life: 0.3 }); if (drv === this.player) { this.cam.trauma = Math.min(1, this.cam.trauma + imp / 30); this.input.rumble(1, 1, 200); } }
-      c.speed *= -0.25;
+      c.vel.multiplyScalar(0.7); c.speed = c.vel.dot(fwd);
     }
     // écrasement des piétons
     if (Math.abs(c.speed) > 4) for (const a of this.actors) {
       if (!a.alive || a.inCar || (drv && a.team === drv.team)) continue;
       const dx = a.pos.x - c.pos.x, dz = a.pos.z - c.pos.z; const lx = dx * Math.cos(c.yaw) - dz * Math.sin(c.yaw), lz = dx * Math.sin(c.yaw) + dz * Math.cos(c.yaw);
-      if (Math.abs(lx) < c.W / 2 + 0.35 && Math.abs(lz) < c.L / 2 + 0.35) { this.damage(a, Math.abs(c.speed) * 5, drv); a.vel.addScaledVector(fwd, c.speed * 0.8); a.vel.y = 4; a.onGround = false; c.speed *= 0.8; this.audio.play('thud', a.pos, 1); }
+      if (Math.abs(lx) < c.W / 2 + 0.35 && Math.abs(lz) < c.L / 2 + 0.35) { this.damage(a, Math.abs(c.speed) * 5, drv); a.vel.addScaledVector(fwd, c.speed * 0.8); a.vel.y = 4; a.onGround = false; c.vel.multiplyScalar(0.85); this.audio.play('thud', a.pos, 1); }
     }
     c.pos.y = lerp(c.pos.y, this.world.groundY(c.pos.x, c.pos.z), 1 - Math.exp(-dt * 12));
     c.rollV = lerp(c.rollV || 0, -yawRate * c.speed * 0.006, 1 - Math.exp(-dt * 6)); c.pitchV = lerp(c.pitchV || 0, (thr - brk) * -0.02, 1 - Math.exp(-dt * 5));
     for (let i = 0; i < 4; i++) { const w = c.wheels[i]; if (!w) continue; w.rotation.x += c.speed * dt / 0.3; if (i < 2) w.rotation.y = c.steer; }
     this.syncCar(c);
     if (drv) { drv.pos.copy(c.pos); drv.yaw = c.yaw; }
+    this.carFx(c, dt, thr, brk, hand);
     // fumée quand la voiture est abîmée
     if (c.hp < c.maxHp * 0.3 && Math.random() < dt * 8) this.fx.burst(c.pos.clone().addScaledVector(fwd, c.L * 0.4).add(V(0, c.H, 0)), 1, { color: '#333', speed: 1, size: 0.3, life: 1.2, grav: -2 });
     if (drv === this.player) { this.audio.engine(true, Math.abs(c.speed) / c.max, c.pos); }
+  }
+
+  // effets de conduite : pot d'échappement, traces de pneus et fumée quand ça glisse, traînées rouges des feux à pleine vitesse
+  carFx(c, dt, thr, brk, hand) {
+    const f = V(Math.sin(c.yaw), 0, Math.cos(c.yaw)), side = V(Math.cos(c.yaw), 0, -Math.sin(c.yaw)), sp = Math.abs(c.speed);
+    const near = c.pos.distanceToSquared(this.camera.position) < 90 * 90; if (!near) return;
+    const back = c.pos.clone().addScaledVector(f, -c.L / 2 + 0.05); back.y += 0.32;
+    if (c.driver && Math.random() < dt * (6 + thr * 22)) this.fx.burst(back.clone().addScaledVector(side, -c.W * 0.25).addScaledVector(f, -0.1), 1, { color: thr > 0.5 ? '#6d6d6d' : '#9a9a9a', speed: 0.6 + thr * 0.8, size: 0.12 + thr * 0.1, life: 0.7, grav: -1.2, opacity: 0.5, normal: f.clone().negate(), spread: 0.8 });
+    const skid = Math.abs(c.slipV || 0) > 2.2 || (brk > 0.6 && sp > 8) || (hand && sp > 5) || (thr > 0.8 && sp < 4 && sp > 0.5);
+    if (skid) {
+      for (const sx of [-1, 1]) { const w = c.pos.clone().addScaledVector(f, -c.L * 0.32).addScaledVector(side, sx * c.W * 0.4); w.y = this.world.groundY(w.x, w.z) + 0.02; this.skidMark(c, sx, w); }
+      if (Math.random() < dt * 14) this.fx.burst(back.clone().addScaledVector(side, (Math.random() - 0.5) * c.W), 1, { color: '#d8d8d8', speed: 1.2, size: 0.35, life: 0.9, grav: -0.8, opacity: 0.35 });
+      if (c.driver === this.player && Math.random() < dt * 6) this.audio.play('cloth', c.pos, 0.25, [0.5, 0.6], 0.05);
+    } else { c.skidPrev = null; }
+    if (sp > 20) for (const sx of [-1, 1]) if (Math.random() < dt * 30) this.fx.burst(back.clone().addScaledVector(side, sx * c.W * 0.38).add(V(0, 0.25, 0)), 1, { color: '#ff2a2a', speed: 0.05, size: 0.06, life: 0.18, grav: 0, emissive: true, long: true });
+  }
+  // traces de pneus : segments posés au sol (anneau de 400 segments partagé par toutes les voitures)
+  skidMark(c, sx, w) {
+    if (!this.skids) { const g = new THREE.PlaneGeometry(1, 1); g.rotateX(-Math.PI / 2); const m = new THREE.MeshBasicMaterial({ color: '#111', transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }); this.skids = new THREE.InstancedMesh(g, m, 400); this.skids.count = 0; this.skids.frustumCulled = false; this.root.add(this.skids); this.skidI = 0; }
+    c.skidPrev ||= {}; const prev = c.skidPrev[sx]; c.skidPrev[sx] = w.clone(); if (!prev) return;
+    const d = w.distanceTo(prev); if (d < 0.05 || d > 3) return;
+    const mid = prev.clone().add(w).multiplyScalar(0.5), M = new THREE.Matrix4();
+    M.compose(mid, new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.atan2(w.x - prev.x, w.z - prev.z)), V(0.22, 1, d + 0.04));
+    this.skids.setMatrixAt(this.skidI, M); this.skidI = (this.skidI + 1) % 400; this.skids.count = Math.max(this.skids.count, this.skidI || 400); this.skids.instanceMatrix.needsUpdate = true;
   }
 
   // ---------------------------------------------------------------- boucle
