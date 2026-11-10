@@ -6,6 +6,7 @@ import { TEAMS, WEAPONS, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COM
 import { shopCase, lootMesh, beam, socle, baseSign, receleur, barricade, BARRICADE, grenadeMesh, policeBadge, brassard, headMarker, textTex } from './props.js';
 import { pointInPoly } from './world.js';
 import * as Anim from './anim.js';
+import { rideMethods } from './deuxroues.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
@@ -54,7 +55,7 @@ export class Game {
 
   // ---------------------------------------------------------------- mise en place
   build() {
-    this.fx.setGround((x, z, y) => this.world.groundY(x, z, y), (p, big) => this.audio.tink(p, big)); this.buildBases(); this.buildShops(); this.buildReceleur(); this.buildCars(); this.buildZones();
+    this.fx.setGround((x, z, y) => this.world.groundY(x, z, y), (p, big) => this.audio.tink(p, big)); this.buildBases(); this.buildShops(); this.buildReceleur(); this.buildCars(); this.buildRides(); this.buildZones();
     // nouvelle manche : mobilier réparé, rame sur la voie
     const W = this.world; if (W.cass) for (const e of W.cass.list) if (e.broken) W.cass.repair(e);
     if (W.metro) W.dynamic.push(...W.metro.cols);
@@ -332,7 +333,7 @@ export class Game {
   rayActors(o, d, far, skip) {
     let best = far, hit = null;
     for (const a of this.actors) {
-      if (!a.alive || a === skip || a.inCar) continue;
+      if (!a.alive || a === skip || (a.inCar && !a.inCar.kind)) continue;
       const fx = o.x - a.pos.x, fz = o.z - a.pos.z, A = d.x * d.x + d.z * d.z; if (A < 1e-8) continue;
       const B = 2 * (fx * d.x + fz * d.z), R = 0.42, C = fx * fx + fz * fz - R * R, D = B * B - 4 * A * C; if (D < 0) continue;
       const sq = Math.sqrt(D); for (const t of [(-B - sq) / (2 * A), (-B + sq) / (2 * A)]) {
@@ -624,11 +625,12 @@ export class Game {
   }
   nearestCar(a, r = 3.2) { let best = null, bd = r; for (const c of this.cars) { if (c.dead || c.driver || c.flipped) continue; const d = c.pos.distanceTo(a.pos); if (d < bd) { bd = d; best = c; } } return best; }
   enterCar(a, c) {
+    if (c.kind) return this.rideEnter(a, c); // moto, skate (deuxroues.js)
     c.driver = a; a.inCar = c; a.ch.root.visible = false; a.vel.set(0, 0, 0);
     if (a === this.player) { this.announce('', c.def.nom || 'Voiture volée', '#fff', 1.5); this.audio.play('slam', c.pos, 0.6); this.cam.carYaw = c.yaw; }
   }
   exitCar(a, dead) {
-    const c = a.inCar; if (!c) return; c.driver = null; a.inCar = null; a.ch.root.visible = true;
+    const c = a.inCar; if (!c) return; if (c.kind) return this.rideExit(a, c, dead); c.driver = null; a.inCar = null; a.ch.root.visible = true;
     const side = V(Math.cos(c.yaw), 0, -Math.sin(c.yaw)); const p = c.pos.clone().addScaledVector(side, c.W / 2 + 0.7);
     a.pos.copy(p); this.world.pushOut(a.pos, 0.35, a.pos.y); a.pos.y = this.world.groundY(a.pos.x, a.pos.z, c.pos.y + 0.5); a.yaw = c.yaw;
     if (a === this.player) { this.audio.engine(false); this.audio.play('slam', c.pos, 0.6); this.cam.yaw = c.yaw; }
@@ -645,6 +647,7 @@ export class Game {
     c.obj.visible = false; const j = this.world.dynamic.indexOf(c.col); if (j >= 0) this.world.dynamic.splice(j, 1);
   }
   updateCar(c, dt) {
+    if (c.kind) return this.updateRide(c, dt);
     if (c.dead) { c.dead -= dt; if (c.dead <= 0) { c.dead = 0; c.sunk = false; c.fallV = 0; [c.pos.x, c.pos.z, c.yaw] = c.spawn; c.pos.y = this.world.groundY(c.pos.x, c.pos.z); c.hp = c.maxHp; c.speed = 0; c.vel = null; c.obj.visible = true; this.world.dynamic.push(c.col); this.syncCar(c); } return; }
     const drv = c.driver;
     if (c.flipped || (!drv && !c.fallV && Math.abs(c.speed) < 0.05 && !(c.vel && c.vel.lengthSq() > 0.01))) { c.speed = 0; return; }
@@ -844,9 +847,9 @@ export class Game {
     }
     const car = this.nearestCar(a, 3.4);
     if (car) {
-      const quick = car.police ? a.team === 'ordre' : false;
-      prompt = `<b>${I.label('car')}</b> ${quick ? 'Prendre la voiture de service' : 'Voler'} <span class="r">${car.def.nom || ''}</span>`;
-      if ((I.pressed('car')) && !a.channel) { if (quick) this.enterCar(a, car); else this.startChannel(a, 'Crochetage…', 0.9, () => car.pos.distanceTo(a.pos) < 4 && !car.driver, () => this.enterCar(a, car)); }
+      const R = car.kind ? this.ridePrompt(a, car) : null; const quick = R ? R.quick : car.police ? a.team === 'ordre' : false;
+      prompt = `<b>${I.label('car')}</b> ${R ? R.text : quick ? 'Prendre la voiture de service' : 'Voler'} <span class="r">${car.kind === 'skate' ? '' : car.def.nom || ''}</span>`;
+      if ((I.pressed('car')) && !a.channel) { if (quick) this.enterCar(a, car); else this.startChannel(a, R?.label || 'Crochetage…', R?.dur || 0.9, () => car.pos.distanceTo(a.pos) < 4 && !car.driver, () => this.enterCar(a, car)); }
     }
     if (!prompt) {
       // objet de boutique à portée (vitrine cassée) ; sinon vitrine intacte à casser à la main
@@ -919,7 +922,7 @@ export class Game {
     a.stunT = Math.max(0, (a.stunT || 0) - dt);
     if (!a.alive) { Anim.dead(a, dt); if (a.bot) { a.respawnT -= dt; if (a.respawnT <= 0) { if (a.temp) { a.gone = true; ch.root.visible = false; return; } this.respawn(a); } } if (a.respawnT < 1.5) ch.root.visible = (a.respawnT * 10 | 0) % 2 === 0; return; }
     this.wallRecharge(a, dt);
-    if (a.inCar) return;
+    if (a.inCar) { if (a.inCar.kind) this.rideAnimate(a, dt); return; }
     a.fireT -= dt; a.wantJump = Math.max(0, (a.wantJump || 0) - dt); a.wantCrouch = Math.max(0, (a.wantCrouch || 0) - dt);
     if (a.reloadT > 0) { a.reloadT -= dt; if (a.reloadT <= 0) { const W = this.weapon(a); W.mag = WEAPONS[W.id].mag; } }
     // régénération après 5 s sans dégâts
@@ -1452,7 +1455,7 @@ export class Game {
       const c = a.inCar; C.carYaw = lerp_angle(C.carYaw ?? c.yaw, c.yaw, 1 - Math.exp(-dt * 3));
       // la caméra regarde où on pointe à la souris, puis revient derrière la voiture
       const look = this.input.st.mx || this.input.st.lookX ? 1 : 0; C.freeT = look ? 1.2 : Math.max(0, (C.freeT || 0) - dt); if (!C.freeT) C.yaw = lerp_angle(C.yaw, C.carYaw, 1 - Math.exp(-dt * 2.5)), C.pitch = lerp(C.pitch, -0.2, 1 - Math.exp(-dt * 2));
-      const piv = c.pos.clone().add(V(0, c.H + 0.6, 0)); const back = 5.5 + Math.abs(c.speed) * 0.06;
+      const piv = c.pos.clone().add(V(0, c.camH ?? c.H + 0.6, 0)); const back = (c.camBack ?? 5.5) + Math.abs(c.speed) * (c.kind ? 0.03 : 0.06);
       const want = piv.clone().addScaledVector(dir, -back); const hit = this.world.ray(piv, want.clone().sub(piv).normalize(), back); if (hit) want.copy(piv).addScaledVector(want.sub(piv).normalize(), Math.max(1, hit.t - 0.3));
       cam.position.copy(want); cam.position.y += bobY; cam.lookAt(piv.clone().addScaledVector(dir, 6)); cam.rotateZ(shR);
     } else if (fps) {
@@ -1460,7 +1463,9 @@ export class Game {
       eye.addScaledVector(V(-Math.cos(C.yaw), 0, Math.sin(C.yaw)), bobX);
       cam.position.copy(eye); cam.lookAt(eye.clone().add(dir)); cam.rotateZ(C.roll + shR);
     } else {
-      const shoulder = this.aiming ? 0.5 : 0.48, back = this.aiming ? 0.78 : 2.15 - a.momentum * 0.15 + (a.slideT > 0 ? -0.4 : 0);
+      const back = this.aiming ? 0.78 : 2.15 - a.momentum * 0.15 + (a.slideT > 0 ? -0.4 : 0);
+      // composition au nombre d'or : hors visée, le perso se tient sur la verticale des 38,2 % de la largeur
+      const shoulder = this.aiming ? 0.5 : clamp((1 - 2 * 0.382) * back * Math.tan(cam.fov * Math.PI / 360) * cam.aspect, 0.4, 0.85);
       const piv = a.pos.clone().add(V(0, (a.slideT > 0 ? 1.0 : (this.aiming ? 1.62 : 1.58) - (a.crouchK || 0) * 0.5) + C.dip * 0.6, 0));
       const right = V(-Math.cos(C.yaw), 0, Math.sin(C.yaw));
       const sh = piv.clone().addScaledVector(right, shoulder); const hs = this.world.ray(piv, right, shoulder + 0.2); if (hs) sh.copy(piv).addScaledVector(right, Math.max(0, hs.t - 0.25));
@@ -1471,7 +1476,7 @@ export class Game {
       if (C.snap) { cam.position.copy(want); C.snap = false; } else cam.position.lerp(want, 1 - Math.exp(-dt * 25)); cam.lookAt(cam.position.clone().add(dir)); cam.rotateZ(C.roll * 0.6 + shR);
     }
     { const o = cam.position, d = V(); cam.getWorldDirection(d); const R = scope ? 400 : 120; const h = this.world.ray(o, d, R); const ha = scope ? this.rayActors(o, d, h ? h.t : R, a) : null; const t = ha ? ha.t : h ? Math.max(h.t, 4) : R; this.aimHit = !!(h || ha); this.aimPt = o.clone().addScaledVector(d, t); }
-    a.ch.root.visible = a.alive || a.respawnT > 0 ? (fps ? false : !a.inCar) : false;
+    a.ch.root.visible = a.alive || a.respawnT > 0 ? (fps ? false : !a.inCar || !!a.inCar.kind) : false;
     if (this.vgun) { this.vgun.visible = fps && a.alive && !scope; this.updateViewGun(dt, sp, bobA); }
     this.audio.listener.x = cam.position.x; this.audio.listener.y = cam.position.y; this.audio.listener.z = cam.position.z; this.audio.listener.yaw = -C.yaw + Math.PI;
     this.followShadow(a.pos);
@@ -1487,26 +1492,48 @@ export class Game {
   viewGun() {
     if (this.vgun) this.camera.remove(this.vgun);
     const W = this.weapon(this.player); if (!W) return; const g = gunInstance(W.id); g.rotation.y = Math.PI / 2; g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 5; } });
-    this.vgun = new THREE.Group(); this.vgun.add(g); this.vgun.userData.muzzle = g.userData.muzzle; this.camera.add(this.vgun); this.vgunBase = V(0.17, -0.17, -0.36);
-    // hausse de l'arme (haut du modèle) pour aligner l'organe de visée sur le réticule en visée
+    this.vgun = new THREE.Group(); this.vgun.add(g); this.vgun.userData.muzzle = g.userData.muzzle; this.camera.add(this.vgun);
+    // encombrement de l'arme dans le repère de la vue (canon vers -z, poignée à l'origine)
     g.updateMatrixWorld(true); const bb = new THREE.Box3(); g.traverse((o) => { if (o.isMesh) { o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld.clone().premultiply(this.vgun.matrixWorld.clone().invert()))); } });
-    this.vgunTop = bb.max.y; this.vgunLen = bb.max.z - bb.min.z;
-    // bras : manche de la couleur de l'équipe et main, attachés sous l'arme
-    const team = this.player.team, sleeve = new THREE.MeshStandardMaterial({ color: team === 'ordre' ? '#1f3f9a' : '#1d8a37', roughness: 0.85 }), skin = new THREE.MeshStandardMaterial({ color: '#d9a07a', roughness: 0.8 });
-    const arm = (len, mat, r = 0.032) => { const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 4, 8), mat); m.rotation.x = Math.PI / 2; m.position.z = len / 2 + r; m.renderOrder = 5; return m; };
-    const fist = () => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.07), skin); m.renderOrder = 5; return m; };
-    // main droite sur la poignée, avant-bras vers le bas à droite ; main gauche sous la carcasse, bras vers le bas à gauche
-    const rArm = new THREE.Group(); const rf = fist(); rf.position.set(0, -0.035, 0.0); const ra = arm(0.24, sleeve); ra.position.y = -0.045; rArm.add(rf, ra); rArm.rotation.set(0.35, 0.18, 0);
-    const lArm = new THREE.Group(); const lf = fist(); lf.position.set(0.01, -0.03, 0); const la = arm(0.24, sleeve); la.position.y = -0.04; lArm.add(lf, la); lArm.position.set(-0.035, -0.02, -0.05); lArm.rotation.set(0.45, -0.6, 0);
+    this.vgunTop = bb.max.y; this.vgunLen = bb.max.z - bb.min.z; this.vgunBB = bb; this.vgunPistol = WEAPONS[W.id].hand === 'pistol' || W.id === 'revolver';
+    this.vgunBase = V(0.17, -0.17, -0.36); this.vgunLayout = null;
+    // bras : manches de l'équipe, gants, main droite sur la poignée, main gauche sur le garde-main (ou en soutien sous la crosse du pistolet)
+    const team = this.player.team, sleeve = new THREE.MeshStandardMaterial({ color: team === 'ordre' ? '#22346e' : '#2f6b3a', roughness: 0.9 }), glove = new THREE.MeshStandardMaterial({ color: team === 'ordre' ? '#1b1d22' : '#c79172', roughness: 0.75 }), cuff = new THREE.MeshStandardMaterial({ color: team === 'ordre' ? '#15203f' : '#24532d', roughness: 0.9 });
+    const seg = (from, to, r0, r1, mat) => { const d = to.clone().sub(from), L = d.length(); const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, L, 9, 1), mat); m.position.copy(from).addScaledVector(d, 0.5); m.quaternion.setFromUnitVectors(V(0, 1, 0), d.normalize()); m.renderOrder = 5; m.castShadow = false; return m; };
+    const ball = (p, r, mat, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), mat); m.position.copy(p); m.scale.set(sx, sy, sz); m.renderOrder = 5; return m; };
+    const hand = (p, side, under) => { const h = new THREE.Group(); h.add(ball(V(0, 0, 0), 0.034, glove, 0.9, 1.15, 1.35)); // paume
+      const fing = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.028, 0.06), glove); fing.position.set(-side * 0.012, under ? 0.012 : -0.02, -0.02); fing.renderOrder = 5; h.add(fing); // doigts repliés
+      h.add(ball(V(-side * 0.03, 0.02, -0.025), 0.013, glove, 1, 1, 1.8)); h.position.copy(p); return h; };
+    const arm = (handP, elbow, shoulder, side, under) => { const G = new THREE.Group(); const wrist = handP.clone().add(V(side * 0.01, -0.035, 0.05));
+      G.add(hand(handP, side, under), seg(wrist, elbow, 0.03, 0.036, sleeve), ball(elbow, 0.038, sleeve), seg(elbow, shoulder, 0.038, 0.046, sleeve), ball(wrist, 0.033, cuff, 1, 1, 0.7)); return G; };
+    const fz = bb.min.z, rz = bb.max.z, by = bb.min.y;
+    const cx = (bb.min.x + bb.max.x) / 2; const P = this.vgunPistol; // au pistolet, l'arme est près de l'œil : les bras descendent plutôt qu'ils ne reculent
+    const rArm = P ? arm(V(cx + 0.008, -0.045, 0.01), V(0.07, -0.2, 0.09), V(0.12, -0.42, 0.14), 1, false) : arm(V(cx + 0.008, -0.045, 0.01), V(0.11, -0.2, 0.26), V(0.2, -0.32, 0.55), 1, false);
+    const lArm = this.vgunPistol ? arm(V(cx - 0.03, -0.07, 0.0), V(-0.12, -0.21, 0.08), V(-0.2, -0.42, 0.13), -1, true)
+      : arm(V((bb.min.x + bb.max.x) / 2 - 0.012, bb.max.y - 0.075, fz * 0.55), V(-0.2, -0.24, fz * 0.1 + 0.08), V(-0.36, -0.36, 0.5), -1, true);
     this.vgun.add(rArm, lArm); this.vgun.userData.arms = [rArm, lArm];
     if (!this.scene.children.includes(this.camera)) this.scene.add(this.camera);
   }
+  // place l'arme selon le nombre d'or : le bout du canon sur le point d'or bas-droit (61,8 % de la largeur, 61,8 % de la hauteur),
+  // la crosse qui file vers le coin ; l'arme couvre ~23 % de la largeur (fusils) ou ~9 % (pistolets), toujours sous la ligne des 62 %
+  hipLayout() {
+    const cam = this.camera, ty = Math.tan(cam.fov * Math.PI / 360), tx = ty * cam.aspect, PHI = 0.618;
+    const key = cam.fov.toFixed(1) + cam.aspect.toFixed(3); if (this.vgunLayout?.key === key) return this.vgunLayout.v;
+    const L = this.vgunLen || 0.6, fz = this.vgunBB ? -this.vgunBB.min.z : L * 0.7, rz = this.vgunBB ? this.vgunBB.max.z : L * 0.3;
+    const fx = 2 * PHI - 1, fy = -(2 * PHI - 1); // point d'or en coordonnées écran (-1..1)
+    const rear = this.vgunPistol ? fx + (1 - PHI) * PHI * PHI : fx + (1 - PHI) * clamp(0.3 + L * 0.9, 0.7, 1.15); // les armes courtes restent plus loin, à proportion de leur longueur // abscisse visée pour l'arrière de l'arme
+    // arme parallèle à l'axe de vue : x/(prof·tx) donne fx au bout et rear à l'arrière → profondeur de la poignée
+    const k = rear / fx; const d = (fz + k * rz) / (k - 1); // profondeur de la poignée (origine)
+    const X = fx * (d + fz) * tx, Y = fy * (d + fz) * ty - (this.vgunTop || 0.1); // le dessus de l'arme affleure la ligne des 61,8 %
+    const v = V(X, Y, -d); this.vgunLayout = { key, v }; return v;
+  }
   updateViewGun(dt, sp, bobA) {
-    const a = this.player, C = this.cam; const g = this.vgun; const ad = this.aiming ? V(0, -(this.vgunTop || 0.12) - 0.012, -0.24 - Math.min(0.08, (this.vgunLen || 0.3) * 0.12)) : this.vgunBase;
+    const a = this.player, C = this.cam; const g = this.vgun; const ad = this.aiming ? V(0, -(this.vgunTop || 0.12) - 0.012, -0.24 - Math.min(0.08, (this.vgunLen || 0.3) * 0.12)) : this.hipLayout();
     const t = C.bob; const sway = V(Math.cos(t) * 0.012 * bobA, -Math.abs(Math.sin(t)) * 0.015 * bobA, 0);
     const rel = a.reloadT > 0 ? Math.sin(Math.min(1, a.reloadT / WEAPONS[this.weapon(a).id].reload) * Math.PI) : 0;
-    const target = ad.clone().add(sway).add(V(0, -rel * 0.15 - (a.momentum > 0.7 && !this.aiming ? 0.03 : 0), C.kickP * 1.5));
-    g.position.lerp(target, 1 - Math.exp(-dt * 18)); g.rotation.set(C.kickP * 2 + rel * 0.6, (this.input.st.mx || 0) * -0.0006, a.momentum > 0.7 && !this.aiming ? 0.25 : 0);
+    const run = a.momentum > 0.7 && !this.aiming;
+    const target = ad.clone().add(sway).add(V(run ? -0.02 : 0, -rel * 0.15 - (run ? 0.04 : 0), C.kickP * 1.5));
+    g.position.lerp(target, 1 - Math.exp(-dt * 18)); g.rotation.set(C.kickP * 2 + rel * 0.6 + (run ? -0.12 : 0), (this.input.st.mx || 0) * -0.0006 + (run ? 0.35 : 0), run ? 0.2 : 0);
   }
 
   // ---------------------------------------------------------------- interface
@@ -1714,4 +1741,5 @@ export class Game {
     }
   }
 }
+Object.assign(Game.prototype, rideMethods);
 function lerp_angle(a, b, t) { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a + d * t; }
