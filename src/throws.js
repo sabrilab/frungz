@@ -213,7 +213,7 @@ export function installThrows(Game) {
   P.boom = function (p, R, dmg, owner, color, opts = {}) {
     const c = p.clone().add(V(0, 0.4, 0)); this.fx.explosion(c); if (opts.fw) this.audio.firework(c); else this.audio.explode(c);
     this.blast(p, R * 0.8, dmg * 3, owner);
-    for (const t of this.actors) { if (!t.alive || t.inCar) continue; if (opts.foesOnly && t.team === owner.team) continue; const d = t.pos.distanceTo(p); if (d < R) { const k = 1 - d / R; this.damage(t, dmg * (0.25 + 0.75 * k), owner?.alive ? owner : null, { blast: true }); if (t.alive) { const away = V(t.pos.x - p.x, 0, t.pos.z - p.z).normalize(); t.vel.addScaledVector(away, 6 * k); t.vel.y += 4 * k; t.onGround = false; } } }
+    for (const t of this.actors) { if (!t.alive || t.inCar) continue; if (opts.foesOnly && t.team === owner.team) continue; const d = t.pos.distanceTo(p); if (d < R) { const k = 1 - d / R; this.damage(t, dmg * (0.25 + 0.75 * k), owner?.alive ? owner : null, { blast: true, weapon: opts.weapon }); if (t.alive) { const away = V(t.pos.x - p.x, 0, t.pos.z - p.z).normalize(); t.vel.addScaledVector(away, 6 * k); t.vel.y += 4 * k; t.onGround = false; } } }
     for (const car of this.cars) if (!car.dead && car.pos.distanceTo(p) < R) this.hitCar(car, dmg * 1.5, owner);
     const dc = this.player.pos.distanceTo(p); if (dc < R * 5) { this.cam.trauma = Math.min(1, this.cam.trauma + 0.9 * (1 - dc / (R * 5))); this.input.rumble(0.8, 1, 250); }
   };

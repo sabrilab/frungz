@@ -14,6 +14,7 @@ import { svg, iconize } from './icons.js';
 import { installSeries } from './series.js';
 import { installConvois } from './convois.js';
 import { installBarricades, TIERS, tierInfo, fmtG } from './barricades.js';
+import { installLanceurs } from './lanceurs.js';
 import { createFeedback } from './feedback.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -152,7 +153,8 @@ export class Game {
     const muzzle = V(); (a.ch.gun?.userData.muzzle || a.ch.root).getWorldPosition(muzzle);
     this.audio.gun(W.sound, a.pos, 1); this.fx.muzzle(muzzle, W.pellets > 1 ? 1.4 : 1);
     const c = Math.cos(a.pitch || 0), d = V(Math.sin(a.yaw) * c, Math.sin(a.pitch || 0), Math.cos(a.yaw) * c);
-    const o = a.pos.clone().add(V(0, 1.45, 0)); const hw = this.world.ray(o, d, W.range || 120); const end = o.clone().addScaledVector(d, hw ? hw.t : (W.range || 120));
+    const o = a.pos.clone().add(V(0, 1.45, 0)); if (W.proj) { this.launchProj(a, W, 1, muzzle, o, d); return; }
+    const hw = this.world.ray(o, d, W.range || 120); const end = o.clone().addScaledVector(d, hw ? hw.t : (W.range || 120));
     if (a.pos.distanceToSquared(this.player.pos) < 90 * 90) { for (let i = 0; i < Math.min(k, 2); i++) this.fx.tracer(muzzle, end); if (hw) this.fx.impact(end, hw.n, 'world'); }
     if (a !== this.player) this.notePing(a, muzzle);
   }
@@ -477,6 +479,7 @@ export class Game {
     }
     if (a.bot) { a.ch.actions.Gun_Shoot && this.setUpper(a); }
     if (scopedShot) { $('scope')?.classList.remove('kick'); void $('scope')?.offsetWidth; $('scope')?.classList.add('kick'); this.audio.bolt(); this.cam.trauma = Math.min(1, this.cam.trauma + 0.25); }
+    if (D.proj) { this.launchProj(a, D, mult, muzzle, origin, dir.clone().add(V(rnd(-1, 1) * spread, rnd(-1, 1) * spread, rnd(-1, 1) * spread)).normalize()); for (const b of this.actors) if (b.bot && b.alive && b.team !== a.team && !b.ai.target && b.pos.distanceToSquared(a.pos) < 900) { b.ai.target = a; b.ai.seeT = 0.5; } return true; }
     for (let p = 0; p < D.pellets; p++) {
       const d = dir.clone(); d.x += rnd(-1, 1) * spread; d.y += rnd(-1, 1) * spread; d.z += rnd(-1, 1) * spread; d.normalize();
       if (a === this.player && D.scope) { this.launchBullet(a, origin, d, D, mult, W, muzzle, scopedShot); continue; }
@@ -883,7 +886,7 @@ export class Game {
       for (const c of this.cars) { if (c.dead) continue; const d2 = c.obj.position.distanceToSquared(cp); c.obj.visible = d2 < 130 * 130 || !!c.driver;
         // voiture garée : un seul maillage par matière (≈ 6 dessins) ; détaillée (roues qui tournent) dès qu'elle roule
         if (c.stat) { const mv = !!c.driver || Math.abs(c.speed) > 0.05; if (c.mv !== mv) { c.mv = mv; c.stat.visible = !mv; for (const o of c.detail) o.visible = mv; } } const sh = d2 < 50 * 50; if (c.sh !== sh) { c.sh = sh; c.obj.traverse((o) => { if (o.isMesh) o.castShadow = sh; }); } } }
-    this.updateBullets(dt); this.updatePip(dt); this.updateNades(dt); this.updateThrown(dt); this.updateStreaks(dt); this.cloudEffects(dt); this.updateZones(dt); this.updateShops(dt); this.updateDrops(dt); this.socleIncome(dt);
+    this.updateBullets(dt); this.updateProjs(dt); this.updateScorch(dt); this.updatePip(dt); this.updateNades(dt); this.updateThrown(dt); this.updateStreaks(dt); this.cloudEffects(dt); this.updateZones(dt); this.updateShops(dt); this.updateDrops(dt); this.socleIncome(dt);
     this.updateWalls(dt);
     this.specialT -= dt; if (this.specialT <= 0) { this.specialT = 120; this.specialDelivery(); }
     if (!this.over && (this.time >= this.matchLen || this.score.ordre >= this.scoreLimit || this.score.civils >= this.scoreLimit)) this.endMatch();
@@ -1665,9 +1668,10 @@ export class Game {
   }
   // arme en vue subjective, accrochée à la caméra
   viewGun() {
-    if (this.vgun) this.camera.remove(this.vgun);
+    /* la caméra survit d'une partie à l'autre : on retire tout ce qu'une partie précédente y a laissé (arme et bras en vue subjective), sinon l'ancienne arme se superpose à la nouvelle */
+    for (const c of [...this.camera.children]) if (c.userData.viewModel) this.camera.remove(c);
     const W = this.weapon(this.player); if (!W) return; const g = gunInstance(W.id); g.rotation.y = Math.PI / 2; g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 5; } });
-    this.vgun = new THREE.Group(); this.vgun.add(g); this.vgun.userData.muzzle = g.userData.muzzle; this.camera.add(this.vgun);
+    this.vgun = new THREE.Group(); this.vgun.userData.viewModel = true; this.vgun.add(g); this.vgun.userData.muzzle = g.userData.muzzle; this.camera.add(this.vgun);
     // encombrement de l'arme dans le repère de la vue (canon vers -z, poignée à l'origine)
     g.updateMatrixWorld(true); const bb = new THREE.Box3(); g.traverse((o) => { if (o.isMesh) { o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld.clone().premultiply(this.vgun.matrixWorld.clone().invert()))); } });
     this.vgunTop = bb.max.y; this.vgunLen = bb.max.z - bb.min.z; this.vgunBB = bb; this.vgunPistol = WEAPONS[W.id].hand === 'pistol';
@@ -1698,7 +1702,7 @@ export class Game {
       hands[S] = { f: f.applyQuaternion(iq), n: n.applyQuaternion(iq), len, fing }; }
     // pose de départ des bras : en joue (fusil ou pistolet)
     const P = this.vgunPistol && ch.actions.MXP_Idle; const act = P ? ch.actions.MXP_Idle : ch.actions.MX_Idle; act.play(); ch.mixer.setTime(0.3); ch.mixer.update(0);
-    const grp = new THREE.Group(); grp.add(ch.root); ch.root.rotation.y = Math.PI; this.camera.add(grp); grp.updateMatrixWorld(true);
+    const grp = new THREE.Group(); grp.userData.viewModel = true; grp.add(ch.root); ch.root.rotation.y = Math.PI; this.camera.add(grp); grp.updateMatrixWorld(true);
     const cam = this.camera, toCam = (o) => cam.worldToLocal(wpos(o)); const sh = toCam(B.UpperArmR).add(toCam(B.UpperArmL)).multiplyScalar(0.5);
     // doigts refermés : on repart des doigts tendus, chaque phalange plie vers la paume (index droit plus ouvert, posé près de la détente) ; les pouces sont posés à chaque image
     for (const S of ['R', 'L']) { const H = hands[S], W = B['Wrist' + S]; for (const o of H.fing) o.b.quaternion.copy(o.q0); W.updateMatrixWorld(true);
@@ -1741,7 +1745,7 @@ export class Game {
     const down = V(0, -1, 0).applyQuaternion(vq), right = V(1, 0, 0).applyQuaternion(vq);
     for (const [S, tp, tq, pole, td] of [['R', rp, rq, down.clone().addScaledVector(right, 0.5), dir(-0.22, -0.05, -0.97)], ['L', lp, lq, down.clone().addScaledVector(right, -0.6), A.pistol ? dir(0.1, 0.15, -1) : dir(0.12, 0.12, -0.98)]]) {
       // bras allongé au besoin (la main garde sa taille) : l'arme est tenue loin devant, l'épaule reste hors champ
-      const U = B['UpperArm' + S], W = B['Wrist' + S], H = A.hands[S], s = clamp(U.getWorldPosition(V()).distanceTo(tp) / (H.arm * 0.94), 1, 1.8); U.scale.setScalar(s); W.scale.setScalar(1 / s); U.updateMatrixWorld(true);
+      const U = B['UpperArm' + S], W = B['Wrist' + S], H = A.hands[S], sp0 = U.getWorldPosition(V()), need = sp0.distanceTo(tp) / (H.arm * 0.94), s = clamp(need, 1, 1.35); U.scale.setScalar(s); W.scale.setScalar(1 / s); U.updateMatrixWorld(true);
       this.armIK(U, B['LowerArm' + S], W, tp, tq, pole);
       // pouce couché le long de l'arme
       const t = H.thumb, tip = B['Thumb3' + S]; if (t && tip) { t.b.quaternion.copy(t.q0); t.b.updateMatrixWorld(true); const d = tip.getWorldPosition(V()).sub(t.b.getWorldPosition(V())).normalize();
@@ -2010,3 +2014,4 @@ installThrows(Game);
 installSeries(Game);
 installConvois(Game);
 installBarricades(Game);
+installLanceurs(Game); // après les barricades : complète this.blast (vitrines)
