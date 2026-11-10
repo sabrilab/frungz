@@ -2,9 +2,9 @@
 // lacrymogènes et fumigènes, barricades, interface.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { makeCharacter, attachGun, gunInstance, chars, tintTeam, backPoint } from './assets.js';
+import { makeCharacter, attachGun, gunInstance, chars, tintTeam, teamMarkings } from './assets.js';
 import { TEAMS, WEAPONS, CLASSES, classOf, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COMMERCE_TYPES, SHOP_NAMES, SKIN_NAMES } from './data.js';
-import { shopCase, lootMesh, beam, socle, baseSign, receleur, barricade, BARRICADE, grenadeMesh, policeBadge, brassard, headMarker, textTex } from './props.js';
+import { shopCase, lootMesh, beam, socle, baseSign, receleur, barricade, BARRICADE, grenadeMesh, headMarker, textTex } from './props.js';
 import { pointInPoly } from './world.js';
 import * as Anim from './anim.js';
 import { rideMethods } from './deuxroues.js';
@@ -78,8 +78,10 @@ export class Game {
     const W = this.world; if (W.cass) for (const e of W.cass.list) if (e.broken) W.cass.repair(e);
     if (W.metro) W.dynamic.push(...W.metro.cols);
     const T = this.save.team; const N = this.opts.teamSize;
-    this.player = this.spawnActor(T, this.save.skin, false, 'Toi');
-    for (const t of ['ordre', 'civils']) { const n = t === T ? N - 1 : N; for (let i = 0; i < n; i++) this.spawnActor(t, pick(TEAMS[t].skins), true, BOT_NAMES[t][i % 20] + (i >= 20 ? ' ' + (i / 20 | 0) : '')); }
+    this.player = this.spawnActor(T, this.save.skin, false, this.opts.pseudo || 'Toi');
+    // équipe du salon : les premiers alliés prennent le nom et la tenue des équipiers choisis
+    const squad = (this.opts.squad || []).slice(0, Math.max(0, N - 1)); for (const m of squad) { const b = this.spawnActor(T, m.skin, true, m.name); b.squad = true; }
+    for (const t of ['ordre', 'civils']) { const n = t === T ? N - 1 - squad.length : N; for (let i = 0; i < n; i++) this.spawnActor(t, pick(TEAMS[t].skins), true, BOT_NAMES[t][i % 20] + (i >= 20 ? ' ' + (i / 20 | 0) : '')); }
     for (const a of this.actors) this.respawn(a, true);
     this.cam.yaw = this.player.yaw;
     this.minimapInit(); this.hudInit();
@@ -170,12 +172,8 @@ export class Game {
     // tenue : police nationale (bleu marine, brassard orange, POLICE dans le dos) ou civils loufoques
     tintTeam(ch.model, skin, team);
     if (team === 'ordre') {
-      // écusson POLICE posé à plat sur le dos, à hauteur de poitrine (mesuré sur le maillage de chaque tenue)
-      const bp = backPoint(ch, skin), chest = ch.bones.Chest || ch.bones.Torso;
-      if (bp && chest) { const back = policeBadge(); ch.root.updateMatrixWorld(true); const wp = ch.root.localToWorld(V(0, bp.y, bp.z - 0.015)); chest.add(back); back.position.copy(chest.worldToLocal(wp));
-        const cq = new THREE.Quaternion(); chest.getWorldQuaternion(cq); const mq = new THREE.Quaternion(); ch.root.getWorldQuaternion(mq); back.quaternion.copy(cq.invert().multiply(mq).multiply(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI)));
-        const ws = V(); chest.getWorldScale(ws); back.scale.setScalar(1 / ws.x); }
-      const arm = ch.bones.UpperArmL; if (arm) { const b = brassard(); const ws = V(); arm.getWorldScale(ws); b.scale.setScalar(1 / ws.x); b.position.set(0, 0.12 / ws.x, 0); arm.add(b); }
+      // « POLICE » dans le dos et sur la poitrine, brassard orange : peints sur le tissu de la tenue (ils suivent le vêtement)
+      teamMarkings(ch, skin);
     }
     if (bot) { const mk = headMarker(team === this.save.team ? (team === 'ordre' ? '#3d8bff' : '#34c759') : '#ff3030'); mk.position.y = 2.25; mk.visible = team === this.save.team; ch.root.add(mk); a.marker = mk; }
     for (const k of Object.keys(ch.actions)) { const act = ch.actions[k]; if (ONCE.test(k)) { act.setLoop(THREE.LoopOnce); act.clampWhenFinished = true; } if (/Roll|Gun_Shoot|HitRecieve|Interact|Punch/.test(k)) { act.setLoop(THREE.LoopOnce); act.clampWhenFinished = false; } }
@@ -233,8 +231,8 @@ export class Game {
     if (by?.perk?.spot && by !== t) t.spotMark = this.time + by.perk.spot; // atout repérage : la cible reste marquée pour tout le camp
     if (by) { t.ai.target = by; t.ai.seeT = 1; if (by.bot === false || t.bot === false) by.spotted = this.time; }
     if (t === this.player) this.fb.taken(by, amount, opts, ab, brk);
-    if (by === this.player && t !== this.player) { this.fb.dealt(t, amount, opts, ab, brk, t.hp <= 0); t.spotted = this.time; this.flashBody(t); }
-    if (t.hp > 0) { if (Math.random() < 0.3) this.audio.play('voxPain', t.pos, 0.7, [0.95, 1.1], 0.2); if (by && by !== t && t.ch.actions.A_HitF) { const dx = by.pos.x - t.pos.x, dz = by.pos.z - t.pos.z, f = Math.sin(t.yaw) * dx + Math.cos(t.yaw) * dz, sd = Math.cos(t.yaw) * dx - Math.sin(t.yaw) * dz; Anim.flinch(t, f, sd, amount); this.overlay(t, Math.abs(f) > Math.abs(sd) ? (f > 0 ? 'A_HitF' : 'A_HitB') : (sd > 0 ? 'A_HitL' : 'A_HitR'), 0.5, { add: true, w: Math.min(1.4, 0.55 + amount / 35) }); }
+    if (by === this.player && t !== this.player) { this.flashBody(t); this.fb.dealt(t, amount, opts, ab, brk, t.hp <= 0); t.spotted = this.time; }
+    if (t.hp > 0) { if (Math.random() < 0.3) this.audio.play('voxPain', t.pos, 0.7, [0.95, 1.1], 0.2); if (by && by !== t && t.ch.actions.A_HitF) { const dx = by.pos.x - t.pos.x, dz = by.pos.z - t.pos.z, f = Math.sin(t.yaw) * dx + Math.cos(t.yaw) * dz, sd = Math.cos(t.yaw) * dx - Math.sin(t.yaw) * dz; Anim.flinch(t, f, sd, amount); this.overlay(t, Math.abs(f) > Math.abs(sd) ? (f > 0 ? 'A_HitF' : 'A_HitB') : (sd > 0 ? 'A_HitL' : 'A_HitR'), 0.6, { add: true, w: Math.min(1.7, 0.8 + amount / 30) }); }
       else if (!t.channel && Math.random() < 0.25 && t.ch.actions.HitRecieve) { const h = t.ch.actions.HitRecieve; h.reset().setEffectiveWeight(0.6).fadeIn(0.05).play(); setTimeout(() => h.fadeOut(0.15), 250); } if (t.channel) t.channel = null; return; }
     this.kill(t, by, opts);
   }
@@ -413,7 +411,7 @@ export class Game {
     if (a === this.player || end.distanceTo(this.player.pos) < 40) this.fx.impact(end, hw.n, kind);
   }
   setUpper(a) { const s = a.ch.actions.Idle_Gun_Shoot; }
-  startReload(a) { const W = this.weapon(a); if (a.reloadT > 0 || W.mag >= WEAPONS[W.id].mag) return; a.burstLeft = 0; a.reloadT = WEAPONS[W.id].reload * (a.perk?.reload || 1); this.overlay(a, 'U_Reload', a.reloadT, { busy: true }); if (!a.bot) this.audio.reload(); }
+  startReload(a) { const W = this.weapon(a); if (a.reloadT > 0 || W.mag >= WEAPONS[W.id].mag) return; a.burstLeft = 0; a.reloadT = WEAPONS[W.id].reload * (a.perk?.reload || 1); a.relAuth = Anim.reload(this, a, a.reloadT); if (!a.relAuth) this.overlay(a, 'U_Reload', a.reloadT, { busy: true }); if (!a.bot) this.audio.reload(); }
 
   // ---------------------------------------------------------------- vitrines
   hitVitrine(v, dmg, by) {
@@ -1005,7 +1003,7 @@ export class Game {
     if (a.wantCrouch && a.onGround && a.slideT <= 0 && a.rollT <= 0) {
       const sp = this.feetSpeed(a);
       if (sp > 4.6) { this.fx.dust(a.pos, 6, 1); a.slideT = civ ? 1.0 : 0.75; a.slideDir = V(a.vel.x, 0, a.vel.z).normalize(); a.vel.addScaledVector(a.slideDir, 1.5); this.audio.play('cloth', a.pos, 0.7); if (!a.bot) this.cam.trauma += 0.1; }
-      else { a.rollT = 0.55; const d = wl > 0.1 ? wish.clone().normalize() : V(Math.sin(a.yaw), 0, Math.cos(a.yaw)); a.vel.x = d.x * (civ ? 8.5 : 7); a.vel.z = d.z * (civ ? 8.5 : 7); a.rollDir = d; this.setAnim(a, a.ch.actions.MX_Roll ? 'MX_Roll' : 'Roll', 0.08, a.ch.actions.MX_Roll ? 1.9 : 1.6); this.audio.play('cloth', a.pos, 0.7); }
+      else { a.rollT = 0.55; const d = wl > 0.1 ? wish.clone().normalize() : V(Math.sin(a.yaw), 0, Math.cos(a.yaw)); a.vel.x = d.x * (civ ? 8.5 : 7); a.vel.z = d.z * (civ ? 8.5 : 7); a.rollDir = d; if (!a.ch.actions.MX_Run) this.setAnim(a, 'Roll', 0.08, 1.6); this.audio.play('cloth', a.pos, 0.7); }
       a.wantCrouch = 0;
     }
     const target = wish.clone().multiplyScalar(top);
@@ -1088,14 +1086,14 @@ export class Game {
     if (!this.over) a.celebrate = undefined; else if (a.alive && a.celebrate === undefined) a.celebrate = this.winner === a.team && MX ? pick(['MX_Dance', 'MX_Dance2', 'MX_Cheer', 'MX_Taunt', 'MX_FistPump']) : null;
     if (a.celebrate && ch.actions[a.celebrate]) { name = a.celebrate; fade = 0.3; }
     else if (a.climb) { name = MX ? 'MX_Vault' : 'Interact'; speed = MX ? 3.5 / Math.max(0.3, a.climb.dur) * 0.55 : 2; fade = 0.08; }
-    else if (a.rollT > 0) { name = ch.actions.MX_Roll ? 'MX_Roll' : 'Roll'; speed = name === 'MX_Roll' ? 1.9 : 1.6; fade = 0.06; }
+    else if (a.rollT > 0 && !ch.actions.MX_Run) { name = 'Roll'; speed = 1.6; fade = 0.08; }
     else if (a.channel) { name = a.channel.anim || 'Interact'; }
     else if (MX && a.slideT > 0) { name = P && ch.actions.MXP_CrouchIdle ? 'MXP_CrouchIdle' : 'MX_CrouchIdle'; fade = 0.1; } // la pose de glissade est écrite dans anim.js, par-dessus l'accroupi
     else if (MX && a.landT > 0 && a.onGround) { name = 'MX_HardLand'; speed = 1.5; fade = 0.05; }
     else if (!a.onGround && MX && a.airT > 0.06) { const J = P && ch.actions.MXP_Jump; name = a.vel.y > 0.5 && a.airT < 0.5 ? (J ? 'MXP_Jump' : 'MX_Jump') : (P && ch.actions.MXP_Fall ? 'MXP_Fall' : 'MX_Fall'); speed = name === 'MX_Jump' ? 1.2 : 1; fade = 0.12; }
     else if (MX && a.stopT > 0) { name = 'MX_Stop'; speed = 1.3; fade = 0.1; }
     else if (!a.onGround && !MX) { name = 'Idle_Gun_Pointing'; }
-    else if (MX) { name = 'LOCO'; if (a.anim === 'MX_Roll' || (a.anim !== 'LOCO' && /CrouchIdle/.test(a.anim))) fade = 0.25; }
+    else if (MX) { name = 'LOCO'; if (a.anim !== 'LOCO' && /CrouchIdle/.test(a.anim)) fade = 0.25; }
     else if (sp > 0.8) {
       const lv = V(a.vel.x, 0, a.vel.z); const f = V(Math.sin(a.yaw), 0, Math.cos(a.yaw)); const fd = lv.dot(f) / sp; const sd = lv.dot(V(Math.cos(a.yaw), 0, -Math.sin(a.yaw))) / sp;
       if (fd > 0.5) { name = aimingNow ? 'Run_Shoot' : 'Run'; speed = clamp(sp / 6, 0.7, 1.6); }
@@ -1126,7 +1124,7 @@ export class Game {
     // couches écrites à la main (src/anim.js) : pieds, poids, inertie, souffle ; complètes près de la caméra, pieds seuls au loin
     const rigPost = Anim.layers(this, a, dt, !far && !a.lodHidden && (a === this.player || a.pos.distanceToSquared(this.camera.position) < 1600));
     // le buste oriente l'arme vers le point visé (réticule pour le joueur, cible pour les bots)
-    const busy = a.climb || a.rollT > 0 || a.slideT > 0 || a.landT > 0 || a.stopT > 0 || a.celebrate || a.channel || a.inCar || !a.alive || a.overs?.some((o) => o.busy && o.t < o.dur - 0.12);
+    const busy = a.climb || (a.rollT > 0 && !MX) || a.slideT > 0 || a.landT > 0 || a.stopT > 0 || a.celebrate || a.channel || a.inCar || !a.alive || (a.reloadT > 0 && a.relAuth) || a.overs?.some((o) => o.busy && o.t < o.dur - 0.12);
     const pointing = MX ? (name === 'LOCO' && (aimingNow || sp < 2.8 || a.locoRunF < 0.5)) || name === 'MX_CrouchIdle' || (/MXP?_(Jump|Fall)/.test(name) && aimingNow) : name === 'Idle_Gun_Pointing' || name === 'Run_Shoot' || (/^Run_(Left|Right|Back)$/.test(name) && aimingNow);
     // correction seulement quand l'animation tient l'arme pointée (sinon le buste se cambrerait pour relever une arme baissée)
     const wantW = busy || !pointing ? 0 : 1;
@@ -1141,7 +1139,7 @@ export class Game {
   locomotion(a, dt, sp, aiming) {
     const A = a.ch.actions, L = a.loco || (a.loco = { w: 0, phase: 0, acts: new Set() });
     L.w = a.anim === 'LOCO' ? Math.min(1, L.w + dt / (a.locoFade || 0.15)) : Math.max(0, L.w - dt / (a.locoFade || 0.15));
-    const want = {}; const crouch = (a.crouchK || 0) > 0.5;
+    const want = {}; const crouch = (a.crouchK || 0) > 0.5 && !(a.rollT > 0); // esquive : plus de saut périlleux (le perso passait tête en bas), une ruée basse sur les allures de course, bassin descendu et buste plongé (pose dans anim.js)
     let fd = 1, sd = 0; if (sp > 0.05) { const vx = a.vel.x / sp, vz = a.vel.z / sp; fd = vx * Math.sin(a.yaw) + vz * Math.cos(a.yaw); sd = vx * Math.cos(a.yaw) - vz * Math.sin(a.yaw); }
     const move = clamp((sp - 0.25) / 1.1, 0, 1), run = clamp((sp - 2.6) / 1.3, 0, 1);
     const dirs = [Math.max(0, fd), Math.max(0, -fd), Math.max(0, sd), Math.max(0, -sd)]; const tot = dirs[0] + dirs[1] + dirs[2] + dirs[3] || 1;
@@ -1425,11 +1423,11 @@ export class Game {
     const B = this.killcam; if (B?.mode === 'bullet' && opts.sniper) { B.target = t; B.keep = true; B.dur = B.t + 1.9; const el = $('killcam'); el?.classList.add('gold'); const bt = el?.querySelector('.kc-bot'); if (bt) bt.innerHTML = `${opts.head ? 'TIR À LA TÊTE' : 'ÉLIMINÉ'} · ${Math.round(dist)} m<small>${t.name}</small>`; return; }
     const shot = V(t.pos.x - a.pos.x, 0, t.pos.z - a.pos.z).normalize(), side = V(shot.z, 0, -shot.x), head = t.pos.clone().add(V(0, 1.2, 0));
     let eye = null;
-    for (const [s, back, up] of [[1, 1.5, 2.6], [-1, 1.5, 2.6], [1, -1, 3.2], [-1, -1, 3.2], [1, 3, 1.8], [-1, 3, 1.8], [1, 0, 1]]) {
-      const e = head.clone().addScaledVector(side, s * 4.5).addScaledVector(shot, -back); e.y = this.world.groundY(e.x, e.z, head.y) + up;
+    for (const [s, back, up, w] of [[1, 1.2, 1.5, 3], [-1, 1.2, 1.5, 3], [1, -0.8, 1.9, 3.2], [-1, -0.8, 1.9, 3.2], [1, 2, 2.1, 4], [-1, 2, 2.1, 4], [1, 0, 1.3, 2.2]]) {
+      const e = head.clone().addScaledVector(side, s * w).addScaledVector(shot, -back); e.y = this.world.groundY(e.x, e.z, head.y) + up;
       if (this.world.los(e, head)) { eye = e; break; }
     }
-    if (!eye) eye = head.clone().addScaledVector(shot, -2.5).add(V(0, 1.2, 0));
+    if (!eye) eye = head.clone().addScaledVector(shot, -1.8).add(V(0, 0.7, 0));
     const style = opts.head && dist > 80 ? "TIR D'ÉLITE" : opts.head ? 'TIR À LA TÊTE' : a.slideT > 0 ? 'EN GLISSADE' : !a.onGround ? 'EN PLEIN VOL' : a.rollT > 0 ? 'EN ROULADE' : 'ÉLIMINÉ';
     this.startPip({ mode: 'victim', target: t, eye, dur: 2.4, gold: !!opts.head || dist > 60, title: `${style} · ${Math.round(dist)} m`, sub: t.name });
   }
@@ -1455,8 +1453,8 @@ export class Game {
       if (K.hitPt) { const look = K.target ? K.target.pos.clone().add(V(0, 0.8, 0)) : K.hitPt; if (!K.eye2) K.eye2 = K.hitPt.clone().addScaledVector(d, -3.2).addScaledVector(side, 1.4).add(V(0, 0.6, 0)); cam.fov = 42; cam.position.copy(K.eye2); cam.lookAt(look); if (K.target) K.target.ch.model.visible = true; }
       else { cam.fov = 34; cam.position.copy(b.p).addScaledVector(d, -1.1).addScaledVector(side, 0.22).add(V(0, 0.1, 0)); cam.lookAt(b.p.clone().addScaledVector(d, 4)); }
     } else {
-      const t = K.target, head = t.pos.clone().add(V(0, t.alive ? 1.2 : 0.45, 0)); const k = Math.min(1, K.t / K.dur);
-      cam.fov = 46 - k * 10; cam.position.copy(K.eye).lerp(head, k * 0.2); cam.lookAt(head); t.ch.model.visible = true;
+      const t = K.target, head = t.pos.clone().add(V(0, t.alive ? 1.2 : Math.max(0.5, 1.1 - K.t * 0.6), 0)); const k = Math.min(1, K.t / K.dur); // vise le corps qui tombe
+      cam.fov = 42 - k * 10; cam.position.copy(K.eye).lerp(head, k * 0.25); cam.lookAt(head); t.ch.model.visible = true;
     }
     cam.updateProjectionMatrix();
     const x = r.left - cr.left, y = cr.bottom - r.bottom, sz = renderer.getSize(V2);
@@ -1510,13 +1508,13 @@ export class Game {
     C.trauma = Math.max(0, C.trauma - dt * 1.4);
     C.kickP *= Math.exp(-dt * 9); C.kickY *= Math.exp(-dt * 9); C.dip *= Math.exp(-dt * 7);
     const sp = a.alive && !a.inCar ? this.feetSpeed(a) : 0; const fps = (C.fps || !!this.sc?.was) && !a.inCar && a.alive;
-    const k = fps ? 1 : 0.35; // balancement plus fort en vue subjective
+    const k = fps ? 1 : 0.55; // balancement plus fort en vue subjective
     if (a.onGround && sp > 0.5) C.bob += dt * sp * 1.25;
     const bobA = Math.min(1, sp / 7) * (a.slideT > 0 || a.rollT > 0 ? 0 : 1);
     const bobY = Math.abs(Math.sin(C.bob)) * 0.055 * bobA * k * (1 + a.momentum * 0.6), bobX = Math.cos(C.bob) * 0.035 * bobA * k;
     // inclinaison : glissade, roulade, vitesse latérale
     const lateral = a.alive ? V(a.vel.x, 0, a.vel.z).dot(V(-Math.cos(C.yaw), 0, Math.sin(C.yaw))) : 0;
-    const targetRoll = (a.slideT > 0 ? 0.1 : 0) + clamp(-lateral * 0.006, -0.05, 0.05) * k * 2 + (a.rollT > 0 ? Math.sin((0.55 - a.rollT) / 0.55 * Math.PI) * 0.25 * k : 0);
+    const targetRoll = (a.slideT > 0 ? 0.1 : 0) + clamp(-lateral * 0.006, -0.05, 0.05) * k * 2 + (a.rollT > 0 ? Math.sin((0.55 - a.rollT) / 0.55 * Math.PI) * 0.07 * k : 0);
     C.roll = lerp(C.roll, targetRoll, 1 - Math.exp(-dt * 8));
     // tremblement (trauma²) + vibration de vitesse (sprint à fond, voiture rapide)
     const speedShake = (a.momentum > 0.8 && sp > 8 ? 0.15 : 0) + (a.inCar ? Math.abs(a.inCar.speed) / a.inCar.max * 0.25 : 0) + (a.inGas || 0) * 0.3;
@@ -1524,7 +1522,7 @@ export class Game {
     const shY = (Math.sin(t * 1.1) + Math.sin(t * 2.3) * 0.5) * 0.035 * tr * (fps ? 1 : 0.6), shP = (Math.sin(t * 1.7 + 1) + Math.sin(t * 2.9) * 0.5) * 0.035 * tr * (fps ? 1 : 0.6), shR = Math.sin(t * 1.3 + 2) * 0.05 * tr * (fps ? 1 : 0.5);
     // champ de vision : élan → plus large, visée → zoom
     const W = this.weapon(a); const scope = this.aiming && W && WEAPONS[W.id].scope;
-    const fovT = (scope ? (this.sc?.zoom ? 7.5 : 15) + (1 - (this.sc?.settle ?? 1)) * 8 : this.aiming ? (C.fps ? 50 : 52) : 72) + (a.momentum * (fps ? 10 : 7)) + (a.inCar ? Math.abs(a.inCar.speed) / a.inCar.max * 14 : 0);
+    const fovT = -(scope ? 0 : C.zoomP || 0) + (scope ? (this.sc?.zoom ? 7.5 : 15) + (1 - (this.sc?.settle ?? 1)) * 8 : this.aiming ? (C.fps ? 50 : 52) : 72) + (a.momentum * (fps ? 10 : 7)) + (a.inCar ? Math.abs(a.inCar.speed) / a.inCar.max * 14 : 0);
     C.fov = lerp(C.fov, fovT, 1 - Math.exp(-dt * 10)); if (Math.abs(cam.fov - C.fov) > 0.05) { cam.fov = C.fov; cam.updateProjectionMatrix(); }
     const sw = this.scopeSway(dt); if (this.sc) this.sc.sw = sw;
     const yaw = C.yaw + C.kickY + shY + sw[0], pitch = C.pitch + C.kickP + shP + sw[1];
@@ -1541,7 +1539,7 @@ export class Game {
       eye.addScaledVector(V(-Math.cos(C.yaw), 0, Math.sin(C.yaw)), bobX);
       cam.position.copy(eye); cam.lookAt(eye.clone().add(dir)); cam.rotateZ(C.roll + shR);
     } else {
-      const back = this.aiming ? 0.78 : 2.15 - a.momentum * 0.15 + (a.slideT > 0 ? -0.4 : 0);
+      const back = this.aiming ? 0.72 : 1.65 - a.momentum * 0.1 + (a.slideT > 0 ? -0.4 : 0);
       // composition au nombre d'or : hors visée, le perso se tient sur la verticale des 38,2 % de la largeur
       const shoulder = this.aiming ? 0.5 : clamp((1 - 2 * 0.382) * back * Math.tan(cam.fov * Math.PI / 360) * cam.aspect, 0.4, 0.85);
       const piv = a.pos.clone().add(V(0, (a.slideT > 0 ? 1.0 : (this.aiming ? 1.62 : 1.58) - (a.crouchK || 0) * 0.5) + C.dip * 0.6, 0));
@@ -1551,7 +1549,12 @@ export class Game {
       const d = want.clone().sub(sh); const L = d.length(); const h = this.world.ray(sh, d.clone().divideScalar(L), L + 0.2);
       if (h) want.copy(sh).addScaledVector(d.divideScalar(L), Math.max(0.3, h.t - 0.25));
       want.y += bobY; want.addScaledVector(right, bobX);
-      if (C.snap) { cam.position.copy(want); C.snap = false; } else cam.position.lerp(want, 1 - Math.exp(-dt * 25)); cam.lookAt(cam.position.clone().add(dir)); cam.rotateZ(C.roll * 0.6 + shR);
+      if (C.snap) { cam.position.copy(want); C.snap = false; } else cam.position.lerp(want, 1 - Math.exp(-dt * 25)); cam.lookAt(cam.position.clone().add(dir));
+      // caméra portée : elle encaisse chaque foulée (petit coup de tangage à l'appui, roulis d'un pied sur l'autre) et flotte à peine à la main ;
+      // tout est une fonction directe de la phase des pas, sans état à intégrer : stable même quand le jeu ralentit. Presque coupé en visée.
+      const run = bobA * (this.aiming ? 0.15 : 1) * (1 + a.momentum * 0.5) * (this.save.settings?.camShake ?? 1), ft = Math.abs(Math.sin(C.bob)), tt = this.time;
+      cam.rotateX((0.5 - ft) * 0.0085 * run + Math.sin(tt * 1.9) * 0.0012 * run); cam.rotateY(Math.cos(C.bob) * 0.003 * run + Math.sin(tt * 1.3 + 2) * 0.0012 * run);
+      cam.rotateZ(C.roll * 0.6 + shR + Math.cos(C.bob) * 0.0075 * run);
     }
     { const o = cam.position, d = V(); cam.getWorldDirection(d); const R = scope ? 400 : 120; const h = this.world.ray(o, d, R); const ha = scope ? this.rayActors(o, d, h ? h.t : R, a) : null; const t = ha ? ha.t : h ? Math.max(h.t, 4) : R; this.aimHit = !!(h || ha); this.aimPt = o.clone().addScaledVector(d, t); }
     a.ch.root.visible = a.alive || a.respawnT > 0 ? (fps ? false : !a.inCar || !!a.inCar.kind) : false;
@@ -1672,7 +1675,7 @@ export class Game {
     const key = cam.fov.toFixed(1) + cam.aspect.toFixed(3); if (this.vgunLayout?.key === key) return this.vgunLayout.v;
     const L = this.vgunLen || 0.6, fz = this.vgunBB ? -this.vgunBB.min.z : L * 0.7, rz = this.vgunBB ? this.vgunBB.max.z : L * 0.3;
     const fx = 2 * PHI - 1, fy = -(2 * PHI - 1); // point d'or en coordonnées écran (-1..1)
-    const rear = this.vgunPistol ? fx + (1 - PHI) * PHI * PHI : fx + (1 - PHI) * clamp(0.3 + L * 0.9, 0.7, 1.15); // les armes courtes restent plus loin, à proportion de leur longueur // abscisse visée pour l'arrière de l'arme
+    const rear = this.vgunPistol ? fx + (1 - PHI) * 0.9 : fx + (1 - PHI) * clamp(1.5 + L * 0.9, 2.0, 2.5); /* arme proche : l'arrière sort de l'écran à droite, l'arme tient le tiers d'or bas-droit (38,2 % de la largeur) */ // les armes courtes restent plus loin, à proportion de leur longueur // abscisse visée pour l'arrière de l'arme
     // arme parallèle à l'axe de vue : x/(prof·tx) donne fx au bout et rear à l'arrière → profondeur de la poignée
     const k = rear / fx; const d = (fz + k * rz) / (k - 1); // profondeur de la poignée (origine)
     const X = fx * (d + fz) * tx, Y = fy * (d + fz) * ty - (this.vgunTop || 0.1); // le dessus de l'arme affleure la ligne des 61,8 %
