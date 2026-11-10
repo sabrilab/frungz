@@ -63,7 +63,7 @@ export class Game {
     Object.assign(this, env); // renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts, onEnd
     this.actors = []; this.shops = []; this.drops = []; this.socles = { ordre: [], civils: [] }; this.cars = []; this.walls = []; this.grenades = [];
     this.score = { ordre: 0, civils: 0 }; this.time = 0; this.matchLen = 600; this.over = false;
-    this.zoneState = this.world.zones.filter((z) => !z.optionnelle || this.opts.teamSize >= 30).map((z) => ({ ...z, owner: null, cap: null, p: 0, contested: false }));
+    this.zoneState = this.world.zones.filter((z) => !z.optionnelle || z.id === 'I' || this.opts.teamSize >= 30).map((z) => ({ ...z, owner: null, cap: null, p: 0, contested: false }));
     this.scoreLimit = 100 * this.zoneState.length;
     this.root = new THREE.Group(); this.scene.add(this.root);
     this.cam = { yaw: 0, pitch: 0, dist: 3, fps: !!this.save.settings?.fps, trauma: 0, bob: 0, dip: 0, roll: 0, kickP: 0, kickY: 0, fov: 70, shake: V() };
