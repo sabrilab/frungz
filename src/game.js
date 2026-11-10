@@ -13,6 +13,7 @@ import { installThrows, THROWS, solveThrow } from './throws.js';
 import { svg, iconize } from './icons.js';
 import { installSeries } from './series.js';
 import { installBarricades, TIERS, tierInfo, fmtG } from './barricades.js';
+import { installLanceurs } from './lanceurs.js';
 import { installTurrets } from './tourelles.js';
 import { createFeedback } from './feedback.js';
 
@@ -150,7 +151,8 @@ export class Game {
     const muzzle = V(); (a.ch.gun?.userData.muzzle || a.ch.root).getWorldPosition(muzzle);
     this.audio.gun(W.sound, a.pos, 1); this.fx.muzzle(muzzle, W.pellets > 1 ? 1.4 : 1);
     const c = Math.cos(a.pitch || 0), d = V(Math.sin(a.yaw) * c, Math.sin(a.pitch || 0), Math.cos(a.yaw) * c);
-    const o = a.pos.clone().add(V(0, 1.45, 0)); const hw = this.world.ray(o, d, W.range || 120); const end = o.clone().addScaledVector(d, hw ? hw.t : (W.range || 120));
+    const o = a.pos.clone().add(V(0, 1.45, 0)); if (W.proj) { this.launchProj(a, W, 1, muzzle, o, d); return; }
+    const hw = this.world.ray(o, d, W.range || 120); const end = o.clone().addScaledVector(d, hw ? hw.t : (W.range || 120));
     if (a.pos.distanceToSquared(this.player.pos) < 90 * 90) { for (let i = 0; i < Math.min(k, 2); i++) this.fx.tracer(muzzle, end); if (hw) this.fx.impact(end, hw.n, 'world'); }
     if (a !== this.player) this.notePing(a, muzzle);
   }
@@ -474,6 +476,7 @@ export class Game {
     }
     if (a.bot) { a.ch.actions.Gun_Shoot && this.setUpper(a); }
     if (scopedShot) { $('scope')?.classList.remove('kick'); void $('scope')?.offsetWidth; $('scope')?.classList.add('kick'); this.audio.bolt(); this.cam.trauma = Math.min(1, this.cam.trauma + 0.25); }
+    if (D.proj) { this.launchProj(a, D, mult, muzzle, origin, dir.clone().add(V(rnd(-1, 1) * spread, rnd(-1, 1) * spread, rnd(-1, 1) * spread)).normalize()); for (const b of this.actors) if (b.bot && b.alive && b.team !== a.team && !b.ai.target && b.pos.distanceToSquared(a.pos) < 900) { b.ai.target = a; b.ai.seeT = 0.5; } return true; }
     for (let p = 0; p < D.pellets; p++) {
       const d = dir.clone(); d.x += rnd(-1, 1) * spread; d.y += rnd(-1, 1) * spread; d.z += rnd(-1, 1) * spread; d.normalize();
       if (a === this.player && D.scope) { this.launchBullet(a, origin, d, D, mult, W, muzzle, scopedShot); continue; }
@@ -880,7 +883,7 @@ export class Game {
       for (const c of this.cars) { if (c.dead) continue; const d2 = c.obj.position.distanceToSquared(cp); c.obj.visible = d2 < 130 * 130 || !!c.driver;
         // voiture garée : un seul maillage par matière (≈ 6 dessins) ; détaillée (roues qui tournent) dès qu'elle roule
         if (c.stat) { const mv = !!c.driver || Math.abs(c.speed) > 0.05; if (c.mv !== mv) { c.mv = mv; c.stat.visible = !mv; for (const o of c.detail) o.visible = mv; } } const sh = d2 < 50 * 50; if (c.sh !== sh) { c.sh = sh; c.obj.traverse((o) => { if (o.isMesh) o.castShadow = sh; }); } } }
-    this.updateBullets(dt); this.updatePip(dt); this.updateNades(dt); this.updateThrown(dt); this.updateStreaks(dt); this.cloudEffects(dt); this.updateZones(dt); this.updateShops(dt); this.updateDrops(dt); this.socleIncome(dt);
+    this.updateBullets(dt); this.updateProjs(dt); this.updateScorch(dt); this.updatePip(dt); this.updateNades(dt); this.updateThrown(dt); this.updateStreaks(dt); this.cloudEffects(dt); this.updateZones(dt); this.updateShops(dt); this.updateDrops(dt); this.socleIncome(dt);
     this.updateWalls(dt);
     this.specialT -= dt; if (this.specialT <= 0) { this.specialT = 120; this.specialDelivery(); }
     if (!this.over && (this.time >= this.matchLen || this.score.ordre >= this.scoreLimit || this.score.civils >= this.scoreLimit)) this.endMatch();
@@ -2007,4 +2010,5 @@ function lerp_angle(a, b, t) { let d = b - a; while (d > Math.PI) d -= 2 * Math.
 installThrows(Game);
 installSeries(Game);
 installBarricades(Game);
+installLanceurs(Game); // après les barricades : complète this.blast (vitrines)
 installTurrets(Game); // après les barricades : enrobe blast, wallPrompt, placeWall, updateWalls
