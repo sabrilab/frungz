@@ -84,56 +84,87 @@ function makeArm(a, src, mod) {
   const B = a.ch.bones, n = ['ShoulderL', 'UpperArmL', 'LowerArmL', 'WristL', 'ShoulderR', 'UpperArmR', 'LowerArmR', 'WristR', 'Chest'];
   if (!src || n.some((k) => !B[k]) || B.ShoulderL.parent !== B.Chest || B.ShoulderR.parent !== B.Chest) return null;
   const s = (k) => src.getObjectByName(k), wp = (o) => o.getWorldPosition(V3()); src.updateMatrixWorld(true);
-  const W = s('WristL'), m1 = s('Middle1L'), i1 = s('Index1L'), p1 = s('Pinky1L'), hips = s('Hips'); if (!W || !m1 || !i1 || !p1 || !hips) return null;
-  const p = wp(W), f = wp(m1).sub(p), us = s('Chest').getWorldScale(V3()).x || 1, len = f.length() / us; f.normalize();
-  const nn = V3().crossVectors(f, wp(p1).sub(wp(i1))).normalize(), inw = wp(hips).sub(p).setY(0).normalize().add(V3().set(0, -1, 0)); if (nn.dot(inw) < 0) nn.negate();
-  const iq = W.getWorldQuaternion(Q()).invert(); f.applyQuaternion(iq); nn.applyQuaternion(iq).addScaledVector(f, -nn.dot(f)).normalize();
-  const hb = Q().setFromRotationMatrix(new THREE.Matrix4().makeBasis(f, nn, V3().crossVectors(f, nn))).invert();
-  const ax = V3().crossVectors(f, nn).normalize(), fing = [], CURL = [0.85, 1.25, 0.8];
-  for (const F of ['Index', 'Middle', 'Ring', 'Pinky']) { const axl = ax.clone(); for (let i = 1; i <= 3; i++) { const b = B[F + i + 'L'], b0 = s(F + i + 'L'); if (!b || !b0) break;
-    fing.push({ b, q: Q().setFromAxisAngle(axl, CURL[i - 1]).multiply(b0.quaternion) }); axl.applyQuaternion(b0.quaternion.clone().invert()); mod.add(b); } }
+  const us = s('Chest').getWorldScale(V3()).x || 1, hips = s('Hips'); if (!hips) return null;
+  // repère d'une main au repos (f = sens des doigts, n = côté paume) et doigts refermés (calculés une fois)
+  const hand = (S, CURL, idx) => { const W = s('Wrist' + S), m1 = s('Middle1' + S), i1 = s('Index1' + S), p1 = s('Pinky1' + S); if (!W || !m1 || !i1 || !p1) return null;
+    const p = wp(W), f = wp(m1).sub(p), len = f.length() / us; f.normalize();
+    const nn = V3().crossVectors(f, wp(p1).sub(wp(i1))).normalize(), inw = wp(hips).sub(p).setY(0).normalize().add(V3().set(0, -1, 0)); if (nn.dot(inw) < 0) nn.negate();
+    const iq = W.getWorldQuaternion(Q()).invert(); f.applyQuaternion(iq); nn.applyQuaternion(iq).addScaledVector(f, -nn.dot(f)).normalize();
+    const hb = Q().setFromRotationMatrix(new THREE.Matrix4().makeBasis(f, nn, V3().crossVectors(f, nn))).invert(), ax = V3().crossVectors(f, nn).normalize(), fing = [];
+    for (const F of ['Index', 'Middle', 'Ring', 'Pinky']) { const axl = ax.clone(); for (let i = 1; i <= 3; i++) { const b = B[F + i + S], b0 = s(F + i + S); if (!b || !b0) break;
+      fing.push({ b, q: Q().setFromAxisAngle(axl, CURL[i - 1] * (F === 'Index' ? idx : 1)).multiply(b0.quaternion) }); axl.applyQuaternion(b0.quaternion.clone().invert()); mod.add(b); } }
+    return { hb, len, fing }; };
+  const hl = hand('L', [0.85, 1.25, 0.8], 1), hr = hand('R', [1.0, 1.45, 1.0], 0.4); if (!hl) return null; // main droite : fermée sur la poignée, index allongé vers la détente
+  const { hb, len, fing } = hl; if (hr) fing.push(...hr.fing);
   a.ch.root.updateMatrixWorld(true); const u = B.Chest.getWorldScale(V3()).x || 1; // mètres par unité du repère du buste
-  for (const k of n.slice(1, 4)) mod.add(B[k]);
-  return { sL: B.ShoulderL, U: B.UpperArmL, L: B.LowerArmL, W: B.WristL, R: [B.ShoulderR, B.UpperArmR, B.LowerArmR, B.WristR], l1: B.LowerArmL.position.length(), l2: B.WristL.position.length(), hb, len, u, fing, w: 0, qU: Q(), qL: Q(), qW: Q() };
+  for (const k of n.slice(1, 4)) mod.add(B[k]); for (const k of n.slice(5, 8)) mod.add(B[k]);
+  return { sL: B.ShoulderL, U: B.UpperArmL, L: B.LowerArmL, W: B.WristL, R: [B.ShoulderR, B.UpperArmR, B.LowerArmR, B.WristR], l1: B.LowerArmL.position.length(), l2: B.WristL.position.length(), hb, len, u, fing, w: 0, qU: Q(), qL: Q(), qW: Q(), relDur: 0,
+    arm: { U: B.UpperArmR, L: B.LowerArmR, l1: B.LowerArmR.position.length(), l2: B.WristR.position.length() } };
 }
 // point d'appui de la main gauche par arme, en mètres dans le repère de l'arme (x vers la bouche, y vers le haut, origine à la poignée) :
 // le dessous du garde-main, premier appui haut en partant de la poignée (ni le chargeur ni le bipied)
 const SUP = {};
 function support(id) {
   if (SUP[id]) return SUP[id]; const W = WEAPONS[id]; if (!W) return (SUP[id] = { x: 0.25, y: 0.02, pistol: false });
-  if (W.hand === 'pistol') return (SUP[id] = { x: 0.035, y: -0.035, pistol: true });
-  if (W.support) return (SUP[id] = { x: W.support[0], y: W.support[1], fore: true });
+  if (W.hand === 'pistol') return (SUP[id] = { x: 0.035, y: -0.035, pistol: true, mag: { x: 0, y: -0.09 } });
+  if (W.support) return (SUP[id] = { x: W.support[0], y: W.support[1], fore: true, mag: { x: 0.1, y: -0.03 } });
   // candidats du meilleur au moins bon : le garde-main (dessous large le plus haut) au plus près de la prise naturelle, puis le reste du dessous de l'arme ;
   // chaque perso prend le premier que son bras atteint (les longs fusils de précision ont le garde-main trop loin pour certains gabarits)
-  const c = [], def = { x: Math.min(0.24, (W.len || 0.6) * 0.3), y: 0.02 };
+  let mag = null, up = 0; const c = [], def = { x: Math.min(0.24, (W.len || 0.6) * 0.3), y: 0.02 };
   try { const g = gunInstance(id); g.updateMatrixWorld(true); const mx = g.userData.muzzle.getWorldPosition(V3()).x, xs = clamp(mx * 0.42, 0.08, 0.23), rc = new THREE.Raycaster(); rc.far = 1.5;
     const near = (a, b) => Math.abs(a.x - xs) - Math.abs(b.x - xs);
+    // hauteur de la main droite : le milieu de ce que l'arme offre à saisir à la poignée (une poignée pistolet se prend à mi-hauteur, une crosse droite là où elle est)
+    rc.set(_v.set(0, -0.7, 0), Y); const hb = rc.intersectObject(g, true)[0]; rc.set(_v.set(0, 0.7, 0), _w.set(0, -1, 0)); const ht = rc.intersectObject(g, true)[0];
+    if (hb && ht) up = clamp((hb.point.y + ht.point.y) / 2, 0, 0.065);
     // dessous de l'arme sondé tous les 3 cm, à 1,8 cm de l'axe (le garde-main est large, le canon et les organes de visée sont fins) puis dans l'axe
     for (const z of [0.018, 0]) { const hits = [];
       for (let x = 0.08; x < Math.min(0.46, mx - 0.03); x += 0.03) { rc.set(_v.set(x, -0.7, z), Y); const h = rc.intersectObject(g, true)[0]; if (h) hits.push({ x, y: h.point.y }); }
       if (!hits.length) continue; const top = Math.max(...hits.map((h) => h.y));
+      if (z === 0) { const lo = hits.filter((h) => h.x < 0.32).sort((a, b) => a.y - b.y)[0]; if (lo) mag = { x: lo.x, y: lo.y }; } // le chargeur : ce qui descend le plus bas devant la poignée
       c.push(...hits.filter((h) => h.y > top - 0.03).sort(near), ...hits.filter((h) => h.y <= top - 0.03 && h.y > top - 0.13).sort(near)); }
   } catch (e) { /* modèle manquant : valeur par défaut */ }
-  c.push(def); return (SUP[id] = { c });
+  c.push(def); return (SUP[id] = { c, up, mag: mag || { x: 0.12, y: 0 } });
 }
+const _rv = [V3(), V3(), V3(), V3()];
 const _gp = V3(), _gq = Q(), _F = V3(), _N = V3(), _K = V3(), _T = V3(), _m4 = new THREE.Matrix4(), _sh = { position: null, quaternion: null };
 function leftHand(game, a, R, dt) {
   const A = R.arm; if (!A) return; const g = a.ch.gun, id = game.weapon(a)?.id;
   if (a !== game.player && a.pos.distanceToSquared(game.camera.position) > 625) { A.w = 0; return; } // au-delà de 25 m la pose du clip suffit
-  const on = g && id && a.alive && !a.climb && !(a.rollT > 0) && !a.celebrate && !a.channel && !a.swim && !a.inCar && !(a.landT > 0) && !(a.reloadT > 0) && !a.thr;
+  const on = g && id && a.alive && !a.climb && !(a.rollT > 0 && !a.ch.actions.MX_Run) && !a.celebrate && !a.channel && !a.swim && !a.inCar && !(a.landT > 0) && !a.thr;
   A.w += ((on ? 1 : 0) - A.w) * (1 - Math.exp(-dt * (on ? 9 : 16))); if (A.w < 0.02 || !g) return;
+  // ---- main droite : l'arme recule au tir ; au rechargement elle revient contre soi, bascule (puits de chargeur vers la main gauche) et sursaute quand le chargeur s'enclenche
+  if (!(a.reloadT > 0)) A.relDur = 0;
+  const rl = A.relDur ? clamp(1 - a.reloadT / A.relDur, 0, 1) : -1, tilt = rl < 0 ? 0 : ease(clamp(rl / 0.12, 0, 1)) * ease(clamp((1 - rl) / 0.16, 0, 1)) * A.w;
+  const back = clamp(R.rec.z.x * 1.3, -0.02, 0.08) * A.w, bump = rl > 0.74 && rl < 0.84 ? Math.sin((rl - 0.74) / 0.1 * Math.PI) : 0;
+  // la main droite remonte sur la poignée (l'arme, elle, ne bouge pas) : le clip la plaçait au bout de la poignée, le poing sous l'arme
+  const S0 = support(id), up = (S0.up || 0) * A.w;
+  if (g.userData.gy0 === undefined) g.userData.gy0 = g.position.clone();
+  g.position.copy(g.userData.gy0).sub(_v.set(0, up / A.u, 0).applyQuaternion(g.quaternion));
+  if (tilt > 0.001 || Math.abs(back) > 0.002 || up > 0.001) { const sR = A.R[0], wR = A.R[3], u = A.u;
+    _gp.set(0, 0, 0); _gq.identity(); for (let i = 0; i < 3; i++) { _gp.add(_v.copy(A.R[i].position).applyQuaternion(_gq)); _gq.multiply(A.R[i].quaternion); }
+    _T.copy(wR.position).applyQuaternion(_gq).add(_gp); _gq.multiply(wR.quaternion); _q3.copy(_gq).multiply(g.quaternion); // (_gq = main droite, _q3 = arme)
+    _T.addScaledVector(_N.set(0, 1, 0).applyQuaternion(_q3), up / u);
+    const szr = _v.set(0, 0, 1).applyQuaternion(_q3).dot(_w.copy(A.sL.position).sub(sR.position)) > 0 ? -1 : 1;
+    _F.set(1, 0, 0).applyQuaternion(_q3); _N.set(0, 1, 0).applyQuaternion(_q3);
+    _T.addScaledVector(_F, -(back + 0.06 * tilt) / u).addScaledVector(_N, (-0.08 * tilt + 0.012 * bump) / u);
+    if (tilt > 0.001) { _d.setFromEuler(_e.set(0.5 * szr * tilt, 0, (0.14 + 0.05 * bump) * tilt, 'XYZ')); _q3.multiply(_d).multiply(_d.copy(g.quaternion).invert()); _gq.copy(_q3); } // main = arme basculée × prise⁻¹
+    _sh.position = sR.position; _sh.quaternion = sR.quaternion; _K.copy(_T); _q3.copy(_gq);
+    solveLeg(_sh, A.arm, _K); wR.quaternion.copy(_q2.invert().multiply(_q3)); }
   // l'arme dans le repère du buste : épaule droite, bras, avant-bras, main, puis la prise
   _gp.set(0, 0, 0); _gq.identity(); for (const b of A.R) { _gp.add(_v.copy(b.position).applyQuaternion(_gq)); _gq.multiply(b.quaternion); }
   _gp.add(_v.copy(g.position).applyQuaternion(_gq)); _gq.multiply(g.quaternion);
-  const S0 = support(id), u = A.u; let S = S0; A.S = S0;
+  const u = A.u; let S = S0; A.S = S0;
   // côté gauche de l'arme : celui de l'épaule gauche
   const sz = _v.set(0, 0, 1).applyQuaternion(_gq).dot(_w.copy(A.sL.position).sub(A.R[0].position)) > 0 ? -1 : 1; // z local × sz = droite de l'arme
   const dir = (o, f, up, r) => o.set(f, up, r * sz).normalize().applyQuaternion(_gq);
   let bk = 0.62, lift = 0.014;
   _hip.copy(A.U.position).applyQuaternion(A.sL.quaternion).add(A.sL.position); const reach = A.l1 + A.l2; // épaule gauche
-  if (S0.c) { if (A.pid !== id) { A.pid = id; A.pick = S0.c[S0.c.length - 1]; dir(_F, 0.7, -0.5, 0.5); // premier appui que le bras atteint (choisi une fois par arme)
-      for (const k of S0.c) { _T.set(k.x, k.y, 0).multiplyScalar(1 / u).applyQuaternion(_gq).add(_gp).addScaledVector(_F, -A.len * bk); if (_hip.distanceTo(_T) < reach * 0.95) { A.pick = k; break; } } }
-    S = A.pick; }
+  if (S0.c) { // meilleur appui que le bras atteint (garde-main d'abord) ; il ne change que franchement, pour ne pas hésiter entre deux prises
+    if (A.pid !== id) { A.pid = id; A.pick = null; } dir(_F, 0.7, -0.5, 0.5);
+    const far = (k) => _hip.distanceTo(_T.set(k.x, k.y, 0).multiplyScalar(1 / u).applyQuaternion(_gq).add(_gp).addScaledVector(_F, -A.len * bk)) / reach;
+    let best = null; for (const k of S0.c) { if (far(k) < (k === A.pick ? 0.985 : 0.9)) { best = k; break; } }
+    if (!A.pick) { A.pick = best || S0.c[S0.c.length - 1]; A.px = A.pick.x; A.py = A.pick.y; } else if (best && best !== A.pick) A.pick = best;
+    const e = 1 - Math.exp(-dt * 9); A.px += (A.pick.x - A.px) * e; A.py += (A.pick.y - A.py) * e; S = A.sm || (A.sm = {}); S.x = A.px; S.y = A.py; }
   if (S.pistol) { dir(_F, 0.9, -0.35, 0.15); dir(_N, -0.15, 0, 1); _T.set(S.x, S.y, -0.032 * sz); bk = 1; lift = 0; } // plaquée à gauche de la poignée, doigts par-dessus ceux de la main droite
   else if (S.fore) { dir(_F, 0.95, -0.25, 0.2); dir(_N, -0.1, 0, 1); _T.set(S.x + 0.045, S.y - 0.04, -0.012 * sz); bk = 1; lift = 0; } // poignée avant : main refermée autour
   else { dir(_F, 0.7, -0.5, 0.5); dir(_N, -0.1, 0.68, 0.72); _T.set(S.x, S.y + 0.004, -0.012 * sz); } // paume sous le garde-main, doigts qui remontent de l'autre côté
@@ -141,7 +172,16 @@ function leftHand(game, a, R, dt) {
   _T.multiplyScalar(1 / u).applyQuaternion(_gq).add(_gp).addScaledVector(_F, -A.len * bk).addScaledVector(_N, -lift / u);
   // hors de portée (arme tenue loin, à bout de bras) : la main lâche plutôt que d'étirer le bras
   _sh.position = A.sL.position; _sh.quaternion = A.sL.quaternion;
-  const d = _hip.distanceTo(_T), w = A.w * clamp(1 - (d / reach - 0.99) / 0.12, 0, 1); if (w < 0.02) return;
+  if (rl >= 0) { // rechargement : la main quitte le garde-main, saisit le chargeur, le tire, va à la ceinture en chercher un neuf, l'enclenche et revient
+    const M = S0.mag || S, at = (o, x, y) => o.set(x, y, -0.012 * sz).multiplyScalar(1 / u).applyQuaternion(_gq).add(_gp).addScaledVector(_F, -A.len * 0.55);
+    const Pm = at(_rv[0], M.x, M.y - 0.02), Pd = at(_rv[1], M.x - 0.02, M.y - 0.16);
+    const Pb = _rv[2].copy(A.sL.position).addScaledVector(_v.set(0, -1, 0), 0.42 / u).addScaledVector(_w.set(1, 0, 0).applyQuaternion(_gq).setY(0).normalize(), 0.1 / u);
+    const seg = (a0, b0, t0, t1) => _T.lerpVectors(a0, b0, ease(clamp((rl - t0) / (t1 - t0), 0, 1)));
+    if (rl < 0.14) seg(_rv[3].copy(_T), Pm, 0, 0.14); else if (rl < 0.28) seg(Pm, Pd, 0.14, 0.28); else if (rl < 0.48) seg(Pd, Pb, 0.28, 0.48); else if (rl < 0.66) seg(Pb, Pd, 0.5, 0.66);
+    else if (rl < 0.86) seg(Pd, Pm, 0.66, 0.77); else seg(Pm, _rv[3].copy(_T), 0.86, 1); }
+  // un peu trop loin (longue arme, petit gabarit) : la main se pose au plus près, bras tendu, plutôt que de lâcher ; vraiment hors de portée, elle lâche
+  let d = _hip.distanceTo(_T); const w = A.w * clamp(1 - (d / reach - 1.1) / 0.12, 0, 1); if (w < 0.02) return;
+  if (d > reach * 0.985) { _T.sub(_hip).multiplyScalar(reach * 0.985 / d).add(_hip); d = reach * 0.985; }
   A.qU.copy(A.U.quaternion); A.qL.copy(A.L.quaternion); A.qW.copy(A.W.quaternion);
   solveLeg(_sh, A, _T); // (IK deux os ; _q2 = orientation de l'avant-bras dans le repère du buste)
   _q3.setFromRotationMatrix(_m4.makeBasis(_F, _N, _K)).multiply(A.hb); A.W.quaternion.copy(_q2.invert().multiply(_q3));
@@ -149,6 +189,8 @@ function leftHand(game, a, R, dt) {
   if (w > 0.5) for (const f of A.fing) f.b.quaternion.copy(f.q);
 }
 // changement d'arme : la nouvelle arme arrive canon bas et remonte en joue
+// rechargement écrit à la main (bras par IK) pour les persos proches ; renvoie false si le clip générique doit jouer à la place (perso lointain, squelette sans bras connus)
+export function reload(game, a, dur) { const R = rig(a), A = R.arm; if (!R.ok || !A || !a.ch.gun || (a !== game.player && a.pos.distanceToSquared(game.camera.position) > 625)) return false; A.relDur = dur; return true; }
 export function swap(a) { const R = rig(a); if (R.ok) R.swapT = 0.34; }
 const rig = (a) => a.ch.rig || (a.ch.rig = makeRig(a));
 
@@ -259,7 +301,7 @@ export function layers(game, a, dt, near) {
   // glissade : pose écrite à la main par-dessus l'accroupi (voir plus bas) ; entrée vive, relevé plus lent
   const sliding = a.slideT > 0 && a.onGround;
   R.slide += ((sliding ? 1 : 0) - R.slide) * (1 - Math.exp(-dt * (sliding ? 16 : 7))); const sw = R.slide < 0.003 ? 0 : ease(R.slide);
-  const calm = a.climb || a.rollT > 0 || a.slideT > 0 || a.landT > 0 || a.celebrate || a.swim;
+  const calm = a.climb || (a.rollT > 0 && !ch.actions.MX_Run) || a.slideT > 0 || a.landT > 0 || a.celebrate || a.swim;
   R.w += ((calm ? 0 : 1) - R.w) * (1 - Math.exp(-dt * 10)); const W = R.w;
   // ---- ressorts (ils vivent même hors champ, pour ne pas sauter quand on se rapproche)
   const air = a.onGround ? 1 : 0.35;
@@ -277,9 +319,9 @@ export function layers(game, a, dt, near) {
 
   // ---- 1. cibles des pieds d'après l'animation (avant de bouger le bassin)
   settle(R);
-  // roulade : le clip est une roulade plongée, le corps en boule passait à hauteur d'homme ; on le ramène au ras du sol
+  // esquive : une ruée basse sur les allures de course (plus de roulade tête en bas)
   R.roll += ((a.rollT > 0 ? 1 : 0) - R.roll) * (1 - Math.exp(-dt * 14));
-  if (R.roll > 0.01 && body.position.y > 0.42) { body.position.y += (0.42 - body.position.y) * R.roll; store(R); }
+  const rw = R.roll < 0.01 ? 0 : ease(R.roll); // esquive basse : le bassin descend encore un peu, le buste plonge vers l'avant (voir plus bas)
   for (const g of R.legs) { ankle(body, g, g.T); if (!g.free) g.fq.copy(_q2).multiply(g.F.quaternion); } // (_q2 = orientation du tibia) orientation du pied à garder
   // ---- 2. bassin et colonne
   const br = Math.sin(R.breath) * (0.006 + 0.022 * R.effort);
@@ -289,6 +331,7 @@ export function layers(game, a, dt, near) {
     setD(iBody, -1.05 * sw, -0.22 * sw, 0.1 * sw); setD(iAbdomen, 0.17 * sw, 0.1 * sw, -0.05 * sw); setD(iTorso, 0.17 * sw, 0.12 * sw, -0.05 * sw); setD(iChest, 0.11 * sw, 0, 0);
     spinePass(R);
   }
+  if (rw) { body.position.y -= 0.17 * rw; body.position.z += 0.06 * rw; setD(iBody, 0.19 * rw, 0, 0); setD(iAbdomen, 0.08 * rw, 0, 0); setD(iNeck, -0.14 * rw, 0, 0); spinePass(R); } // (les pieds gardent leurs appuis de course : les genoux plient)
   body.position.y += pel * W; body.position.z += (lx * 0.16 - clamp(rz, -1, 1) * 0.012) * W; body.position.x -= lz * 0.16 * W;
   setD(iBody, (lx * 0.55 + curl * 0.25) * W, -tw * 0.55 * W, lz * 0.55 * W);
   setD(iAbdomen, (lx * 0.25 + curl * 0.3 + hitX * 0.4 - br) * W, tw * 0.3 * W, (lz * 0.25 + hitZ * 0.4) * W);
