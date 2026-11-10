@@ -55,36 +55,42 @@ function ik2(A, B, C, t) {
   const pq = B.getWorldQuaternion(new THREE.Quaternion()).invert(); C.quaternion.copy(pq.multiply(_qc)); C.updateMatrixWorld(true);
 }
 // reciblage ; inPlace : on retire l'avancée horizontale (le jeu déplace le perso lui-même)
-function retarget(clip, { fps = 30, inPlace = true } = {}) {
-  const { src, dst, S, D, wq, wp, pairs, fromD, offset, order, restLocal, FEET, feet0, HD, hipsS0, hipsD0, ratio } = RT;
+function retarget(clip, { fps = 30, inPlace = true, mirror = false } = {}) {
+  const { src, dst, S, D, pairs, fromD, offset, order, restLocal, FEET, feet0, HD, hipsS0, hipsD0, ratio } = RT;
+  // miroir gauche ↔ droite : on lit l'os symétrique de la source et on reflète sa rotation et sa position dans le plan sagittal (x = bassin au repos)
+  const swap = n => n.replace(/Left|Right/, m => m === 'Left' ? 'Right' : 'Left');
+  const MX0 = hipsS0.x;
+  const sQ = mirror ? (o => { const q = RT.wq(S[swap(o.name)] || o); return new THREE.Quaternion(q.x, -q.y, -q.z, q.w); }) : RT.wq;
+  const sP = mirror ? (o => { const p = RT.wp(S[swap(o.name)] || o); p.x = 2 * MX0 - p.x; return p; }) : RT.wp;
+  const wq = RT.wq, wp = RT.wp;
   for (const b of order) b.quaternion.copy(restLocal.get(b));
   const mixer = new THREE.AnimationMixer(src), act = mixer.clipAction(clip); act.setLoop(THREE.LoopOnce, 1); act.clampWhenFinished = true; act.play();
   const n = Math.max(2, Math.ceil(clip.duration * fps) + 1), times = new Float32Array(n), q = {}, hp = new Float32Array(n * 3);
   pairs.forEach(([, d]) => { q[d] = new Float32Array(n * 4); });
   // avancée : position du bassin source au début et à la fin
-  mixer.setTime(0); src.updateMatrixWorld(true); const h0 = wp(S.Hips); mixer.setTime(clip.duration); src.updateMatrixWorld(true); const h1 = wp(S.Hips);
-  const drift = h1.clone().sub(h0); drift.y = 0; act.reset(); act.play();
+  mixer.setTime(0); src.updateMatrixWorld(true); const h0 = sP(S.Hips); mixer.setTime(clip.duration); src.updateMatrixWorld(true); const h1 = sP(S.Hips);
+  const drift = h1.clone().sub(h0); drift.y = 0; act.reset(); act.play(); if (window.__LOG) console.log('avancée', clip.name, mirror ? '(miroir)' : '', drift.x.toFixed(2), drift.z.toFixed(2));
   const W = new Map(), tmp = new THREE.Quaternion(), v = new THREE.Vector3(), hipsParent = D[HD].parent;
   for (let i = 0; i < n; i++) {
     const t = Math.min(clip.duration, i / fps); times[i] = t; mixer.setTime(t); src.updateMatrixWorld(true);
     for (const b of order) {
       const pw = W.has(b.parent) ? W.get(b.parent) : wq(b.parent); const s = fromD[b.name];
-      const w = s ? wq(S[s]).multiply(offset[b.name]) : pw.clone().multiply(restLocal.get(b)); W.set(b, w);
+      const w = s ? sQ(S[s]).multiply(offset[b.name]) : pw.clone().multiply(restLocal.get(b)); W.set(b, w);
       if (!s) continue;
       tmp.copy(pw).invert().multiply(w); const a = q[b.name];
       if (i > 0 && a[(i - 1) * 4] * tmp.x + a[(i - 1) * 4 + 1] * tmp.y + a[(i - 1) * 4 + 2] * tmp.z + a[(i - 1) * 4 + 3] * tmp.w < 0) tmp.set(-tmp.x, -tmp.y, -tmp.z, -tmp.w);
       tmp.toArray(a, i * 4);
     }
-    const hs = wp(S.Hips); if (inPlace) { hs.sub(drift.clone().multiplyScalar(t / clip.duration)); hs.x -= h0.x - hipsS0.x; hs.z -= h0.z - hipsS0.z; }
+    const hs = sP(S.Hips); if (inPlace) hs.sub(drift.clone().multiplyScalar(t / clip.duration)); hs.x -= h0.x - hipsS0.x; hs.z -= h0.z - hipsS0.z; // départ toujours à l'aplomb du perso
     v.copy(hs).sub(hipsS0).multiplyScalar(ratio).add(hipsD0);
     for (const [, d] of pairs) D[d].quaternion.fromArray(q[d], i * 4);
     hipsParent.worldToLocal(D[HD].position.copy(v)); dst.updateMatrixWorld(true);
     let want = Infinity, have = Infinity;
-    FEET.forEach(([s, d], k) => { want = Math.min(want, feet0[k][1] + (wp(S[s]).y - feet0[k][0]) * ratio); have = Math.min(have, wp(D[d]).y); });
+    FEET.forEach(([s, d], k) => { want = Math.min(want, feet0[k][1] + (sP(S[s]).y - feet0[k][0]) * ratio); have = Math.min(have, wp(D[d]).y); });
     v.y += want - have; hipsParent.worldToLocal(D[HD].position.copy(v)); dst.updateMatrixWorld(true);
-    const cS = wp(RT.chS), cD = wp(RT.chD);
+    const cS = sP(RT.chS), cD = wp(RT.chD);
     for (const g of RT.ARMS) {
-      ik2(g.A, g.B, g.C, wp(g.s).sub(cS).multiplyScalar(g.k).add(cD));
+      ik2(g.A, g.B, g.C, sP(g.s).sub(cS).multiplyScalar(g.k).add(cD));
       for (const bone of [g.A, g.B, g.C]) { const a = q[bone.name]; tmp.copy(bone.quaternion);
         if (i > 0 && a[(i - 1) * 4] * tmp.x + a[(i - 1) * 4 + 1] * tmp.y + a[(i - 1) * 4 + 2] * tmp.z + a[(i - 1) * 4 + 3] * tmp.w < 0) tmp.set(-tmp.x, -tmp.y, -tmp.z, -tmp.w);
         tmp.toArray(a, i * 4); }
@@ -109,6 +115,57 @@ function withUpper(clip, upper, name) {
   });
   return new THREE.AnimationClip(name, clip.duration, tracks);
 }
+// ---------------------------------------------------------------- composition d'animations
+// toutes les pistes sorties de retarget() partagent les mêmes instants (30 i/s), ce qui permet de les combiner image par image
+const FPS = 30, FINGERS = /^(Index|Middle|Ring|Pinky|Thumb)/;
+const _m = new THREE.Quaternion(), _mi = new THREE.Quaternion(), _dq = new THREE.Quaternion(), _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion();
+// exagération : amplifie l'écart de chaque os à sa pose moyenne (le côté burlesque, cartoon) ; le bassin monte et descend plus fort
+function exaggerate(clip, f, only, hips) {
+  for (const t of clip.tracks) {
+    const bone = t.name.split('.')[0], n = t.times.length, v = t.values; if (n < 2 || FINGERS.test(bone) || (only && !only.test(bone))) continue;
+    if (t.name.endsWith('quaternion')) {
+      let x = 0, y = 0, z = 0, w = 0; for (let i = 0; i < n; i++) { const sg = v[i * 4] * v[0] + v[i * 4 + 1] * v[1] + v[i * 4 + 2] * v[2] + v[i * 4 + 3] * v[3] < 0 ? -1 : 1; x += sg * v[i * 4]; y += sg * v[i * 4 + 1]; z += sg * v[i * 4 + 2]; w += sg * v[i * 4 + 3]; }
+      _m.set(x, y, z, w).normalize(); _mi.copy(_m).invert();
+      for (let i = 0; i < n; i++) { _qa.fromArray(v, i * 4); _dq.copy(_mi).multiply(_qa); if (_dq.w < 0) _dq.set(-_dq.x, -_dq.y, -_dq.z, -_dq.w);
+        const sn = Math.sqrt(Math.max(0, 1 - _dq.w * _dq.w)); if (sn > 1e-6) { const half = Math.acos(Math.min(1, _dq.w)) * f, k = Math.sin(half) / sn; _dq.set(_dq.x * k, _dq.y * k, _dq.z * k, Math.cos(half)); }
+        _qa.copy(_m).multiply(_dq).toArray(v, i * 4); }
+    } else if (hips && bone === 'Hips' && t.name.endsWith('position')) { let my = 0; for (let i = 0; i < n; i++) my += v[i * 3 + 1]; my /= n; for (let i = 0; i < n; i++) v[i * 3 + 1] = my + (v[i * 3 + 1] - my) * f; }
+  }
+  return clip;
+}
+// enchaînement de plusieurs clips avec fondu (blend en secondes) : ex. sprint → glissade → relevé
+function concat(clips, blend = 0.15, name = 'seq') {
+  const bf = Math.max(1, Math.round(blend * FPS)); const starts = []; let N = 0;
+  clips.forEach((c, k) => { const n = c.tracks[0].times.length; const st = k ? N - bf : 0; starts.push(st); N = st + n; });
+  const times = new Float32Array(N); for (let i = 0; i < N; i++) times[i] = i / FPS;
+  const tracks = clips[0].tracks.map((t0) => {
+    const st = t0.getValueSize(), out = new Float32Array(N * st), isQ = t0.name.endsWith('quaternion');
+    clips.forEach((c, k) => { const t = c.tracks.find((x) => x.name === t0.name) || t0; const n = t.times.length;
+      for (let i = 0; i < n; i++) { const j = starts[k] + i; const u = k && i < bf ? (i + 1) / (bf + 1) : 1;
+        if (u >= 1) { for (let e = 0; e < st; e++) out[j * st + e] = t.values[i * st + e]; continue; }
+        if (isQ) { _qa.fromArray(out, j * 4); _qb.fromArray(t.values, i * 4); _qa.slerp(_qb, u).toArray(out, j * 4); }
+        else for (let e = 0; e < st; e++) out[j * st + e] += (t.values[i * st + e] - out[j * st + e]) * u; } });
+    return new (isQ ? THREE.QuaternionKeyframeTrack : THREE.VectorKeyframeTrack)(t0.name, times, out);
+  });
+  return new THREE.AnimationClip(name, (N - 1) / FPS, tracks);
+}
+// boucle sans à-coup : les dernières images rejoignent la première
+function loopify(clip, k = 6) {
+  for (const t of clip.tracks) { const n = t.times.length, st = t.getValueSize(), v = t.values; if (n < k + 2) continue;
+    for (let i = n - k; i < n; i++) { const u = (i - (n - k) + 1) / k;
+      if (st === 4) { _qa.fromArray(v, i * 4); _qb.fromArray(v, 0); _qa.slerp(_qb, u).toArray(v, i * 4); } else for (let e = 0; e < st; e++) v[i * st + e] += (v[e] - v[i * st + e]) * u; } }
+  return clip;
+}
+// vitesse : le jeu peut aussi jouer plus vite, mais certaines poses sont plus lisibles accélérées une fois pour toutes
+function speed(clip, k) { for (const t of clip.tracks) t.times = t.times.map((x) => x / k); clip.duration /= k; return clip; }
+// lecture à l'envers (ex. s'accroupir → se relever)
+function reverse(clip) { for (const t of clip.tracks) { const n = t.times.length, st = t.getValueSize(), v = t.values.slice(); for (let i = 0; i < n; i++) for (let e = 0; e < st; e++) t.values[i * st + e] = v[(n - 1 - i) * st + e]; } return clip; }
+// couche « haut du corps » seule (rechargement, lancer, changement d'arme) : le jeu la pose par-dessus la course
+const UPPER_ONLY = /^(Torso|Chest|Neck|Head|Shoulder|UpperArm|LowerArm|Wrist|Index|Middle|Ring|Pinky|Thumb)/;
+function upperOnly(clip) { clip.tracks = clip.tracks.filter((t) => t.name.endsWith('quaternion') && UPPER_ONLY.test(t.name.split('.')[0])); return clip; }
+// couche additive : écart de chaque os à la 1re image (le jeu l'ajoute par-dessus la pose courante : coups reçus, recul)
+function additive(clip) { for (const t of clip.tracks) { if (!t.name.endsWith('quaternion')) continue; _mi.fromArray(t.values, 0).invert(); for (let i = 0; i < t.times.length; i++) { _qa.fromArray(t.values, i * 4); _qb.copy(_mi).multiply(_qa); if (_qb.w < 0) _qb.set(-_qb.x, -_qb.y, -_qb.z, -_qb.w); _qb.toArray(t.values, i * 4); } } return clip; }
+function trim(clip, a, b) { return THREE.AnimationUtils.subclip(clip, clip.name, Math.round(a * FPS), Math.round(b * FPS), FPS); }
 const packs = new Map();
 async function get(n) {
   const c = index.clips.find(x => x.n === n); if (!c) throw new Error('clip ' + n);
@@ -116,16 +173,30 @@ async function get(n) {
   return (await packs.get(c.p)).get(n);
 }
 setup();
-const PLAN = JSON.parse(decodeURIComponent(new URLSearchParams(location.search).get('plan')));
+const PLAN = window.__PLAN || JSON.parse(decodeURIComponent(new URLSearchParams(location.search).get('plan')));
 const out = []; const cache = {};
+async function one(p) {
+  let clip = retarget(await get(p.src), { inPlace: p.inPlace !== false, mirror: !!p.mirror });
+  if (p.trim) clip = trim(clip, p.trim[0], p.trim[1]);
+  if (p.reverse) clip = reverse(clip);
+  if (p.speed) clip = speed(clip, p.speed);
+  return clip;
+}
 for (const p of PLAN) {
-  const src = await get(p.src); let clip = retarget(src, { inPlace: p.inPlace !== false }); clip.name = p.name;
-  if (p.upper) { const u = cache[p.upper] || (cache[p.upper] = retarget(await get(p.upper))); clip = withUpper(clip, u, p.name); }
-  if (p.trim) { clip = THREE.AnimationUtils.subclip(clip, p.name, Math.round(p.trim[0] * 30), Math.round(p.trim[1] * 30), 30); }
+  let clip = p.seq ? concat(await Promise.all(p.seq.map(one)), p.blend ?? 0.15) : await one(p);
+  if (p.seq && p.trim) clip = trim(clip, p.trim[0], p.trim[1]);
+  clip.name = p.name;
+  if (p.upper) { const key = p.upper + (p.upperMirror ? '|m' : ''); const u = cache[key] || (cache[key] = retarget(await get(p.upper), { mirror: !!p.upperMirror })); clip = withUpper(clip, u, p.name); }
+  if (p.exag) exaggerate(clip, p.exag, p.exagAll ? null : /^(Hips|Abdomen|Torso|UpperLeg|LowerLeg|Foot|Neck|Head)/, !!p.exagHips);
+  if (p.loop) loopify(clip);
+  if (p.upperOnly) upperOnly(clip);
+  if (p.spineOnly) clip.tracks = clip.tracks.filter((t) => t.name.endsWith('quaternion') && /^(Abdomen|Torso|Chest|Neck|Head)/.test(t.name));
+  if (p.additive) additive(clip);
   const j = THREE.AnimationClip.toJSON(clip);
-  for (const t of j.tracks) { t.times = Array.from(t.times, x => +x.toFixed(4)); t.values = Array.from(t.values, x => +x.toFixed(4)); }
+  for (const t of j.tracks) { t.times = Array.from(t.times, x => +x.toFixed(3)); t.values = Array.from(t.values, x => +x.toFixed(3)); }
   // pistes immobiles réduites à une clé
   for (const t of j.tracks) { const st = t.values.length / t.times.length; let flat = true; for (let i = st; i < t.values.length && flat; i++) if (Math.abs(t.values[i] - t.values[i % st]) > 2e-4) flat = false; if (flat) { t.times = [0]; t.values = t.values.slice(0, st); } }
+  if (p.tag) j.userData = { tag: p.tag };
   out.push(j);
 }
 window.__out = JSON.stringify(out); window.__done = true;

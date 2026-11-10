@@ -10,6 +10,13 @@ const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (a) => a[(Math.random() * a.length) | 0];
+const _oq = new THREE.Quaternion(), _oi = new THREE.Quaternion();
+// pas (m) parcourus pendant un cycle de chaque allure Mixamo, pour caler la cadence des pieds sur la vitesse réelle
+const STRIDE = { MX_WalkF: 1.28, MX_WalkB: 1.31, MX_WalkL: 1.67, MX_WalkR: 1.81, MX_Run: 2.75, MX_RunAim: 2.75, MX_RunBack: 1.38, MX_RunLeft: 1.91, MX_RunRight: 1.65,
+  MXP_WalkF: 1.28, MXP_WalkB: 1.31, MXP_WalkL: 1.67, MXP_WalkR: 1.81, MXP_Run: 2.13, MXP_RunBack: 1.65, MXP_RunLeft: 1.16, MXP_RunRight: 1.41,
+  MX_CrouchWalk: 0.88, MXP_CrouchWalk: 0.88, MX_CrouchB: 1.02, MX_CrouchL: 1.28, MX_CrouchR: 1.13 };
+// clips joués une seule fois (le reste boucle)
+const ONCE = /Death|MX_Jump|MX_Land|MX_Vault|MX_Roll|MX_Slide|MX_HardLand|MX_Stop|MX_Smash|MX_Cheer|MX_FistPump|MX_Taunt|MXP_Jump/;
 const ENEMY = { ordre: 'civils', civils: 'ordre' };
 const fmt = (n) => Math.round(n).toLocaleString('fr-FR');
 const $ = (id) => document.getElementById(id);
@@ -147,7 +154,7 @@ export class Game {
       const arm = ch.bones.UpperArmL; if (arm) { const b = brassard(); const ws = V(); arm.getWorldScale(ws); b.scale.setScalar(1 / ws.x); b.position.set(0, 0.12 / ws.x, 0); arm.add(b); }
     }
     if (bot) { const mk = headMarker(team === this.save.team ? (team === 'ordre' ? '#3d8bff' : '#34c759') : '#ff3030'); mk.position.y = 2.25; mk.visible = team === this.save.team; ch.root.add(mk); a.marker = mk; }
-    for (const k of Object.keys(ch.actions)) { const act = ch.actions[k]; if (/Death|MX_Jump|MX_Land|MX_Vault/.test(k)) { act.setLoop(THREE.LoopOnce); act.clampWhenFinished = true; } if (/Roll|Gun_Shoot|HitRecieve|Interact|Punch/.test(k)) { act.setLoop(THREE.LoopOnce); act.clampWhenFinished = false; } }
+    for (const k of Object.keys(ch.actions)) { const act = ch.actions[k]; if (ONCE.test(k)) { act.setLoop(THREE.LoopOnce); act.clampWhenFinished = true; } if (/Roll|Gun_Shoot|HitRecieve|Interact|Punch/.test(k)) { act.setLoop(THREE.LoopOnce); act.clampWhenFinished = false; } }
     a.ai = { path: null, pi: 0, goal: null, task: null, think: Math.random() * 2, target: null, seeT: 0, react: 0, strafe: 1, strafeT: 0, stuck: 0, lastPos: V(), nadeT: rnd(8, 20), los: false, losT: 0 };
     this.actors.push(a); return a;
   }
@@ -161,6 +168,7 @@ export class Game {
     if (!a.slots[i]) return; a.cur = i; a.reloadT = 0; a.fireT = Math.max(a.fireT, 0.25);
     attachGun(a.ch, a.slots[i].id); a.ch.meshes = null; a.lodShadow = undefined; const rc = RARITY[a.slots[i].rarity].color;
     a.ch.gun.traverse((o) => { if (o.isMesh && a.slots[i].rarity !== 'commun') { o.material = o.material.map ? o.material : (Array.isArray(o.material) ? o.material.map((m) => tint(m, rc)) : tint(o.material, rc)); } });
+    if (a.overs) a.overs = a.overs.filter((o) => o.name !== 'U_Reload'); if (!silent) this.overlay(a, 'U_Draw', 0.45, { busy: true });
     if (!a.bot) { this.viewGun(); if (!silent) this.audio.play('cloth', null, 0.5); }
     function tint(m, c) { const n = m.clone(); if (/Main|Body|Wood|Metal/i.test(m.name)) { n.emissive = new THREE.Color(c); n.emissiveIntensity = 0.12; } return n; }
   }
@@ -169,7 +177,7 @@ export class Game {
     a.pos.set(x, this.world.groundY(x, z), z); a.vel.set(0, 0, 0); a.yaw = a.team === 'ordre' ? Math.PI / 2 : -Math.PI / 2; a.pitch = 0;
     a.hp = 100; a.armor = a.bot ? (a.team === 'ordre' ? 50 : 25) : 25 * (this.save.upgrades.gilet || 0); a.alive = true; a.bag = []; a.bagKg = 0; a.nades = 2; a.momentum = 0; a.slideT = a.rollT = 0; a.climb = null; a.gasT = 0; a.channel = null;
     if (!a.bot) a.mats = Math.max(a.mats, 30 + 20 * (this.save.upgrades.mats || 0)); else a.mats = 40;
-    a.ch.root.visible = true; a.ch.model.rotation.x = 0; this.loadout(a); this.setAnim(a, a.ch.actions.MX_Idle ? 'LOCO' : 'Idle_Gun', 0);
+    a.ch.root.visible = true; a.ch.model.rotation.x = 0; a.overs = null; a.landT = a.stopT = 0; this.loadout(a); this.setAnim(a, a.ch.actions.MX_Idle ? 'LOCO' : 'Idle_Gun', 0);
     a.ai.path = null; a.ai.task = null; a.ai.think = 0; a.spawnProt = 2.5;
     if (a === this.player) { this.cam.yaw = a.yaw; this.cam.pitch = 0; this.cam.snap = true; if (!first) this.announce('', 'De retour dans la rue', '#fff', 1.2); }
   }
@@ -199,13 +207,14 @@ export class Game {
       this.fx.number(V(t.pos.x, t.pos.y + 2 + Math.random() * 0.3, t.pos.z), Math.round(amount), opts.head ? '#ffcf3d' : '#fff', opts.head);
       this.hitmark(t.hp <= 0, opts.head); this.audio.hitmark(opts.head); t.spotted = this.time; this.flashBody(t);
     }
-    if (t.hp > 0) { if (Math.random() < 0.3) this.audio.play('voxPain', t.pos, 0.7, [0.95, 1.1], 0.2); if (!t.channel && Math.random() < 0.25 && t.ch.actions.HitRecieve) { const h = t.ch.actions.HitRecieve; h.reset().setEffectiveWeight(0.6).fadeIn(0.05).play(); setTimeout(() => h.fadeOut(0.15), 250); } if (t.channel) t.channel = null; return; }
+    if (t.hp > 0) { if (Math.random() < 0.3) this.audio.play('voxPain', t.pos, 0.7, [0.95, 1.1], 0.2); if (by && by !== t && t.ch.actions.A_HitF) { const dx = by.pos.x - t.pos.x, dz = by.pos.z - t.pos.z, f = Math.sin(t.yaw) * dx + Math.cos(t.yaw) * dz, sd = Math.cos(t.yaw) * dx - Math.sin(t.yaw) * dz; this.overlay(t, Math.abs(f) > Math.abs(sd) ? (f > 0 ? 'A_HitF' : 'A_HitB') : (sd > 0 ? 'A_HitL' : 'A_HitR'), 0.5, { add: true, w: Math.min(1.4, 0.55 + amount / 35) }); }
+      else if (!t.channel && Math.random() < 0.25 && t.ch.actions.HitRecieve) { const h = t.ch.actions.HitRecieve; h.reset().setEffectiveWeight(0.6).fadeIn(0.05).play(); setTimeout(() => h.fadeOut(0.15), 250); } if (t.channel) t.channel = null; return; }
     this.kill(t, by, opts);
   }
   kill(t, by, opts) {
     t.alive = false; t.hp = 0; t.respawnT = t.bot ? 6 : 5; t.stats.d++; t.channel = null;
     if (t.inCar) this.exitCar(t, true);
-    this.setAnim(t, t.ch.actions.MX_Death ? 'MX_Death' : 'Death', 0.1); this.audio.play('voxDie', t.pos, 0.9);
+    t.overs = null; { const dn = this.deathAnim(t, by, opts); this.setAnim(t, dn, 0.1, /^MX_Death[FBLR]$/.test(dn) ? 1.5 : dn === 'MX_DeathFly' ? 1.15 : 1); } this.audio.play('voxDie', t.pos, 0.9);
     // le sac tombe au sol (et l'arme principale, parfois)
     if (by && by !== t && by.team === 'ordre' && t.bag.length) this.scoreEvent('ordre', 4, 'Interpellation', by);
     if (t.bag.length) { this.dropPile(t.pos, t.bag.splice(0)); t.bagKg = 0; this.carryMesh(t); }
@@ -213,7 +222,7 @@ export class Game {
     if (t.hitBy) { for (const [h, at] of t.hitBy) if (h !== by && h !== t && h.team !== t.team && this.time - at < 8) { h.stats.a++; if (h === this.player) this.toast('+ Assistance', '#cfe3ff'); } t.hitBy.clear(); }
     const w = t.slots[t.cur]; if (w && w.id !== 'pistol' && (Math.random() < 0.6 || !t.bot)) this.dropPile(t.pos.clone().add(V(rnd(-0.6, 0.6), 0, rnd(-0.6, 0.6))), [], { id: w.id, rarity: w.rarity });
     if (by && by !== t) {
-      by.stats.k++; this.addStreak(by);
+      by.stats.k++; this.addStreak(by); if (by.bot && by.alive && Math.random() < 0.45) this.overlay(by, 'U_FistPump', 1.2, { busy: true });
       if (by === this.player) this.maybeKillcam(t, opts);
       if (by === this.player) { this.multiKill(opts); this.streakDirty = 1; }
       if (by === this.player) { this.medal(opts.head ? (opts.dist > 80 ? "TIR D'ÉLITE" : 'TIR À LA TÊTE') : 'ÉLIMINÉ', t.name + (by.streak >= 2 ? ` · série ${by.streak}` : ''), opts.head); this.stats.kills++; this.earn(50 + (opts.head ? 25 : 0), opts.head ? 'Tir à la tête' : 'Élimination'); this.audio.kill(); this.input.rumble(0.9, 0.6, 160); }
@@ -221,6 +230,31 @@ export class Game {
     if (t === this.player) { this.stats.deaths++; this.announce('ÉLIMINÉ', by ? `par ${by.name}` : '', '#ff4a4a', 2.5); }
     this.killFeed(by, t, opts);
   }
+  // mort mise en scène : projeté en arrière (fusil à pompe de près, explosion, parfois tête), emporté par l'élan en pleine course, ou chute selon le côté de l'impact
+  deathAnim(t, by, opts = {}) {
+    const A = t.ch.actions; if (!A.MX_DeathF) return A.MX_Death ? 'MX_Death' : 'Death';
+    const W = by && by !== t ? WEAPONS[this.weapon(by)?.id] : null, near = by && by.pos.distanceTo(t.pos) < 8;
+    if (opts.blast || opts.weapon === 'metro' || (W && W.pellets > 1 && near) || (opts.head && Math.random() < 0.3)) return 'MX_DeathFly';
+    if (this.feetSpeed(t) > 4.5) return 'MX_DeathRun';
+    if (!by || by === t) return pick(['MX_Death', 'MX_DeathF']);
+    const dx = by.pos.x - t.pos.x, dz = by.pos.z - t.pos.z, f = Math.sin(t.yaw) * dx + Math.cos(t.yaw) * dz, sd = Math.cos(t.yaw) * dx - Math.sin(t.yaw) * dz;
+    return Math.abs(f) > Math.abs(sd) ? (f > 0 ? 'MX_DeathB' : 'MX_DeathF') : (sd > 0 ? 'MX_DeathL' : 'MX_DeathR');
+  }
+  // couches d'animation par-dessus la locomotion : « set » remplace le haut du corps (recharger, lancer, dégainer, célébrer),
+  // « add » s'ajoute à la pose courante (coups reçus, recul). busy : le buste ne corrige plus la visée pendant ce temps
+  overlay(a, name, dur, { add = false, w = 1, busy = false } = {}) {
+    const act = a.ch.actions[name]; if (!act || !a.alive) return false; const clip = act.getClip();
+    for (const t of clip.tracks) { t.bone ??= t.name.split('.')[0]; t.ip ??= t.createInterpolant(); }
+    const o = { name, clip, t: 0, dur, add, w, busy }; a.overs ||= []; const i = a.overs.findIndex((x) => x.name === name); if (i >= 0) a.overs[i] = o; else a.overs.push(o); return true;
+  }
+  applyOverlays(a, dt, draw) {
+    if (!a.overs?.length) return; a.overs = a.overs.filter((o) => (o.t += dt) < o.dur); if (!draw) return; const B = a.ch.bones;
+    for (const o of a.overs) {
+      const k = o.w * Math.min(1, o.t / 0.08, (o.dur - o.t) / 0.15); if (k <= 0) continue; const tt = Math.min(o.clip.duration, o.t / o.dur * o.clip.duration);
+      for (const tr of o.clip.tracks) { const b = B[tr.bone]; if (!b) continue; _oq.fromArray(tr.ip.evaluate(tt)); if (o.add) b.quaternion.multiply(_oi.identity().slerp(_oq, k)); else b.quaternion.slerp(_oq, k); }
+    }
+  }
+  pistolStance(a) { const id = this.weapon(a)?.id; return (id === 'pistol' || id === 'revolver') && !!a.ch.actions.MXP_Idle; }
   scoreEvent(team, pts, why, by) {
     if (this.over || !pts) return; this.score[team] += pts; if (by) by.stats.sac += pts;
     if (by === this.player) this.toast(`+${pts} pts équipe · ${why}`, TEAMS[team].color);
@@ -234,7 +268,7 @@ export class Game {
   }
   useStreak(a) {
     if (!a.alive || !a.rewards.length || this.over) return;
-    const id = a.rewards.pop(), r = STREAK_BY_ID[id], mine = a.team === this.player.team, me = a === this.player;
+    const id = a.rewards.pop(), r = STREAK_BY_ID[id], mine = a.team === this.player.team, me = a === this.player; this.overlay(a, 'U_FistPump', 1.1, { busy: true });
     if (me) { this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,.35), ${TEAMS[a.team].color})`); this.audio.streakGo(); this.cam.trauma = 0.8; this.input.rumble(1, 1, 400); $('hud').classList.remove('shake'); void $('hud').offsetWidth; $('hud').classList.add('shake'); this.streakUsed = id; this.streakDirty = 1; }
     const say = (enemyMsg) => { if (me) this.bigText(`${r.icon} ${r.nom.toUpperCase()}`, r.desc, TEAMS[a.team].color); else if (mine) this.toast(`${r.icon} ${a.name} : ${r.nom}`, TEAMS[a.team].color); else this.toast(enemyMsg, '#ff4a4a'); };
     const foes = this.actors.filter((t) => t.alive && !t.gone && t.team !== a.team && !t.inCar);
@@ -282,7 +316,7 @@ export class Game {
       else if (k.kind === 'mortier') {
         this.fx.burst(p.clone().add(V(0, 9, 0)), 40, { color: pick(['#ff4fa0', '#ffd23d', '#5ad1ff', '#9ff59f']), speed: 9, size: 0.14, life: 1.2 });
         this.fx.burst(p.clone().add(V(0, 0.5, 0)), 20, { color: '#ffb321', speed: 7, size: 0.12, life: 0.5 }); this.audio.explode(p);
-        for (const t of this.actors) { if (!t.alive || t.team === k.owner.team) continue; const d = t.pos.distanceTo(p); if (d < 5) this.damage(t, 25 + 70 * (1 - d / 5), k.owner.alive ? k.owner : null); }
+        for (const t of this.actors) { if (!t.alive || t.team === k.owner.team) continue; const d = t.pos.distanceTo(p); if (d < 5) this.damage(t, 25 + 70 * (1 - d / 5), k.owner.alive ? k.owner : null, { blast: true }); }
         if (this.player.pos.distanceTo(p) < 25) this.cam.trauma = Math.min(1, this.cam.trauma + 0.5);
       }
     }
@@ -312,7 +346,7 @@ export class Game {
     const W = this.weapon(a); const D = WEAPONS[W.id]; const mult = RARITY[W.rarity].mult;
     if (a.reloadT > 0 || a.fireT > 0) return false;
     if (W.mag <= 0) { this.startReload(a); if (!a.bot) this.audio.click(); return false; }
-    W.mag--; a.fireT = 1 / D.rps; a.lastShot = this.time;
+    W.mag--; a.fireT = 1 / D.rps; a.lastShot = this.time; { const heavy = D.pellets > 1 || D.dmg > 50; this.overlay(a, 'A_Recoil', heavy ? 0.4 : 0.16, { add: true, w: heavy ? 1.1 : 0.35 }); }
     const muzzle = V(); (a.ch.gun?.userData.muzzle || a.ch.root).getWorldPosition(muzzle);
     if (!a.bot && this.cam.fps && this.vgun) this.vgun.userData.muzzle.getWorldPosition(muzzle);
     const moving = this.feetSpeed(a) > 2 ? 1.6 : 1; const aiming = !a.bot && this.aiming ? (this.cam.fps ? 0.1 : 0.18) : 1; const air = a.onGround ? 1 : 1.8;
@@ -360,7 +394,7 @@ export class Game {
     if (a === this.player || end.distanceTo(this.player.pos) < 40) this.fx.impact(end, hw.n, kind);
   }
   setUpper(a) { const s = a.ch.actions.Idle_Gun_Shoot; }
-  startReload(a) { const W = this.weapon(a); if (a.reloadT > 0 || W.mag >= WEAPONS[W.id].mag) return; a.reloadT = WEAPONS[W.id].reload; if (!a.bot) this.audio.reload(); }
+  startReload(a) { const W = this.weapon(a); if (a.reloadT > 0 || W.mag >= WEAPONS[W.id].mag) return; a.reloadT = WEAPONS[W.id].reload; this.overlay(a, 'U_Reload', a.reloadT, { busy: true }); if (!a.bot) this.audio.reload(); }
 
   // ---------------------------------------------------------------- vitrines
   hitVitrine(v, dmg, by) {
@@ -467,7 +501,7 @@ export class Game {
 
   // ---------------------------------------------------------------- grenades (lacrymo / fumigène)
   throwNade(a, dir) {
-    if (a.nades <= 0 || !a.alive || a.inCar) return; a.nades--;
+    if (a.nades <= 0 || !a.alive || a.inCar) return; a.nades--; this.overlay(a, 'U_Throw', 0.75, { busy: true });
     const kind = a.team === 'ordre' ? 'gas' : 'smoke';
     const p = a.pos.clone().add(V(0, 1.7, 0)); const v = dir.clone().multiplyScalar(15); v.y += 4;
     const m = grenadeMesh(kind); m.position.copy(p); this.root.add(m);
@@ -605,7 +639,7 @@ export class Game {
   explodeCar(c, by) {
     c.dead = 40; const p = c.pos.clone().add(V(0, 0.8, 0)); this.fx.explosion(p); this.audio.explode(p); this.world.cass?.blast(p, 7, 500, by);
     if (c.driver) { const d = c.driver; this.exitCar(d, true); this.damage(d, 200, by); }
-    for (const a of this.actors) { if (!a.alive) continue; const d = a.pos.distanceTo(c.pos); if (d < 7) this.damage(a, 110 * (1 - d / 7), by); }
+    for (const a of this.actors) { if (!a.alive) continue; const d = a.pos.distanceTo(c.pos); if (d < 7) this.damage(a, 110 * (1 - d / 7), by, { blast: true }); }
     if (this.player.pos.distanceTo(c.pos) < 30) this.cam.trauma = 1;
     c.obj.visible = false; const j = this.world.dynamic.indexOf(c.col); if (j >= 0) this.world.dynamic.splice(j, 1);
   }
@@ -659,7 +693,7 @@ export class Game {
     if (Math.abs(c.speed) > 4) for (const a of this.actors) {
       if (!a.alive || a.inCar || (drv && a.team === drv.team)) continue;
       const dx = a.pos.x - c.pos.x, dz = a.pos.z - c.pos.z; const lx = dx * Math.cos(c.yaw) - dz * Math.sin(c.yaw), lz = dx * Math.sin(c.yaw) + dz * Math.cos(c.yaw);
-      if (Math.abs(lx) < c.W / 2 + 0.35 && Math.abs(lz) < c.L / 2 + 0.35) { this.damage(a, Math.abs(c.speed) * 5, drv); a.vel.addScaledVector(fwd, c.speed * 0.8); a.vel.y = 4; a.onGround = false; c.vel.multiplyScalar(0.85); this.audio.play('thud', a.pos, 1); }
+      if (Math.abs(lx) < c.W / 2 + 0.35 && Math.abs(lz) < c.L / 2 + 0.35) { this.damage(a, Math.abs(c.speed) * 5, drv, { blast: true }); a.vel.addScaledVector(fwd, c.speed * 0.8); a.vel.y = 4; a.onGround = false; c.vel.multiplyScalar(0.85); this.audio.play('thud', a.pos, 1); }
     }
     const cgy = this.world.groundY(c.pos.x, c.pos.z, c.pos.y + 0.6);
     // chute (quai, trémie) : gravité au lieu de coller au sol
@@ -843,7 +877,8 @@ export class Game {
     if (!prompt && this.atBase(a)) prompt = `<b>${I.label('shop')}</b> Armurerie`;
     this.ui.prompt = a.channel ? null : prompt;
   }
-  startChannel(a, label, dur, valid, done, anim) { a.channel = { label, dur, t: 0, valid, done, anim }; if (anim && a.ch.actions[anim]) { const act = a.ch.actions[anim]; act.reset().setEffectiveWeight(1).fadeIn(0.1).play(); a.channelAnim = act; } }
+  startChannel(a, label, dur, valid, done, anim) { const A = a.ch.actions; if ((anim === 'Interact' || !anim) && A.MX_Loot) anim = 'MX_Loot'; else if (anim === 'Punch_Right' && A.MX_Smash) anim = 'MX_Smash';
+    a.channel = { label, dur, t: 0, valid, done, anim }; if (anim && a.ch.actions[anim]) { const act = a.ch.actions[anim]; act.reset().setEffectiveWeight(1).fadeIn(0.1).play(); a.channelAnim = act; } }
   pickWeapon(a, d) {
     const w = { id: d.weapon.id, rarity: d.weapon.rarity, mag: WEAPONS[d.weapon.id].mag };
     const same = a.slots.findIndex((s) => s.id === w.id);
@@ -906,7 +941,7 @@ export class Game {
     if (a.wantCrouch && a.onGround && a.slideT <= 0 && a.rollT <= 0) {
       const sp = this.feetSpeed(a);
       if (sp > 4.6) { this.fx.dust(a.pos, 6, 1); a.slideT = civ ? 1.0 : 0.75; a.slideDir = V(a.vel.x, 0, a.vel.z).normalize(); a.vel.addScaledVector(a.slideDir, 1.5); this.audio.play('cloth', a.pos, 0.7); if (!a.bot) this.cam.trauma += 0.1; }
-      else { a.rollT = 0.55; const d = wl > 0.1 ? wish.clone().normalize() : V(Math.sin(a.yaw), 0, Math.cos(a.yaw)); a.vel.x = d.x * (civ ? 8.5 : 7); a.vel.z = d.z * (civ ? 8.5 : 7); a.rollDir = d; this.setAnim(a, 'Roll', 0.08, 1.6); this.audio.play('cloth', a.pos, 0.7); }
+      else { a.rollT = 0.55; const d = wl > 0.1 ? wish.clone().normalize() : V(Math.sin(a.yaw), 0, Math.cos(a.yaw)); a.vel.x = d.x * (civ ? 8.5 : 7); a.vel.z = d.z * (civ ? 8.5 : 7); a.rollDir = d; this.setAnim(a, a.ch.actions.MX_Roll ? 'MX_Roll' : 'Roll', 0.08, a.ch.actions.MX_Roll ? 1.9 : 1.6); this.audio.play('cloth', a.pos, 0.7); }
       a.wantCrouch = 0;
     }
     const target = wish.clone().multiplyScalar(top);
@@ -934,6 +969,7 @@ export class Game {
     if (W && a.pos.y < W.y - 0.3 && this.world.inWater(a.pos.x, a.pos.z)) { const sy = W.y - 1.0; if (gy < sy) { gy = sy; a.swim = true; if (!a.wasSwim) { this.fx.burst(V(a.pos.x, W.y + 0.1, a.pos.z), 14, { color: '#cfe3ef', speed: 4, size: 0.08, life: 0.7 }); this.audio.play('thud', a.pos, 0.7); } } }
     a.wasSwim = a.swim;
     if (a.pos.y <= gy + 0.02) {
+      if (!a.onGround && a.vel.y < -10.5 && a.ch.actions.MX_HardLand && !a.climb) a.landT = 0.62; // grosse chute : roulade de réception
       if (!a.onGround && a.vel.y < -6 && (a === this.player || a.pos.distanceToSquared(this.player.pos) < 900)) this.fx.dust(a.pos, a.vel.y < -10 ? 10 : 5, a.vel.y < -10 ? 1.4 : 0.9);
       if (!a.onGround && a.vel.y < -7 && a === this.player) { this.cam.dip -= Math.min(0.3, -a.vel.y * 0.025); this.audio.play('land', null, 0.6); this.input.rumble(0.3, 0.2, 80); if (a.vel.y < -13 && !a.swim) this.damage(a, (-a.vel.y - 13) * 6, null); }
       a.pos.y = gy; a.vel.y = 0; a.onGround = true;
@@ -977,11 +1013,20 @@ export class Game {
     const shooting = this.time - (a.lastShot || -9) < 0.35, aimingNow = shooting || (a === this.player && this.aiming);
     const MX = !!ch.actions.MX_Idle;
     a.airT = a.onGround ? 0 : (a.airT || 0) + dt;
-    if (a.climb) { name = MX ? 'MX_Vault' : 'Interact'; speed = MX ? 3.5 / Math.max(0.3, a.climb.dur) * 0.55 : 2; fade = 0.08; }
-    else if (a.rollT > 0) { name = 'Roll'; speed = 1.6; }
+    const P = MX && this.pistolStance(a);
+    // élan : un sprint lâché d'un coup finit en dérapage (une fois), une grosse chute en roulade de réception
+    if (a.landT > 0) a.landT -= dt; if (a.stopT > 0) a.stopT -= dt;
+    if (MX && ch.actions.MX_Stop && a.onGround && !a.channel && !a.climb && a.rollT <= 0 && a.slideT <= 0 && (a.crouchK || 0) < 0.5 && (a.prevSp || 0) > 5.4 && sp < 2.2 && !(a.stopT > 0)) a.stopT = 0.6;
+    a.prevSp = lerp(a.prevSp || 0, sp, 1 - Math.exp(-dt * 6));
+    if (!this.over) a.celebrate = undefined; else if (a.alive && a.celebrate === undefined) a.celebrate = this.winner === a.team && MX ? pick(['MX_Dance', 'MX_Dance2', 'MX_Cheer', 'MX_Taunt', 'MX_FistPump']) : null;
+    if (a.celebrate && ch.actions[a.celebrate]) { name = a.celebrate; fade = 0.3; }
+    else if (a.climb) { name = MX ? 'MX_Vault' : 'Interact'; speed = MX ? 3.5 / Math.max(0.3, a.climb.dur) * 0.55 : 2; fade = 0.08; }
+    else if (a.rollT > 0) { name = ch.actions.MX_Roll ? 'MX_Roll' : 'Roll'; speed = name === 'MX_Roll' ? 1.9 : 1.6; fade = 0.06; }
     else if (a.channel) { name = a.channel.anim || 'Interact'; }
-    else if (MX && a.slideT > 0) { name = 'MX_CrouchIdle'; fade = 0.1; }
-    else if (!a.onGround && MX && a.airT > 0.06) { name = a.vel.y > 0.5 && a.airT < 0.5 ? 'MX_Jump' : 'MX_Fall'; speed = name === 'MX_Jump' ? 1.4 : 1; fade = 0.12; }
+    else if (MX && a.slideT > 0) { name = ch.actions.MX_Slide ? 'MX_Slide' : 'MX_CrouchIdle'; speed = 1.25; fade = 0.08; }
+    else if (MX && a.landT > 0 && a.onGround) { name = 'MX_HardLand'; speed = 1.9; fade = 0.05; }
+    else if (!a.onGround && MX && a.airT > 0.06) { const J = P && ch.actions.MXP_Jump; name = a.vel.y > 0.5 && a.airT < 0.5 ? (J ? 'MXP_Jump' : 'MX_Jump') : (P && ch.actions.MXP_Fall ? 'MXP_Fall' : 'MX_Fall'); speed = name === 'MX_Jump' ? 1.4 : name === 'MXP_Jump' ? 1.1 : 1; fade = 0.12; }
+    else if (MX && a.stopT > 0) { name = 'MX_Stop'; speed = 1.5; fade = 0.1; }
     else if (!a.onGround && !MX) { name = 'Idle_Gun_Pointing'; }
     else if (MX) { name = 'LOCO'; }
     else if (sp > 0.8) {
@@ -999,17 +1044,18 @@ export class Game {
     const spine = ch.bones.Chest || ch.bones.Torso;
     const pb = ch.procBones || (ch.procBones = [spine, ch.bones.Head, ch.bones.Torso, ch.bones.UpperLegL, ch.bones.UpperLegR, ch.bones.LowerLegL, ch.bones.LowerLegR, ch.bones.FootL, ch.bones.FootR].filter((b, i, arr) => b && arr.indexOf(b) === i));
     for (const b of pb) if (b.userData.base) b.quaternion.copy(b.userData.base);
-    a.animAcc = (a.animAcc || 0) + dt; if (!a.lodHidden && (!far || a.animAcc > 0.1)) { ch.mixer.update(a.animAcc); a.animAcc = 0; }
+    a.animAcc = (a.animAcc || 0) + dt; let mixed = false; if (!a.lodHidden && (!far || a.animAcc > 0.1)) { ch.mixer.update(a.animAcc); a.animAcc = 0; mixed = true; }
     for (const b of pb) (b.userData.base ||= new THREE.Quaternion()).copy(b.quaternion);
+    this.applyOverlays(a, dt, mixed && !far);
     // glissade : le corps bascule en arrière
-    ch.model.rotation.x = lerp(ch.model.rotation.x, a.slideT > 0 ? (ch.actions.MX_Idle ? -0.45 : -0.9) : 0, 1 - Math.exp(-dt * 14));
+    ch.model.rotation.x = lerp(ch.model.rotation.x, a.slideT > 0 ? (ch.actions.MX_Slide ? 0 : ch.actions.MX_Idle ? -0.45 : -0.9) : 0, 1 - Math.exp(-dt * 14));
     const ck = a.slideT > 0 || a.rollT > 0 || a.climb ? 0 : (a.crouchK || 0);
-    ch.model.position.y = lerp(ch.model.position.y, (a.slideT > 0 ? (ch.actions.MX_Idle ? 0.05 : 0.35) : 0) - (ch.actions.MX_CrouchIdle ? 0 : ck * 0.42) + (-chars[a.skin].minY * chars[a.skin].k), 1 - Math.exp(-dt * 14));
+    ch.model.position.y = lerp(ch.model.position.y, (a.slideT > 0 ? (ch.actions.MX_Slide ? 0 : ch.actions.MX_Idle ? 0.05 : 0.35) : 0) - (ch.actions.MX_CrouchIdle ? 0 : ck * 0.42) + (-chars[a.skin].minY * chars[a.skin].k), 1 - Math.exp(-dt * 14));
     if (ck > 0.02 && !far && !ch.actions.MX_CrouchIdle) this.crouchPose(a, ck);
     // le buste suit la visée verticale
     // le buste oriente l'arme vers le point visé (réticule pour le joueur, cible pour les bots)
-    const busy = a.climb || a.rollT > 0 || a.slideT > 0 || a.channel || a.inCar || !a.alive;
-    const pointing = MX ? (name === 'LOCO' && (aimingNow || sp < 2.8 || a.locoRunF < 0.5)) || name === 'MX_CrouchIdle' || (/MX_(Jump|Fall)/.test(name) && aimingNow) : name === 'Idle_Gun_Pointing' || name === 'Run_Shoot' || (/^Run_(Left|Right|Back)$/.test(name) && aimingNow);
+    const busy = a.climb || a.rollT > 0 || a.slideT > 0 || a.landT > 0 || a.stopT > 0 || a.celebrate || a.channel || a.inCar || !a.alive || a.overs?.some((o) => o.busy && o.t < o.dur - 0.12);
+    const pointing = MX ? (name === 'LOCO' && (aimingNow || sp < 2.8 || a.locoRunF < 0.5)) || name === 'MX_CrouchIdle' || (/MXP?_(Jump|Fall)/.test(name) && aimingNow) : name === 'Idle_Gun_Pointing' || name === 'Run_Shoot' || (/^Run_(Left|Right|Back)$/.test(name) && aimingNow);
     // correction seulement quand l'animation tient l'arme pointée (sinon le buste se cambrerait pour relever une arme baissée)
     const wantW = busy || !pointing ? 0 : 1;
     a.aimW = lerp(a.aimW ?? 0, wantW, 1 - Math.exp(-dt * 14));
@@ -1027,14 +1073,19 @@ export class Game {
     const dirs = [Math.max(0, fd), Math.max(0, -fd), Math.max(0, sd), Math.max(0, -sd)]; const tot = dirs[0] + dirs[1] + dirs[2] + dirs[3] || 1;
     let D = 0, Wsum = 0;
     const add = (n, w, dist) => { if (w <= 0.001 || !A[n]) return; want[n] = (want[n] || 0) + w; if (dist) { D += w * dist; Wsum += w; } };
-    if (crouch) { add('MX_CrouchIdle', 1 - move); add('MX_CrouchWalk', move, 0.55 * 1.6); }
+    // allure du pistolet (tenu à deux mains) si l'arme en main est un pistolet ou un revolver, sinon fusil ; repli sur le fusil quand un clip manque
+    const P = this.pistolStance(a), N = (n) => (P && A['MXP_' + n] ? 'MXP_' : 'MX_') + n;
+    if (crouch) {
+      add(N('CrouchIdle'), 1 - move);
+      const C = [N('CrouchWalk'), A.MX_CrouchB ? 'MX_CrouchB' : N('CrouchWalk'), A.MX_CrouchL ? 'MX_CrouchL' : N('CrouchWalk'), A.MX_CrouchR ? 'MX_CrouchR' : N('CrouchWalk')];
+      for (let i = 0; i < 4; i++) add(C[i], move * dirs[i] / tot, STRIDE[C[i]] || 0.88);
+    }
     else {
-      add('MX_Idle', 1 - move);
-      const runF = aiming ? 'MX_RunAim' : 'MX_Run';
-      const W = ['MX_WalkF', 'MX_WalkB', 'MX_WalkL', 'MX_WalkR'], Rn = [runF, 'MX_RunBack', 'MX_RunLeft', 'MX_RunRight'];
-      const WD = [1.28, 1.31, 1.67, 1.81], RD = [2.75, 1.38, 1.91, 1.65];
-      for (let i = 0; i < 4; i++) { const k = move * dirs[i] / tot; add(W[i], k * (1 - run), WD[i]); add(Rn[i], k * run, RD[i]); }
-      a.locoRunF = run * dirs[0] / tot * (aiming ? 0 : 1);
+      add(N('Idle'), 1 - move);
+      const runF = P ? N('Run') : aiming ? 'MX_RunAim' : 'MX_Run';
+      const W = [N('WalkF'), N('WalkB'), N('WalkL'), N('WalkR')], Rn = [runF, N('RunBack'), N('RunLeft'), N('RunRight')];
+      for (let i = 0; i < 4; i++) { const k = move * dirs[i] / tot; add(W[i], k * (1 - run), STRIDE[W[i]] || 1.4); add(Rn[i], k * run, STRIDE[Rn[i]] || 2); }
+      a.locoRunF = run * dirs[0] / tot * (aiming || P ? 0 : 1);
     }
     if (Wsum > 0) L.phase = (L.phase + dt * sp / (D / Wsum)) % 1;
     for (const n of Object.keys(want)) L.acts.add(n);
@@ -1270,7 +1321,7 @@ export class Game {
     const p = this.player; if (p.alive && p.team === team && Math.hypot(p.pos.x - z.center[0], p.pos.z - z.center[1]) < z.radius) { this.stats.captures++; this.earn(150, `Capture de ${z.id}`); }
   }
   endMatch() {
-    this.over = true; const w = this.score.ordre > this.score.civils ? 'ordre' : this.score.civils > this.score.ordre ? 'civils' : null;
+    this.over = true; const w = this.score.ordre > this.score.civils ? 'ordre' : this.score.civils > this.score.ordre ? 'civils' : null; this.winner = w;
     const win = w === this.save.team; if (win) this.earn(1000, 'Victoire', true);
     this.audio.engine(false);
     this.save.xp = (this.save.xp || 0) + this.stats.kills * 10 + this.stats.captures * 30 + (win ? 200 : 50); this.save.lvl = 1 + Math.floor(Math.sqrt(this.save.xp / 100)); this.persist();
