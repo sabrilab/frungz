@@ -71,7 +71,7 @@ export class Game {
 
   buildZones() {
     for (const z of this.zoneState) {
-      const g = new THREE.Group(); g.position.set(z.center[0], this.world.groundY(z.center[0], z.center[1]) + 0.05, z.center[1]);
+      const g = new THREE.Group(); g.position.set(z.center[0], this.world.groundY(z.center[0], z.center[1], (z.y ?? 0.17) + 0.5) + 0.05, z.center[1]);
       const ring = new THREE.Mesh(new THREE.RingGeometry(z.radius - 0.25, z.radius, 64).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#fff', transparent: true, opacity: 0.8, depthWrite: false }));
       const disc = new THREE.Mesh(new THREE.CircleGeometry(z.radius, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#fff', transparent: true, opacity: 0.08, depthWrite: false }));
       const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4), new THREE.MeshBasicMaterial({ map: textTex(z.id, { w: 128, h: 128, bg: null, fg: '#fff', size: 110 }), transparent: true, depthTest: false, side: THREE.DoubleSide }));
@@ -596,11 +596,20 @@ export class Game {
       this.dropPile(e.pos.clone().add(V(0, 0.1, 0)), [it]); if (by === this.player) this.toast(`${it.icon} ${it.nom} · ${fmt(it.valeur)} € par terre`, '#ffcc3d'); }
   }
   updateMetro(dt) {
-    const M = this.world.metro; if (!M) return; M.update(this.time, dt, this.camera.position);
+    const M = this.world.metro; if (!M) return; this.world.dynFloors = M.floors;
+    // passagers : repérés dans le repère de leur voiture avant le déplacement
+    const riders = [];
+    for (const a of this.actors) { if (!a.alive || a.inCar || a.pos.y > -6) continue;
+      for (const c of M.cars) { if (c.x == null) continue; const dx = a.pos.x - c.x, dz = a.pos.z - c.z, cs = Math.cos(c.yaw), sn = Math.sin(c.yaw); const lx = dx * cs - dz * sn, lz = dx * sn + dz * cs;
+        if (Math.abs(lx) < M.halfIn + 0.15 && Math.abs(lz) < c.L / 2 + 0.6 && Math.abs(a.pos.y - (c.y + M.floor)) < 0.7) { riders.push({ a, c, lx, lz, ly: a.pos.y - c.y, yaw: c.yaw }); break; } } }
+    M.update(this.time, dt, this.camera.position);
+    for (const r of riders) { const c = r.c, cs = Math.cos(c.yaw), sn = Math.sin(c.yaw), dyaw = c.yaw - r.yaw;
+      r.a.pos.set(c.x + r.lx * cs + r.lz * sn, c.y + r.ly, c.z - r.lx * sn + r.lz * cs); if (dyaw) { r.a.yaw += dyaw; if (r.a === this.player) this.cam.yaw += dyaw; } r.a.onMetro = true; }
     if (Math.abs(M.v) < 2) return;
-    for (const a of this.actors) { if (!a.alive || a.inCar || a.pos.y > -6.5) continue;
-      for (const c of M.cols) { const dx = a.pos.x - c.x, dz = a.pos.z - c.z, lx = dx * c.cs - dz * c.sn, lz = dx * c.sn + dz * c.cs;
-        if (Math.abs(lx) < c.hx + 0.45 && Math.abs(lz) < c.hz + 0.6) { this.damage(a, 999, null, { weapon: 'metro' }); if (a === this.player) this.announce('', 'Percuté par le métro', '#ff4a4a', 2); break; } } }
+    // une rame lancée tue ce qu'elle percute sur la voie (pas les passagers)
+    for (const a of this.actors) { if (!a.alive || a.inCar || a.pos.y > -6.5 || riders.some((r) => r.a === a)) continue;
+      for (const c of M.cars) { const dx = a.pos.x - c.x, dz = a.pos.z - c.z, cs = Math.cos(c.yaw), sn = Math.sin(c.yaw), lx = dx * cs - dz * sn, lz = dx * sn + dz * cs;
+        if (Math.abs(lx) < c.W / 2 + 0.45 && Math.abs(lz) < c.L / 2 + 0.6 && a.pos.y < c.y + M.floor - 0.4) { this.damage(a, 999, null, { weapon: 'metro' }); if (a === this.player) this.announce('', 'Percuté par le métro', '#ff4a4a', 2); break; } } }
   }
   syncCar(c) {
     c.obj.position.copy(c.pos); c.obj.rotation.set(c.pitchV || 0, c.yaw, c.rollV || 0, 'YXZ');

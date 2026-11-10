@@ -137,9 +137,12 @@ export class World {
   hk(x, z) { const B = this.bounds, S = this.hS; const i = Math.max(0, Math.min(this.hnx - 1, Math.round((x - B.x0) / S))), j = Math.max(0, Math.min(this.hnz - 1, Math.round((z - B.z0) / S))); return (j * this.hnx + i) * this.NL; }
   // sol sous un point : la couche la plus haute sous (ref + 0,7 m) ; sans ref, la plus haute (la rue)
   groundY(x, z, ref = 1e9) {
-    const b = this.hk(x, z), H = this.H; let low = H[b];
-    for (let l = 0; l < this.NL; l++) { const y = H[b + l]; if (y < -1e8) break; if (y <= ref + 0.7) return y; low = y; }
-    return low;
+    const b = this.hk(x, z), H = this.H; let low = H[b], g = null;
+    for (let l = 0; l < this.NL; l++) { const y = H[b + l]; if (y < -1e8) break; if (y <= ref + 0.7) { g = y; break; } low = y; }
+    if (g == null) g = low;
+    // planchers mobiles (voitures du métro)
+    const F = this.dynFloors; if (F && ref < -3) for (const f of F) { if (f.y > ref + 0.7 || f.y <= g) continue; const dx = x - f.x, dz = z - f.z; if (Math.abs(dx * f.cs - dz * f.sn) < f.hx && Math.abs(dx * f.sn + dz * f.cs) < f.hz) g = f.y; }
+    return g;
   }
   // plafond au-dessus d'un point (la couche du dessus), ou Infinity
   ceilY(x, z, ref) { const b = this.hk(x, z), H = this.H; let c = Infinity; for (let l = 0; l < this.NL; l++) { const y = H[b + l]; if (y < -1e8) break; if (y > ref + 0.7) c = y; else break; } return c; }

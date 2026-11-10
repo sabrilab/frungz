@@ -1,5 +1,5 @@
 {
- "version": 5,
+ "version": 6,
  "joueurs": "50 contre 50 (50 spawns par camp)",
  "unite": "mètre",
  "axes": "x est, y haut, z sud",
@@ -8,8 +8,8 @@
   "plateformes": "surfaces où l'on peut se tenir : poly [[x,z]...] à la hauteur y ; escaladable = accessible en grimpant depuis le sol voisin.",
   "rampes": "escaliers : a et b = milieu du bas/haut de la volée [x,y,z], largeur, marches, palier [début,fin] le long de l'axe.",
   "boutiques": "vitrines (pv, centre, normale), interieur (poly au sol, sol_y, hauteur), porte, butin (valeur, rarete, poids, pos). Nœuds glTF : BOUTIQUE_<id>, VITRINE_<id> (verre), VITRINE_<id>_CASSEE (masquée au départ : extras.cachee), BUTIN_<id> (extras : butin, type, valeur, rarete), RECELEUR.",
-  "zones": "v5 : cinq zones en ligne d'ouest en est, toujours actives : A Galerie Valois (galerie couverte devant la base de l'ordre), B Métro (place de la bouche), C Fontaine (centre), D Marché, E Galerie Vivienne (devant le QG des civils). F (Théâtre, nord) et G (Tertre, y = 9,2) ont optionnelle: true pour les grandes parties. y absent = 0,17.",
-  "metro": "ligne F souterraine. Niveaux : couloirs y -5 (plafond -1,8), quais y -8 (voûte jusqu'à -1,2), voie y -9,2. Bouches : entree [x,z] au sommet de l'escalier, cap = direction de sortie. Le raycast de sol doit partir des pieds + 0,7 m (jamais du ciel), sinon on retombe sur la chaussée. Rame : nœud METRO_RAME, 3 voitures RAME_VOITURE_n (longueur 10 m, largeur 2,4) à placer à l'abscisse curviligne s + decalage sur rame.chemin ; s(t) suit l'horaire (periode 60 s : arret 6 s à l'ouest, trajet 24 s, arret 6 s à l'est, trajet 24 s retour ; profil 'sinus' = u - sin(2πu)/2π). Collisions de la rame à gérer par le jeu (boîte mobile) ; une rame qui percute un joueur sur la voie peut le tuer. Les colliders 'metro_mur' et 'quai_bord' ont y0 négatif. Les plafonds et voûtes doivent projeter des ombres (castShadow), sinon le soleil traverse le sol.",
+  "zones": "v6 : six zones toujours actives : A Galerie Valois, B Métro (place de la bouche), C Fontaine (centre), D Marché, E Galerie Vivienne, et H Salle des Échanges, SOUTERRAINE (y = -8, sous la Fontaine : même x,z que C à 1 m près, il faut tester |y joueur - zone.y| < 3 et poser le marqueur à zone.y, pas sur la rue). F (Théâtre) et G (Tertre, y = 9,2) restent optionnelles. y absent = 0,17.",
+  "metro": "ligne F souterraine. Niveaux : couloirs y -5 (plafond -1,8), quais y -8 (voûte jusqu'à -1,2), voie y -9,2. Bouches : entree [x,z] au sommet de l'escalier, cap = direction de sortie. Le raycast de sol doit partir des pieds + 0,7 m (jamais du ciel). v6 : metro.salle = Salle des Échanges (fosse y -8, balcons en U y -5, plafond -1 ; bouches bouche_fontaine_ouest/est = escaliers suspendus depuis la place, on peut passer dessous). Quai avancé jusqu'à z 18,6 (au ras de la rame). Rame : nœud METRO_RAME, 3 voitures RAME_VOITURE_n à placer à l'abscisse s + decalage sur rame.chemin ; horaire periode 60 s : arret 10 s à l'ouest, trajet 20 s, arret 10 s à l'est, trajet 20 s (profil 'sinus' = u - sin(2πu)/2π). v6 : les voitures sont CREUSES. Repère local d'une voiture : x en travers (+x = côté quai dans les deux stations), z vers l'avant, y au-dessus du roulement (y monde = -9,2 + y). Plancher à y 1,15 (monde -8,05), plafond 3,55. Portes côté quai seulement : rame.voiture.portes (z, largeur 1,3) ; vantaux = enfants RAME_PORTES_G_n / RAME_PORTES_D_n, exportés OUVERTS (position.z = ∓0,62) ; pour fermer, position.z = 0. Collisions : remplacer la boîte pleine par RAME_VOITURE_n.userData.parois (boîtes {x,z,hx,hz,y0,h} en repère local, yaw de la voiture) ; quand les portes sont fermées, ajouter une boîte par porte. Les joueurs à bord (|x|<1,19, plancher) doivent être emportés avec la voiture (delta de position + rotation). Les intercirculations (passage 1,1 m) relient les 3 voitures ; cabines fermées aux deux bouts. Les colliders 'metro_mur' et 'quai_bord' ont y0 négatif. Plafonds et voûtes : castShadow.",
   "cassables": "nœuds glTF CASSABLE_<type>_<n>, pivot au centre de la base (position, yaw) ; le même id est dans le champ 'cassable' de leurs colliders (à désactiver quand l'objet casse). pv = points de vie, points = score de vandalisme ; butin facultatif (DAB, parcmètres, bouquinistes, distributeurs) à faire tomber. Conseil : fusionner par type (BatchedMesh / InstancedMesh) au chargement pour limiter les appels de rendu.",
   "parkings": "places pour les voitures du pack : x, z, y, yaw (rad, avant de la voiture vers +z local), gabarit voiture | utilitaire | fourgon ; rue = rue de stationnement ; camp/role pour les fourgons de la base de l'ordre et les voitures renversées des barricades civiles (renversee: true).",
   "seine": "eau : poly et y de la surface (-5,5 ; fond -6,6) : un joueur qui tombe dedans nage ou réapparaît. Quai bas à y -4,5 (escaliers 'escalier_quai_*' depuis le quai haut), pont de pierre (tablier à 0,17 m) ; la limite nord de la zone jouable passe à z -160 sur le pont (barrage de police).",
@@ -47,11 +47,11 @@
      ],
      [
       -66,
-      17.5
+      18.6
      ],
      [
       -99,
-      17.5
+      18.6
      ]
     ],
     "y": -8,
@@ -90,11 +90,11 @@
      ],
      [
       99,
-      17.5
+      18.6
      ],
      [
       66,
-      17.5
+      18.6
      ]
     ],
     "y": -8,
@@ -151,6 +151,16 @@
     "station": "frungz_ouest"
    },
    {
+    "id": "bouche_fontaine_ouest",
+    "entree": [
+     -9.5,
+     -4.9
+    ],
+    "y": 0.17,
+    "cap": 0,
+    "station": "frungz_ouest"
+   },
+   {
     "id": "bouche_base_nord_est",
     "entree": [
      104.5,
@@ -179,18 +189,115 @@
     "y": 0.17,
     "cap": 0,
     "station": "frungz_est"
+   },
+   {
+    "id": "bouche_fontaine_est",
+    "entree": [
+     9.5,
+     -4.9
+    ],
+    "y": 0.17,
+    "cap": 0,
+    "station": "frungz_est"
    }
   ],
+  "salle": {
+   "id": "salle_echanges",
+   "nom": "Salle des Échanges",
+   "fosse": [
+    [
+     -24,
+     -16
+    ],
+    [
+     24,
+     -16
+    ],
+    [
+     24,
+     4
+    ],
+    [
+     -24,
+     4
+    ]
+   ],
+   "balcons": [
+    [
+     [
+      -30,
+      -20
+     ],
+     [
+      -24,
+      -20
+     ],
+     [
+      -24,
+      6
+     ],
+     [
+      -30,
+      6
+     ]
+    ],
+    [
+     [
+      24,
+      -20
+     ],
+     [
+      30,
+      -20
+     ],
+     [
+      30,
+      6
+     ],
+     [
+      24,
+      6
+     ]
+    ],
+    [
+     [
+      -24,
+      -20
+     ],
+     [
+      24,
+      -20
+     ],
+     [
+      24,
+      -16
+     ],
+     [
+      -24,
+      -16
+     ]
+    ]
+   ],
+   "y": -8,
+   "yBalcons": -5,
+   "plafond": -1,
+   "escaliers": [
+    "salle_ouest",
+    "salle_nord_ouest",
+    "salle_est",
+    "salle_nord_est"
+   ]
+  },
   "rame": {
    "ligne": "F",
    "periode": 60,
-   "arret": 6,
-   "trajet": 24,
+   "arret": 10,
+   "trajet": 20,
    "sOuest": 16.5,
    "sEst": 188.43,
    "longueur": 204.93,
    "profil": "sinus",
-   "horaire": "0–6 s à quai Ouest, 6–30 s vers l’Est, 30–36 s à quai Est, 36–60 s vers l’Ouest",
+   "horaire": "0–10 s à quai Ouest (portes ouvertes), 10–30 s vers l’Est, 30–40 s à quai Est, 40–60 s vers l’Ouest",
    "chemin": [
     [
      -99,
@@ -1187,7 +1294,86 @@
      -9.2,
      20
     ]
-   ]
+   ],
+   "voiture": {
+    "plancher": 1.15,
+    "demiLargeurInt": 1.19,
+    "demiLargeur": 1.25,
+    "plafond": 3.55,
+    "portes": [
+     {
+      "cote": 1,
+      "z": -3.3,
+      "largeur": 1.3,
+      "hauteur": 2,
+      "quai": true
+     },
+     {
+      "cote": 1,
+      "z": 0,
+      "largeur": 1.3,
+      "hauteur": 2,
+      "quai": true
+     },
+     {
+      "cote": 1,
+      "z": 3.3,
+      "largeur": 1.3,
+      "hauteur": 2,
+      "quai": true
+     }
+    ],
+    "parois": [
+     {
+      "x": 1.22,
+      "z": -4.475,
+      "hx": 0.07,
+      "hz": 0.525,
+      "y0": 1.15,
+      "h": 2.4,
+      "role": "flanc"
+     },
+     {
+      "x": 1.22,
+      "z": -1.65,
+      "hx": 0.07,
+      "hz": 1,
+      "y0": 1.15,
+      "h": 2.4,
+      "role": "flanc"
+     },
+     {
+      "x": 1.22,
+      "z": 1.65,
+      "hx": 0.07,
+      "hz": 1,
+      "y0": 1.15,
+      "h": 2.4,
+      "role": "flanc"
+     },
+     {
+      "x": 1.22,
+      "z": 4.475,
+      "hx": 0.07,
+      "hz": 0.525,
+      "y0": 1.15,
+      "h": 2.4,
+      "role": "flanc"
+     },
+     {
+      "x": -1.22,
+      "z": 0,
+      "hx": 0.07,
+      "hz": 5,
+      "y0": 1.15,
+      "h": 2.4,
+      "role": "flanc"
+     }
+    ],
+    "courseVantaux": 0.62,
+    "cabine": 4.15,
+    "passage": 0.55
+   }
   }
  },
  "cassables": [
@@ -4111,7 +4297,7 @@
    "id": "CASSABLE_lampadaire_136",
    "type": "lampadaire",
    "pos": [
-    -8,
+    -6.4,
     0.17,
     -12
    ],
@@ -4123,7 +4309,7 @@
    "id": "CASSABLE_lampadaire_137",
    "type": "lampadaire",
    "pos": [
-    8,
+    6.4,
     0.17,
     -12
    ],
@@ -9738,6 +9924,17 @@
    "radius": 3.8
   },
   {
+   "id": "H",
+   "name": "Salle des Échanges",
+   "center": [
+    0,
+    -4
+   ],
+   "radius": 6,
+   "y": -8,
+   "souterraine": true
+  },
+  {
    "id": "F",
    "name": "Théâtre",
    "center": [
@@ -11752,6 +11949,215 @@
   },
   {
    "type": "box",
+   "x": -24.1,
+   "z": -8.5,
+   "hx": 0.1,
+   "hz": 7.5,
+   "yaw": 0,
+   "y0": -8,
+   "h": 3,
+   "tag": "quai_bord"
+  },
+  {
+   "type": "box",
+   "x": -24.1,
+   "z": 3,
+   "hx": 0.1,
+   "hz": 1,
+   "yaw": 0,
+   "y0": -8,
+   "h": 3,
+   "tag": "quai_bord"
+  },
+  {
+   "type": "box",
+   "x": -22,
+   "z": -16.1,
+   "hx": 2,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -8,
+   "h": 3,
+   "tag": "quai_bord"
+  },
+  {
+   "type": "box",
+   "x": -14,
+   "z": -16.1,
+   "hx": 3,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -8,
+   "h": 3,
+   "tag": "quai_bord"
+  },
+  {
+   "type": "box",
+   "x": 0,
+   "z": -16.1,
+   "hx": 8,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -8,
+   "h": 3,
+   "tag": "quai_bord"
+  },
+  {
+   "type": "box",
+   "x": 14,
+   "z": -16.1,
+   "hx": 3,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -8,
+   "h": 3,
+   "tag": "quai_bord"
+  },
+  {
+   "type": "box",
+   "x": 22,
+   "z": -16.1,
+   "hx": 2,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -8,
+   "h": 3,
+   "tag": "quai_bord"
+  },
+  {
+   "type": "box",
+   "x": 0,
+   "z": 4.1,
+   "hx": 24,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -8,
+   "h": 7,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": 24.1,
+   "z": -8.5,
+   "hx": 0.1,
+   "hz": 7.5,
+   "yaw": 0,
+   "y0": -8,
+   "h": 3,
+   "tag": "quai_bord"
+  },
+  {
+   "type": "box",
+   "x": 24.1,
+   "z": 3,
+   "hx": 0.1,
+   "hz": 1,
+   "yaw": 0,
+   "y0": -8,
+   "h": 3,
+   "tag": "quai_bord"
+  },
+  {
+   "type": "box",
+   "x": -30.1,
+   "z": -10.75,
+   "hx": 0.1,
+   "hz": 9.25,
+   "yaw": 0,
+   "y0": -5,
+   "h": 4,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": -30.1,
+   "z": 3.75,
+   "hx": 0.1,
+   "hz": 2.25,
+   "yaw": 0,
+   "y0": -5,
+   "h": 4,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": 0,
+   "z": -20.1,
+   "hx": 30,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -5,
+   "h": 4,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": -27,
+   "z": 6.1,
+   "hx": 3,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -5,
+   "h": 4,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": 27,
+   "z": 6.1,
+   "hx": 3,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -5,
+   "h": 4,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": -23.9,
+   "z": 5,
+   "hx": 0.1,
+   "hz": 1,
+   "yaw": 0,
+   "y0": -5,
+   "h": 4,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": 23.9,
+   "z": 5,
+   "hx": 0.1,
+   "hz": 1,
+   "yaw": 0,
+   "y0": -5,
+   "h": 4,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": 30.1,
+   "z": -10.75,
+   "hx": 0.1,
+   "hz": 9.25,
+   "yaw": 0,
+   "y0": -5,
+   "h": 4,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": 30.1,
+   "z": 3.75,
+   "hx": 0.1,
+   "hz": 2.25,
+   "yaw": 0,
+   "y0": -5,
+   "h": 4,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
    "x": -106.1,
    "z": 0,
    "hx": 0.1,
@@ -11807,9 +12213,9 @@
   },
   {
    "type": "box",
-   "x": -68.5,
+   "x": -71.5,
    "z": -1.6,
-   "hx": 8.5,
+   "hx": 5.5,
    "hz": 0.1,
    "yaw": 0,
    "y0": -5,
@@ -11818,9 +12224,31 @@
   },
   {
    "type": "box",
-   "x": 68.5,
+   "x": -42,
    "z": -1.6,
-   "hx": 8.5,
+   "hx": 12,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -5,
+   "h": 3.2,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": 42,
+   "z": -1.6,
+   "hx": 12,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -5,
+   "h": 3.2,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": 71.5,
+   "z": -1.6,
+   "hx": 5.5,
    "hz": 0.1,
    "yaw": 0,
    "y0": -5,
@@ -11876,6 +12304,28 @@
    "x": -66,
    "z": 1.6,
    "hx": 3,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -5,
+   "h": 3.2,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": -45,
+   "z": 1.6,
+   "hx": 15,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -5,
+   "h": 3.2,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": 45,
+   "z": 1.6,
+   "hx": 15,
    "hz": 0.1,
    "yaw": 0,
    "y0": -5,
@@ -12038,17 +12488,6 @@
   },
   {
    "type": "box",
-   "x": -59.9,
-   "z": 0,
-   "hx": 0.1,
-   "hz": 1.5,
-   "yaw": 0,
-   "y0": -5,
-   "h": 3.2,
-   "tag": "metro_mur"
-  },
-  {
-   "type": "box",
    "x": -72.1,
    "z": 2,
    "hx": 0.1,
@@ -12064,6 +12503,50 @@
    "z": 2,
    "hx": 0.1,
    "hz": 0.5,
+   "yaw": 0,
+   "y0": -5,
+   "h": 3.2,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": -66.1,
+   "z": -2.75,
+   "hx": 0.1,
+   "hz": 1.25,
+   "yaw": 0,
+   "y0": -5,
+   "h": 3.2,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": -60,
+   "z": -4.1,
+   "hx": 6,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -5,
+   "h": 3.2,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": 60,
+   "z": -4.1,
+   "hx": 6,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -5,
+   "h": 3.2,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": -53.9,
+   "z": -2.75,
+   "hx": 0.1,
+   "hz": 1.25,
    "yaw": 0,
    "y0": -5,
    "h": 3.2,
@@ -12478,17 +12961,6 @@
   },
   {
    "type": "box",
-   "x": 59.9,
-   "z": 0,
-   "hx": 0.1,
-   "hz": 1.5,
-   "yaw": 0,
-   "y0": -5,
-   "h": 3.2,
-   "tag": "metro_mur"
-  },
-  {
-   "type": "box",
    "x": 68.9,
    "z": 2,
    "hx": 0.1,
@@ -12504,6 +12976,28 @@
    "z": 2,
    "hx": 0.1,
    "hz": 0.5,
+   "yaw": 0,
+   "y0": -5,
+   "h": 3.2,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": 53.9,
+   "z": -2.75,
+   "hx": 0.1,
+   "hz": 1.25,
+   "yaw": 0,
+   "y0": -5,
+   "h": 3.2,
+   "tag": "metro_mur"
+  },
+  {
+   "type": "box",
+   "x": 66.1,
+   "z": -2.75,
+   "hx": 0.1,
+   "hz": 1.25,
    "yaw": 0,
    "y0": -5,
    "h": 3.2,
@@ -14128,6 +14622,17 @@
   },
   {
    "type": "box",
+   "x": -82.5,
+   "z": 18.6,
+   "hx": 16.5,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -9.2,
+   "h": 1.2,
+   "tag": "quai_bord"
+  },
+  {
+   "type": "box",
    "x": -92.55,
    "z": 8.35,
    "hx": 4.75,
@@ -14153,6 +14658,17 @@
    "x": -74.5,
    "z": 8.35,
    "hx": 1.7,
+   "hz": 0.3,
+   "yaw": 0,
+   "y0": -8,
+   "h": 0.9,
+   "tag": "banc"
+  },
+  {
+   "type": "box",
+   "x": -46.5,
+   "z": 8.35,
+   "hx": 21.7,
    "hz": 0.3,
    "yaw": 0,
    "y0": -8,
@@ -14190,6 +14706,28 @@
    "yaw": 0,
    "y0": -8,
    "h": 0.45,
+   "tag": "banc"
+  },
+  {
+   "type": "box",
+   "x": 82.5,
+   "z": 18.6,
+   "hx": 16.5,
+   "hz": 0.1,
+   "yaw": 0,
+   "y0": -9.2,
+   "h": 1.2,
+   "tag": "quai_bord"
+  },
+  {
+   "type": "box",
+   "x": 46.5,
+   "z": 8.35,
+   "hx": 21.7,
+   "hz": 0.3,
+   "yaw": 0,
+   "y0": -8,
+   "h": 0.9,
    "tag": "banc"
   },
   {
@@ -14497,6 +15035,39 @@
   },
   {
    "type": "box",
+   "x": -9.5,
+   "z": -16,
+   "hx": 0.12,
+   "hz": 1.77,
+   "yaw": 1.571,
+   "y0": 0.17,
+   "h": 1.1,
+   "tag": "bouche_metro"
+  },
+  {
+   "type": "box",
+   "x": -11.15,
+   "z": -10.75,
+   "hx": 0.12,
+   "hz": 5.37,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 1.1,
+   "tag": "bouche_metro"
+  },
+  {
+   "type": "box",
+   "x": -7.85,
+   "z": -10.75,
+   "hx": 0.12,
+   "hz": 5.37,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 1.1,
+   "tag": "bouche_metro"
+  },
+  {
+   "type": "box",
    "x": 104.5,
    "z": -4,
    "hx": 0.12,
@@ -14665,6 +15236,821 @@
    "y0": 0.17,
    "h": 1.1,
    "tag": "bouche_metro"
+  },
+  {
+   "type": "box",
+   "x": 9.5,
+   "z": -16,
+   "hx": 0.12,
+   "hz": 1.77,
+   "yaw": 1.571,
+   "y0": 0.17,
+   "h": 1.1,
+   "tag": "bouche_metro"
+  },
+  {
+   "type": "box",
+   "x": 7.85,
+   "z": -10.75,
+   "hx": 0.12,
+   "hz": 5.37,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 1.1,
+   "tag": "bouche_metro"
+  },
+  {
+   "type": "box",
+   "x": 11.15,
+   "z": -10.75,
+   "hx": 0.12,
+   "hz": 5.37,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 1.1,
+   "tag": "bouche_metro"
+  },
+  {
+   "type": "circle",
+   "x": -9.5,
+   "z": -12.8,
+   "r": 0.3,
+   "y0": -8,
+   "h": 4.03,
+   "tag": "pile"
+  },
+  {
+   "type": "circle",
+   "x": -9.5,
+   "z": -8.8,
+   "r": 0.3,
+   "y0": -8,
+   "h": 6,
+   "tag": "pile"
+  },
+  {
+   "type": "box",
+   "x": -10.95,
+   "z": -15.475,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -5,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -10.95,
+   "z": -14.425,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -4.48,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -10.95,
+   "z": -13.375,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -3.97,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -10.95,
+   "z": -12.325,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -3.45,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -10.95,
+   "z": -11.275,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -2.93,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -10.95,
+   "z": -10.225,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -2.41,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -10.95,
+   "z": -9.175,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -1.9,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -10.95,
+   "z": -8.125,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -1.38,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -10.95,
+   "z": -7.075,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -0.86,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -10.95,
+   "z": -6.025,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -0.35,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -8.05,
+   "z": -15.475,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -5,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -8.05,
+   "z": -14.425,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -4.48,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -8.05,
+   "z": -13.375,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -3.97,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -8.05,
+   "z": -12.325,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -3.45,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -8.05,
+   "z": -11.275,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -2.93,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -8.05,
+   "z": -10.225,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -2.41,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -8.05,
+   "z": -9.175,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -1.9,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -8.05,
+   "z": -8.125,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -1.38,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -8.05,
+   "z": -7.075,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -0.86,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -8.05,
+   "z": -6.025,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -0.35,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "circle",
+   "x": 9.5,
+   "z": -12.8,
+   "r": 0.3,
+   "y0": -8,
+   "h": 4.03,
+   "tag": "pile"
+  },
+  {
+   "type": "circle",
+   "x": 9.5,
+   "z": -8.8,
+   "r": 0.3,
+   "y0": -8,
+   "h": 6,
+   "tag": "pile"
+  },
+  {
+   "type": "box",
+   "x": 8.05,
+   "z": -15.475,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -5,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 8.05,
+   "z": -14.425,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -4.48,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 8.05,
+   "z": -13.375,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -3.97,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 8.05,
+   "z": -12.325,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -3.45,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 8.05,
+   "z": -11.275,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -2.93,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 8.05,
+   "z": -10.225,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -2.41,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 8.05,
+   "z": -9.175,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -1.9,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 8.05,
+   "z": -8.125,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -1.38,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 8.05,
+   "z": -7.075,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -0.86,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 8.05,
+   "z": -6.025,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -0.35,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 10.95,
+   "z": -15.475,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -5,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 10.95,
+   "z": -14.425,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -4.48,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 10.95,
+   "z": -13.375,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -3.97,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 10.95,
+   "z": -12.325,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -3.45,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 10.95,
+   "z": -11.275,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -2.93,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 10.95,
+   "z": -10.225,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -2.41,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 10.95,
+   "z": -9.175,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -1.9,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 10.95,
+   "z": -8.125,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -1.38,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 10.95,
+   "z": -7.075,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -0.86,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 10.95,
+   "z": -6.025,
+   "hx": 0.06,
+   "hz": 0.525,
+   "yaw": 0,
+   "y0": -0.35,
+   "h": 1.52,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -24,
+   "z": -8.5,
+   "hx": 0.05,
+   "hz": 7.5,
+   "yaw": 0,
+   "y0": -5,
+   "h": 1.05,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -24,
+   "z": 3,
+   "hx": 0.05,
+   "hz": 1,
+   "yaw": 0,
+   "y0": -5,
+   "h": 1.05,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 24,
+   "z": -8.5,
+   "hx": 0.05,
+   "hz": 7.5,
+   "yaw": 0,
+   "y0": -5,
+   "h": 1.05,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 24,
+   "z": 3,
+   "hx": 0.05,
+   "hz": 1,
+   "yaw": 0,
+   "y0": -5,
+   "h": 1.05,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -22,
+   "z": -16,
+   "hx": 2,
+   "hz": 0.05,
+   "yaw": 0,
+   "y0": -5,
+   "h": 1.05,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -14,
+   "z": -16,
+   "hx": 3,
+   "hz": 0.05,
+   "yaw": 0,
+   "y0": -5,
+   "h": 1.05,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 0,
+   "z": -16,
+   "hx": 8,
+   "hz": 0.05,
+   "yaw": 0,
+   "y0": -5,
+   "h": 1.05,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 14,
+   "z": -16,
+   "hx": 3,
+   "hz": 0.05,
+   "yaw": 0,
+   "y0": -5,
+   "h": 1.05,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 22,
+   "z": -16,
+   "hx": 2,
+   "hz": 0.05,
+   "yaw": 0,
+   "y0": -5,
+   "h": 1.05,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -15,
+   "z": -11,
+   "hx": 0.45,
+   "hz": 0.45,
+   "yaw": 0,
+   "y0": -8,
+   "h": 7,
+   "tag": "pilier"
+  },
+  {
+   "type": "box",
+   "x": -15,
+   "z": 1,
+   "hx": 0.45,
+   "hz": 0.45,
+   "yaw": 0,
+   "y0": -8,
+   "h": 7,
+   "tag": "pilier"
+  },
+  {
+   "type": "box",
+   "x": -5,
+   "z": -11,
+   "hx": 0.45,
+   "hz": 0.45,
+   "yaw": 0,
+   "y0": -8,
+   "h": 7,
+   "tag": "pilier"
+  },
+  {
+   "type": "box",
+   "x": -5,
+   "z": 1,
+   "hx": 0.45,
+   "hz": 0.45,
+   "yaw": 0,
+   "y0": -8,
+   "h": 7,
+   "tag": "pilier"
+  },
+  {
+   "type": "box",
+   "x": 5,
+   "z": -11,
+   "hx": 0.45,
+   "hz": 0.45,
+   "yaw": 0,
+   "y0": -8,
+   "h": 7,
+   "tag": "pilier"
+  },
+  {
+   "type": "box",
+   "x": 5,
+   "z": 1,
+   "hx": 0.45,
+   "hz": 0.45,
+   "yaw": 0,
+   "y0": -8,
+   "h": 7,
+   "tag": "pilier"
+  },
+  {
+   "type": "box",
+   "x": 15,
+   "z": -11,
+   "hx": 0.45,
+   "hz": 0.45,
+   "yaw": 0,
+   "y0": -8,
+   "h": 7,
+   "tag": "pilier"
+  },
+  {
+   "type": "box",
+   "x": 15,
+   "z": 1,
+   "hx": 0.45,
+   "hz": 0.45,
+   "yaw": 0,
+   "y0": -8,
+   "h": 7,
+   "tag": "pilier"
+  },
+  {
+   "type": "circle",
+   "x": 0,
+   "z": -4,
+   "r": 1.3,
+   "y0": -8,
+   "h": 2.65,
+   "tag": "kiosque"
+  },
+  {
+   "type": "box",
+   "x": 3.253,
+   "z": -0.747,
+   "hx": 1.3,
+   "hz": 0.45,
+   "yaw": -0.785,
+   "y0": -8,
+   "h": 0.95,
+   "tag": "jardiniere"
+  },
+  {
+   "type": "box",
+   "x": -3.253,
+   "z": -0.747,
+   "hx": 1.3,
+   "hz": 0.45,
+   "yaw": -2.356,
+   "y0": -8,
+   "h": 0.95,
+   "tag": "jardiniere"
+  },
+  {
+   "type": "box",
+   "x": -3.253,
+   "z": -7.253,
+   "hx": 1.3,
+   "hz": 0.45,
+   "yaw": -3.927,
+   "y0": -8,
+   "h": 0.95,
+   "tag": "jardiniere"
+  },
+  {
+   "type": "box",
+   "x": 3.253,
+   "z": -7.253,
+   "hx": 1.3,
+   "hz": 0.45,
+   "yaw": -5.498,
+   "y0": -8,
+   "h": 0.95,
+   "tag": "jardiniere"
+  },
+  {
+   "type": "box",
+   "x": -19,
+   "z": 3.3,
+   "hx": 1.5,
+   "hz": 0.4,
+   "yaw": 0,
+   "y0": -8,
+   "h": 0.45,
+   "tag": "banc"
+  },
+  {
+   "type": "box",
+   "x": -10,
+   "z": 3.3,
+   "hx": 1.5,
+   "hz": 0.4,
+   "yaw": 0,
+   "y0": -8,
+   "h": 0.45,
+   "tag": "banc"
+  },
+  {
+   "type": "box",
+   "x": 10,
+   "z": 3.3,
+   "hx": 1.5,
+   "hz": 0.4,
+   "yaw": 0,
+   "y0": -8,
+   "h": 0.45,
+   "tag": "banc"
+  },
+  {
+   "type": "box",
+   "x": 19,
+   "z": 3.3,
+   "hx": 1.5,
+   "hz": 0.4,
+   "yaw": 0,
+   "y0": -8,
+   "h": 0.45,
+   "tag": "banc"
+  },
+  {
+   "type": "box",
+   "x": -2.5,
+   "z": 3.6,
+   "hx": 0.55,
+   "hz": 0.35,
+   "yaw": 0,
+   "y0": -8,
+   "h": 1.8,
+   "tag": "automate"
+  },
+  {
+   "type": "box",
+   "x": 2.5,
+   "z": 3.6,
+   "hx": 0.55,
+   "hz": 0.35,
+   "yaw": 0,
+   "y0": -8,
+   "h": 1.8,
+   "tag": "automate"
   },
   {
    "type": "poly",
@@ -19074,8 +20460,8 @@
   },
   {
    "type": "box",
-   "x": -11,
-   "z": -16,
+   "x": -14,
+   "z": -17,
    "hx": 0.9,
    "hz": 0.9,
    "yaw": 0.722,
@@ -19085,8 +20471,8 @@
   },
   {
    "type": "box",
-   "x": 11,
-   "z": -16,
+   "x": 14,
+   "z": -17,
    "hx": 0.9,
    "hz": 0.9,
    "yaw": 0.718,
@@ -19173,7 +20559,7 @@
   },
   {
    "type": "box",
-   "x": -8,
+   "x": -6.4,
    "z": -12,
    "hx": 0.5,
    "hz": 0.5,
@@ -19185,7 +20571,7 @@
   },
   {
    "type": "box",
-   "x": 8,
+   "x": 6.4,
    "z": -12,
    "hx": 0.5,
    "hz": 0.5,
@@ -27748,11 +29134,11 @@
     ],
     [
      -66,
-     17.5
+     18.6
     ],
     [
      -99,
-     17.5
+     18.6
     ]
    ],
    "y": -8,
@@ -27772,16 +29158,88 @@
     ],
     [
      99,
-     17.5
+     18.6
     ],
     [
      66,
-     17.5
+     18.6
     ]
    ],
    "y": -8,
    "escaladable": false,
    "tag": "quai"
+  },
+  {
+   "id": "balcon_salle_0",
+   "poly": [
+    [
+     -30,
+     -20
+    ],
+    [
+     -24,
+     -20
+    ],
+    [
+     -24,
+     6
+    ],
+    [
+     -30,
+     6
+    ]
+   ],
+   "y": -5,
+   "escaladable": false,
+   "tag": "balcon"
+  },
+  {
+   "id": "balcon_salle_1",
+   "poly": [
+    [
+     24,
+     -20
+    ],
+    [
+     30,
+     -20
+    ],
+    [
+     30,
+     6
+    ],
+    [
+     24,
+     6
+    ]
+   ],
+   "y": -5,
+   "escaladable": false,
+   "tag": "balcon"
+  },
+  {
+   "id": "balcon_salle_2",
+   "poly": [
+    [
+     -24,
+     -20
+    ],
+    [
+     24,
+     -20
+    ],
+    [
+     24,
+     -16
+    ],
+    [
+     -24,
+     -16
+    ]
+   ],
+   "y": -5,
+   "escaladable": false,
+   "tag": "balcon"
   },
   {
    "id": "butte",
@@ -28671,6 +30129,54 @@
    "palier": null
   },
   {
+   "id": "salle_ouest",
+   "a": [
+    -24,
+    -5,
+    0.5
+   ],
+   "b": [
+    -18,
+    -8,
+    0.5
+   ],
+   "largeur": 3,
+   "marches": 18,
+   "palier": null
+  },
+  {
+   "id": "salle_nord_ouest",
+   "a": [
+    -18.5,
+    -5,
+    -16
+   ],
+   "b": [
+    -18.5,
+    -8,
+    -10
+   ],
+   "largeur": 3,
+   "marches": 18,
+   "palier": null
+  },
+  {
+   "id": "bouche_fontaine_ouest",
+   "a": [
+    -9.5,
+    -5,
+    -16
+   ],
+   "b": [
+    -9.5,
+    0.17,
+    -5.5
+   ],
+   "largeur": 3,
+   "marches": 31,
+   "palier": null
+  },
+  {
    "id": "bouche_base_nord_est",
    "a": [
     104.5,
@@ -28764,6 +30270,54 @@
    ],
    "largeur": 3,
    "marches": 18,
+   "palier": null
+  },
+  {
+   "id": "salle_est",
+   "a": [
+    18,
+    -8,
+    0.5
+   ],
+   "b": [
+    24,
+    -5,
+    0.5
+   ],
+   "largeur": 3,
+   "marches": 18,
+   "palier": null
+  },
+  {
+   "id": "salle_nord_est",
+   "a": [
+    18.5,
+    -5,
+    -16
+   ],
+   "b": [
+    18.5,
+    -8,
+    -10
+   ],
+   "largeur": 3,
+   "marches": 18,
+   "palier": null
+  },
+  {
+   "id": "bouche_fontaine_est",
+   "a": [
+    9.5,
+    -5,
+    -16
+   ],
+   "b": [
+    9.5,
+    0.17,
+    -5.5
+   ],
+   "largeur": 3,
+   "marches": 31,
    "palier": null
   },
   {
@@ -31402,5 +32956,5 @@
    }
   }
  ],
- "triangles": 2099400
+ "triangles": 2099528
 }
