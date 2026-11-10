@@ -212,11 +212,11 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 
 /* séries : barre au-dessus de la vie */
 #streakbar { position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); display: flex; gap: 8px; align-items: flex-end; pointer-events: none; }
-#streakbar .sk { position: relative; width: 112px; padding: 5px 8px 6px; border-radius: 10px; background: var(--panel); border: 2px solid rgba(255,255,255,.12); text-align: center; transition: transform .25s cubic-bezier(.3,1.8,.5,1), border-color .2s; }
+#streakbar .sk { position: relative; width: 104px; padding: 5px 8px 6px; border-radius: 10px; background: var(--panel); border: 2px solid rgba(255,255,255,.12); text-align: center; transition: transform .25s cubic-bezier(.3,1.8,.5,1), border-color .2s; }
 #streakbar .sk .ic { font-size: 20px; line-height: 1; color: var(--dim); opacity: .7; }
 #streakbar .sk .nm { font: 900 9.5px/1.15 Inter; letter-spacing: .05em; color: var(--dim); text-transform: uppercase; min-height: 2.3em; display: flex; align-items: center; justify-content: center; text-wrap: balance; }
 #streakbar .sk .pips { display: flex; gap: 3px; justify-content: center; margin-top: 4px; }
-#streakbar .sk .pips i { width: 9px; height: 9px; border-radius: 3px; background: rgba(255,255,255,.14); transform: rotate(45deg); }
+#streakbar .sk .pips i { width: 8px; height: 8px; border-radius: 3px; background: rgba(255,255,255,.14); transform: rotate(45deg); }
 #streakbar .sk .pips i.f { background: #9ff59f; box-shadow: 0 0 6px #9ff59f; }
 #streakbar .sk.next { border-color: rgba(159,245,159,.5); } #streakbar .sk.next .ic { color: #fff; opacity: 1; }
 #streakbar .sk.ready { border-color: var(--gold); background: linear-gradient(180deg, rgba(255,204,61,.35), rgba(20,20,20,.75)); transform: translateY(-8px) scale(1.06); animation: skready .9s ease-in-out infinite alternate; }
@@ -231,13 +231,21 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 #streakbar .count.bump { animation: cbump .35s cubic-bezier(.3,2,.5,1); }
 @keyframes cbump { from { transform: scale(1.35); color: #9ff59f; } }
 
-/* grand titre (multi-éliminations, série prête, atout lancé) : un bloc qui claque puis se fige */
-#multik { position: absolute; left: 0; right: 0; top: 30%; text-align: center; pointer-events: none; font: 40px Bungee, Inter; letter-spacing: .03em; color: #fff; opacity: 0; text-shadow: 0 3px 0 rgba(0,0,0,.75), 0 0 18px rgba(0,0,0,.45); }
-#multik span { display: inline-block; padding: 2px 18px 4px; border-top: 2px solid currentColor; border-bottom: 2px solid currentColor; background: linear-gradient(90deg, transparent, rgba(8,10,16,.55) 18%, rgba(8,10,16,.55) 82%, transparent); }
-#multik small { display: block; margin-top: 6px; font: 800 13px Inter; letter-spacing: .16em; text-transform: uppercase; text-shadow: 0 1px 3px #000; color: #e9edf3; }
-#multik .ico { stroke-width: 2.4; }
-#multik.on { animation: mk 1.8s cubic-bezier(.2,.9,.3,1) forwards; }
-@keyframes mk { 0% { opacity: 0; transform: scale(1.35); filter: blur(3px); } 9% { opacity: 1; transform: scale(.98); filter: none; } 14%, 82% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-14px); } }
+/* grand titre (multi-éliminations, série prête, atout lancé) : grosses lettres qui rebondissent (le style Frungz d'origine) */
+#multik { position: absolute; left: 0; right: 0; top: 30%; text-align: center; pointer-events: none; font: 54px Bungee, Inter; color: #fff; opacity: 0; -webkit-text-stroke: 2px #111; text-shadow: 0 6px 0 #111, 0 0 30px rgba(255,204,61,.5); }
+#multik small { display: block; font: 900 16px Inter; letter-spacing: .14em; -webkit-text-stroke: 0; text-shadow: 0 2px 4px #000; color: #ffe9a8; }
+#multik .ico { stroke-width: 2.6; -webkit-text-stroke: 0; filter: drop-shadow(0 4px 0 #111); }
+#multik.on { animation: mk 1.7s cubic-bezier(.2,1.6,.4,1) forwards; }
+#multik span { display: inline-block; animation: mkl .5s cubic-bezier(.3,2.2,.5,1) both; }
+@keyframes mk { 0% { opacity: 0; transform: scale(2.6) rotate(-8deg); } 12% { opacity: 1; transform: scale(.9) rotate(3deg); } 22% { transform: scale(1.06) rotate(-2deg); } 30%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-40px) scale(.8) rotate(4deg); } }
+@keyframes mkl { from { transform: translateY(-60px) scaleY(1.6) scaleX(.6); opacity: 0; } 60% { transform: translateY(6px) scaleY(.7) scaleX(1.3); } }
+/* plus la série est grosse, plus ça claque : taille, halo coloré, durée, et les derniers paliers vibrent */
+#multik.m3, #multik.t3 { font-size: 60px; } #multik.m4, #multik.t4 { font-size: 66px; } #multik.m5, #multik.m6, #multik.t5, #multik.t6 { font-size: 74px; }
+#multik.m4, #multik.m5, #multik.m6, #multik.t4, #multik.t5, #multik.t6 { text-shadow: 0 6px 0 #111, 0 0 40px currentColor; }
+#multik.t3.on, #multik.t4.on, #multik.m4.on { animation-duration: 2.2s; }
+#multik.t5.on, #multik.t6.on, #multik.m5.on, #multik.m6.on { animation: mk 2.8s cubic-bezier(.2,1.6,.4,1) forwards, mkbuzz .09s linear 6 .25s; }
+@keyframes mkbuzz { 50% { translate: 3px -2px; } }
+#multik.t6 small, #multik.m6 small { font-size: 19px; color: #fff; }
 
 /* flash plein écran (série prête, activation, gros tir) */
 #flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
@@ -323,3 +331,16 @@ body.scoped #cross, body.scoped #streakbar { visibility: hidden; }
 .clsinfo { display: flex; gap: 6px 14px; flex-wrap: wrap; justify-content: center; max-width: 680px; font-size: 12px; color: var(--dim); }
 .clsinfo b { color: #fff; } .clsinfo i { color: var(--gold); font-style: normal; }
 .shead { grid-column: 1 / -1; margin: 8px 0 0; font: 13px Bungee, sans-serif; letter-spacing: .04em; color: var(--dim); }
+
+/* canonnière : vue du ciel, réticule et compte à rebours */
+#gunship { position: absolute; inset: 0; pointer-events: none; display: none; color: #e9ffe9; font: 800 13px Inter; letter-spacing: .12em; text-shadow: 0 1px 2px #000; background: radial-gradient(ellipse at center, rgba(40,70,40,0) 45%, rgba(10,25,10,.55)); }
+#gunship.on { display: block; }
+#hud.gs #cross, #hud.gs #weapons, #hud.gs #ammo, #hud.gs #streakbar, #hud.gs #minimap, #hud.gs #help { display: none !important; }
+#gunship .rt { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; transform: translate(-50%, -50%); border: 2px solid rgba(233,255,233,.8); }
+#gunship .rt::before, #gunship .rt::after { content: ''; position: absolute; background: rgba(233,255,233,.9); }
+#gunship .rt::before { left: 50%; top: -40px; bottom: -40px; width: 2px; margin-left: -1px; } #gunship .rt::after { top: 50%; left: -40px; right: -40px; height: 2px; margin-top: -1px; }
+#gunship .rt.big { width: 190px; height: 190px; border-style: dashed; }
+#gunship .tl { position: absolute; left: 24px; top: 90px; line-height: 1.7; } #gunship .tl b { font: 26px Bungee, Inter; letter-spacing: .04em; color: #fff; }
+#gunship .wp { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); display: flex; gap: 22px; }
+#gunship .wp span { padding: 4px 10px; border: 2px solid rgba(233,255,233,.5); border-radius: 6px; } #gunship .wp span.off { opacity: .4; } #gunship .wp kbd { font: 900 11px Inter; background: #e9ffe9; color: #111; border-radius: 4px; padding: 0 5px; margin-right: 6px; }
+#gunship .bar { position: absolute; left: 24px; top: 150px; width: 180px; height: 6px; background: rgba(255,255,255,.15); } #gunship .bar i { display: block; height: 100%; background: #e9ffe9; }

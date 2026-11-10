@@ -18,6 +18,11 @@ const P = {
   missile: '<path d="M15 3l6 0 0 6-9 9-6-6zM6 12l-3 3 3 3M12 18l-3 3-3-3M9 15l-6 6"/>',
   petards: '<path d="M7 21V11M12 21V9M17 21V11M5.5 11h3M10.5 9h3M15.5 11h3M12 9c0-2 1-3 2.5-3.5M16 3l.8 1.6L18.5 5l-1.6.8L16 7.5l-.8-1.6L13.5 5l1.6-.8z"/>',
   artifice: '<path d="M12 2v5M12 17v5M2 12h5M17 12h5M4.9 4.9l3.5 3.5M15.6 15.6l3.5 3.5M4.9 19.1l3.5-3.5M15.6 8.4l3.5-3.5"/><circle cx="12" cy="12" r="1.6"/>',
+  heli: '<path d="M3 5h18M12 5v3M5 12c0-2.5 2-4 5-4h4l2 4H5zM5 12c0 2 1.5 3 4 3h7l1-3M17 12h5l1-2M22 10v4M8 15l-1 3M14 15l1 3M5 18h12"/>',
+  jet: '<path d="M12 2l1.6 6L21 13v2l-7.4-2.4L13 18l2.5 2v1.5L12 20.5 8.5 21.5V20l2.5-2-.6-5.4L3 15v-2l7.4-5z"/>',
+  swarm: '<rect x="3" y="4" width="5" height="3" rx="1"/><rect x="15" y="3" width="5" height="3" rx="1"/><rect x="9" y="14" width="6" height="4" rx="1"/><path d="M1.5 4h8M13.5 3h8M7 14h10M12 18l-2 4M12 18l2 4M5 7l3 5M18 6l-3 6"/>',
+  gunship: '<path d="M2 11h20v2H2zM9 8h6l1 3H8zM6 13l-2 5h3l3-5M18 13l2 5h-3l-3-5M11 4h2v4h-2zM7.5 11V9M16.5 11V9"/><circle cx="12" cy="16" r="1.6"/>',
+  nuke: '<circle cx="12" cy="12" r="2.2"/><path d="M12 9.8L9 4.5a8 8 0 0 1 6 0zM14 13.2l6 .1a8 8 0 0 1-3 5.2zM10 13.2l-3 5.3a8 8 0 0 1-3-5.2z"/>',
   // statut
   skull: '<path d="M12 3a8 8 0 0 0-8 8c0 2.8 1.4 4.6 3 5.6V21h10v-4.4c1.6-1 3-2.8 3-5.6a8 8 0 0 0-8-8zM10 21v-2.5M14 21v-2.5"/><circle cx="9" cy="11.5" r="1.7"/><circle cx="15" cy="11.5" r="1.7"/>',
   target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5"/>',

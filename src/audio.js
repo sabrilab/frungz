@@ -165,11 +165,13 @@ export function createAudio() {
   function horn() { if (!ctx) return; const out = spatial(null, 0.5), t = ctx.currentTime; tone(out, t, 0.45, 392, 392, 0.3, 'square'); tone(out, t, 0.45, 494, 494, 0.25, 'square'); }
   function siren(pos) { if (!ctx) return; const out = spatial(pos, 0.5, 16); if (!out) return; const t = ctx.currentTime; for (let i = 0; i < 3; i++) { tone(out, t + i * 0.7, 0.35, 660, 660, 0.25, 'triangle'); tone(out, t + i * 0.7 + 0.35, 0.35, 880, 880, 0.25, 'triangle'); } }
   // --- retours de série : sobres et secs (ton sérieux) : impact sourd, petit clic métallique, bip radio
-  function multi(n) { if (!ctx) return; const out = spatial(null, 0.5), t = ctx.currentTime; const k = Math.min(n, 5);
-    tone(out, t, 0.22, 95, 42, 0.75, 'sine'); // impact sourd
-    noise(out, t, 0.05, 'bandpass', 3200, 2400, 3, 0.35); // clic métallique
-    for (let i = 0; i < Math.min(k - 1, 3); i++) tone(out, t + 0.07 + i * 0.07, 0.12, 330 * Math.pow(1.122, i + k - 2), 330 * Math.pow(1.122, i + k - 2), 0.07, 'triangle'); }
-  function streakReady() { if (!ctx) return; const out = spatial(null, 0.55), t = ctx.currentTime; // radio : souffle puis double bip
+  // multi-éliminations : arpège qui monte avec le nombre d'éliminations, puis sifflet (le retour « Frungz » d'origine)
+  function multi(n) { if (!ctx) return; const out = spatial(null, 0.55), t = ctx.currentTime;
+    tone(out, t, 0.22, 95, 42, 0.6, 'sine'); // impact sourd sous l'arpège
+    for (let i = 0; i <= Math.min(n, 6); i++) tone(out, t + i * 0.055, 0.16, 523 * Math.pow(1.26, i), 523 * Math.pow(1.26, i) * 1.02, 0.26, 'square');
+    tone(out, t + 0.06 * (Math.min(n, 6) + 1), 0.35, 400, 1400, 0.2, 'sine'); }
+  function streakReady(tier = 0) { if (!ctx) return; const out = spatial(null, 0.55), t = ctx.currentTime; // radio : souffle puis double bip ; les gros paliers ajoutent un accord de cuivres et un grondement
+    if (tier >= 3) { const k = tier - 3; [[196, 0], [262, 0.16], [330, 0.32], [392 * (k >= 2 ? 1.5 : 1), 0.5]].forEach(([f, d]) => { tone(out, t + d, d > 0.4 ? 0.9 : 0.15, f, f, 0.22, 'sawtooth'); tone(out, t + d, d > 0.4 ? 0.9 : 0.15, f * 1.006, f * 1.006, 0.14, 'square'); }); tone(out, t, 1.4, 60, 30, 0.6 + k * 0.1, 'sine'); noise(out, t + 0.5, 0.9, 'lowpass', 900, 80, 0.7, 0.4 + k * 0.1); }
     noise(out, t, 0.12, 'bandpass', 1800, 1200, 1.5, 0.3);
     tone(out, t + 0.14, 0.09, 1046, 1046, 0.12, 'sine'); tone(out, t + 0.27, 0.16, 1318, 1318, 0.12, 'sine'); tone(out, t + 0.1, 0.8, 70, 55, 0.35, 'sine'); }
   function streakGo() { if (!ctx) return; const out = spatial(null, 0.8), t = ctx.currentTime; tone(out, t, 0.6, 120, 50, 0.7, 'sine'); noise(out, t, 0.4, 'lowpass', 1800, 200, 1, 0.6); noise(out, t + 0.05, 0.25, 'bandpass', 1500, 900, 1.5, 0.2); }
@@ -186,8 +188,12 @@ export function createAudio() {
   // bouquet de feu d'artifice : pop + crépitement
   function firework(pos) { if (!ctx) return; const out = spatial(pos, 1.2, 30); if (!out) return; const t = ctx.currentTime; noise(out, t, 0.5, 'lowpass', 1600, 100, 0.8, 1.2); tone(out, t, 0.35, 160, 40, 0.9); for (let i = 0, k = active.length > 16 ? 3 : 9; i < k; i++) noise(out, t + 0.25 + Math.random() * 0.8, 0.04, 'highpass', 5000, 3000, 1, 0.35); }
   // drone : bourdonnement
+  // aérien : battement de rotor, passage de chasseur, coups de canon
+  function rotor(pos, vol = 1) { if (!ctx) return; const out = spatial(pos, 0.9 * vol, 30); if (!out) return; const t = ctx.currentTime; for (let i = 0; i < 4; i++) noise(out, t + i * 0.125, 0.09, 'lowpass', 520, 160, 1.2, 0.8); }
+  function jet(pos) { if (!ctx) return; const out = spatial(pos, 1.6, 120); if (!out) return; const t = ctx.currentTime; noise(out, t, 3.2, 'bandpass', 600, 3800, 0.8, 0.9); noise(out, t + 1.2, 2.5, 'lowpass', 2500, 120, 0.7, 1.1); tone(out, t + 1, 2.2, 180, 60, 0.4, 'sawtooth'); }
+  function cannon(pos, big) { if (!ctx) return; const out = spatial(pos, big ? 1.4 : 0.8, big ? 60 : 30); if (!out) return; const t = ctx.currentTime; tone(out, t, big ? 0.9 : 0.25, big ? 70 : 140, 30, big ? 1.1 : 0.6); noise(out, t, big ? 1.1 : 0.2, 'lowpass', big ? 1400 : 2600, 80, 0.7, big ? 1 : 0.6); }
   function buzz(pos, dur = 1) { if (!ctx) return; const out = spatial(pos, 0.5, 12); if (!out) return; const t = ctx.currentTime; tone(out, t, dur, 190, 170, 0.2, 'sawtooth'); }
-  const api = { whistle, crack, firework, buzz, init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state, journal: journal.slice() }), _ctx: () => ctx };
+  const api = { whistle, crack, firework, buzz, rotor, jet, cannon, init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state, journal: journal.slice() }), _ctx: () => ctx };
   // chaque bruitage : noté dans les derniers sons joués, et une erreur audio (valeur non finie refusée par le navigateur)
   // ne remonte plus dans le code du jeu, où elle interrompait l'action en cours
   for (const k of Object.keys(Object.getOwnPropertyDescriptors(api))) { const d = Object.getOwnPropertyDescriptor(api, k); if (typeof d.value !== 'function' || k === 'init' || k === 'debug' || k === '_ctx') continue; const f = d.value, quiet = k === 'engine' || k === 'roll';
