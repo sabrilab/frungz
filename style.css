@@ -285,3 +285,12 @@ body.scoped #cross, body.scoped #streakbar { visibility: hidden; }
 #shopList { max-height: 40vh; }
 @media (max-width: 640px) { #shopPv { flex-direction: column; } .pvbox { width: 100%; } }
 #shop { background: radial-gradient(ellipse at 50% 25%, rgba(34,40,58,.97), rgba(6,7,12,.98)); z-index: 7; }
+
+/* lancer visé */
+#throwhud { position: absolute; left: 50%; top: calc(50% - 150px); transform: translateX(-50%) scale(.9); opacity: 0; transition: opacity .15s, transform .2s cubic-bezier(.3,1.6,.5,1); text-align: center; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+#throwhud.on { opacity: 1; transform: translateX(-50%) scale(1); }
+#throwhud b { font: 18px Bungee; color: var(--c); text-shadow: 0 2px 0 rgba(0,0,0,.6), 0 0 14px var(--c); }
+#throwhud .pw { display: flex; align-items: center; gap: 3px; } #throwhud .pw span { font-size: 11px; font-weight: 800; margin-right: 5px; color: #fff; text-shadow: 0 1px 2px #000; }
+#throwhud .pw i { width: 12px; height: 9px; border-radius: 2px; background: rgba(255,255,255,.2); transform: skewX(-12deg); } #throwhud .pw i.on { background: var(--c); box-shadow: 0 0 6px var(--c); }
+#throwhud small { font-size: 11px; color: #eee; text-shadow: 0 1px 2px #000; background: rgba(0,0,0,.35); padding: 3px 8px; border-radius: 6px; }
+#throwhud kbd { font-size: 10px; }

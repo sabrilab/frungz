@@ -141,5 +141,13 @@ export function createAudio() {
   function heart(v) { if (!ctx) return; const out = spatial(null, 0.25 * v), t = ctx.currentTime; tone(out, t, 0.12, 70, 45, 0.9, 'sine'); tone(out, t + 0.16, 0.1, 62, 40, 0.6, 'sine'); }
   function breath(inhale) { if (!ctx) return; const out = spatial(null, 0.2), t = ctx.currentTime; noise(out, t, inhale ? 0.5 : 0.8, 'bandpass', inhale ? 700 : 500, inhale ? 1100 : 300, 1.2, 0.5); }
   function whiz(pos) { if (!ctx) return; const out = spatial(pos, 0.6, 4); if (!out) return; const t = ctx.currentTime; noise(out, t, 0.18, 'bandpass', 4000, 1500, 6, 0.6); }
-  return { init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state }) };
+  // sifflement de fusée / missile qui tombe du ciel
+  function whistle(pos, dur = 1.2) { if (!ctx) return; const out = spatial(pos, 0.7, 30); if (!out) return; const t = ctx.currentTime; tone(out, t, dur, 2600, 600, 0.18, 'sine'); noise(out, t, dur, 'bandpass', 3000, 900, 4, 0.25); }
+  // pétard : claquement sec
+  function crack(pos) { if (!ctx) return; const out = spatial(pos, 0.9, 14); if (!out) return; const t = ctx.currentTime; noise(out, t, 0.07, 'highpass', 3000, 1500, 0.7, 1.1); tone(out, t, 0.05, 900, 200, 0.4, 'square'); }
+  // bouquet de feu d'artifice : pop + crépitement
+  function firework(pos) { if (!ctx) return; const out = spatial(pos, 1.2, 30); if (!out) return; const t = ctx.currentTime; noise(out, t, 0.5, 'lowpass', 1600, 100, 0.8, 1.2); tone(out, t, 0.35, 160, 40, 0.9); for (let i = 0; i < 9; i++) noise(out, t + 0.25 + Math.random() * 0.8, 0.04, 'highpass', 5000, 3000, 1, 0.35); }
+  // drone : bourdonnement
+  function buzz(pos, dur = 1) { if (!ctx) return; const out = spatial(pos, 0.5, 12); if (!out) return; const t = ctx.currentTime; tone(out, t, dur, 190, 170, 0.2, 'sawtooth'); }
+  return { whistle, crack, firework, buzz, init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state }) };
 }

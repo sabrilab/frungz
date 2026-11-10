@@ -7,6 +7,7 @@ import { shopCase, lootMesh, beam, socle, baseSign, receleur, barricade, BARRICA
 import { pointInPoly } from './world.js';
 import * as Anim from './anim.js';
 import { rideMethods } from './deuxroues.js';
+import { installThrows, THROWS, solveThrow } from './throws.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
@@ -26,8 +27,8 @@ const $ = (id) => document.getElementById(id);
 const GRAV = 19, EYE = 1.62;
 // séries d'éliminations (sans mourir) : 3, 5, 7
 const STREAKS = {
-  ordre: [{ n: 3, id: 'drone', nom: 'Drone', icon: '🛸', desc: 'repère les Frungz sur la carte' }, { n: 5, id: 'crs', nom: 'Renforts CRS', icon: '🚓', desc: '4 CRS blindés débarquent' }, { n: 7, id: 'lacry', nom: 'Barrage lacrymo', icon: '💨', desc: 'pluie de lacrymo sur les Frungz' }],
-  civils: [{ n: 3, id: 'petards', nom: 'Pétards', icon: '🧨', desc: 'sonne les flics autour de toi' }, { n: 5, id: 'emeute', nom: 'Émeute', icon: '✊', desc: '4 émeutiers te rejoignent' }, { n: 7, id: 'artifice', nom: "Feu d'artifice", icon: '🎆', desc: 'mortiers sur les flics' }],
+  ordre: [{ n: 3, id: 'drone', nom: 'Drone', icon: '🛸', desc: 'lance-le : il survole la zone et repère les Frungz' }, { n: 5, id: 'crs', nom: 'CRS parachutés', icon: '🪂', desc: '4 CRS blindés tombent du ciel là où tu vises' }, { n: 7, id: 'lacry', nom: 'Frappe du ciel', icon: '🚀', desc: 'pluie de missiles lacrymo sur la zone visée' }],
+  civils: [{ n: 3, id: 'petards', nom: 'Bouquet de pétards', icon: '🧨', desc: 'lance-le : il sonne les flics de la zone' }, { n: 5, id: 'emeute', nom: 'Émeute en parapluie', icon: '☂️', desc: '4 émeutiers descendent en parapluie là où tu vises' }, { n: 7, id: 'artifice', nom: 'Bouquet final', icon: '🎆', desc: 'pluie de fusées sur la zone visée' }],
 };
 const STREAK_BY_ID = Object.fromEntries(Object.values(STREAKS).flat().map((r) => [r.id, r]));
 const LOOT_PTS = { commun: 2, rare: 4, epique: 6, legendaire: 10 };
@@ -177,7 +178,7 @@ export class Game {
   respawn(a, first) {
     const sp = pick(this.world.spawns[a.team].slice(0, Math.max(20, this.opts.teamSize))); const [x, z] = this.world.randomFree(sp.x, sp.z, this.actors.length > 50 ? 4 : 2.5);
     a.pos.set(x, this.world.groundY(x, z), z); a.vel.set(0, 0, 0); a.yaw = a.team === 'ordre' ? Math.PI / 2 : -Math.PI / 2; a.pitch = 0;
-    a.hp = 100; a.armor = a.bot ? (a.team === 'ordre' ? 50 : 25) : 25 * (this.save.upgrades.gilet || 0); a.alive = true; a.bag = []; a.bagKg = 0; a.nades = 2; a.momentum = 0; a.slideT = a.rollT = 0; a.climb = null; a.gasT = 0; a.channel = null;
+    a.hp = 100; a.armor = a.bot ? (a.team === 'ordre' ? 50 : 25) : 25 * (this.save.upgrades.gilet || 0); a.alive = true; a.bag = []; a.bagKg = 0; a.nades = 2; a.frags = 1; a.momentum = 0; a.slideT = a.rollT = 0; a.climb = null; a.gasT = 0; a.channel = null;
     if (!a.bot) a.mats = Math.max(a.mats, 30 + 20 * (this.save.upgrades.mats || 0)); else a.mats = 40;
     a.ch.root.visible = true; a.ch.model.rotation.x = 0; a.overs = null; a.landT = a.stopT = 0; this.loadout(a); this.setAnim(a, a.ch.actions.MX_Idle ? 'LOCO' : 'Idle_Gun', 0);
     a.ai.path = null; a.ai.task = null; a.ai.think = 0; a.spawnProt = 2.5;
@@ -269,38 +270,24 @@ export class Game {
     else if (a.bot) a.ai.streakT = rnd(1.5, 5);
   }
   useStreak(a) {
-    if (!a.alive || !a.rewards.length || this.over) return;
-    const id = a.rewards.pop(), r = STREAK_BY_ID[id], mine = a.team === this.player.team, me = a === this.player; this.overlay(a, 'U_FistPump', 1.1, { busy: true });
-    if (me) { this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,.35), ${TEAMS[a.team].color})`); this.audio.streakGo(); this.cam.trauma = 0.8; this.input.rumble(1, 1, 400); $('hud').classList.remove('shake'); void $('hud').offsetWidth; $('hud').classList.add('shake'); this.streakUsed = id; this.streakDirty = 1; }
-    const say = (enemyMsg) => { if (me) this.bigText(`${r.icon} ${r.nom.toUpperCase()}`, r.desc, TEAMS[a.team].color); else if (mine) this.toast(`${r.icon} ${a.name} : ${r.nom}`, TEAMS[a.team].color); else this.toast(enemyMsg, '#ff4a4a'); };
-    const foes = this.actors.filter((t) => t.alive && !t.gone && t.team !== a.team && !t.inCar);
-    const near = (R) => foes.filter((t) => t.pos.distanceTo(a.pos) < R).sort((p, q) => p.pos.distanceToSquared(a.pos) - q.pos.distanceToSquared(a.pos));
-    if (id === 'drone') { this.drone[a.team] = this.time + 25; this.droneOwner = this.droneOwner || {}; this.droneOwner[a.team] = a; say('🛸 Drone de la Brigade : tu es repéré !'); }
-    else if (id === 'crs' || id === 'emeute') { this.reinforce(a, 4); say(id === 'crs' ? '🚓 Renforts CRS en approche !' : '✊ Émeute : des renforts Frungz débarquent !'); }
-    else if (id === 'lacry') {
-      const tg = near(70).slice(0, 6); const pts = tg.length ? tg.map((t) => t.pos.clone()) : [a.pos.clone().add(V(Math.sin(a.yaw) * 20, 0, Math.cos(a.yaw) * 20))];
-      while (pts.length < 6) pts.push(pts[pts.length % Math.max(1, tg.length)].clone().add(V(rnd(-6, 6), 0, rnd(-6, 6))));
-      pts.forEach((p, i) => this.strikes.push({ t: this.time + 0.6 + i * 0.3, kind: 'gas', pos: p, owner: a })); say('💨 Barrage lacrymo : sors du nuage !');
-    }
-    else if (id === 'petards') {
-      for (const t of near(24)) { t.stunT = 3.5; if (t.ai) { t.ai.target = null; t.ai.react = 1; } if (t === this.player) { this.cam.trauma = 1; this.input.rumble(1, 1, 400); } }
-      for (let i = 0; i < 10; i++) this.strikes.push({ t: this.time + i * 0.12, kind: 'petard', pos: a.pos.clone().add(V(rnd(-14, 14), 0.2, rnd(-14, 14))), owner: a });
-      say('🧨 Pétards : tu es sonné !');
-    }
-    else if (id === 'artifice') {
-      const tg = near(80).slice(0, 7); if (!tg.length) tg.push(...foes.slice(0, 4));
-      tg.forEach((t, i) => this.strikes.push({ t: this.time + 0.9 + i * 0.4, kind: 'mortier', target: t, pos: t.pos.clone(), owner: a })); say("🎆 Feu d'artifice : à couvert !");
-    }
-    this.streakCd[a.team] = this.time + 20;
+    if (!a.alive || !a.rewards.length || this.over || a.inCar) return;
+    const id = a.rewards[a.rewards.length - 1];
+    if (a === this.player) { this.startThrow(a, id, true); return; }
+    // bot : vise le groupe d'ennemis le plus proche (ou devant lui pour les renforts)
+    const foes = this.actors.filter((t) => t.alive && !t.gone && t.team !== a.team && !t.inCar && t.pos.distanceTo(a.pos) < 45).sort((p, q) => p.pos.distanceToSquared(a.pos) - q.pos.distanceToSquared(a.pos));
+    let tgt; if (id === 'crs' || id === 'emeute') tgt = a.pos.clone().add(V(Math.sin(a.yaw) * 6, 0, Math.cos(a.yaw) * 6));
+    else if (foes.length) tgt = foes[0].pos.clone(); else tgt = a.pos.clone().add(V(Math.sin(a.yaw) * 18, 0, Math.cos(a.yaw) * 18));
+    tgt.y = this.world.groundY(tgt.x, tgt.z, a.pos.y + 3);
+    const o = this.throwOrigin(a); this.castThrow(a, id, solveThrow(o, tgt, id === 'drone' ? 1.2 : 1), o);
   }
   // renforts temporaires (40 s) : on recycle les acteurs partis
-  reinforce(a, n) {
-    const team = a.team;
+  reinforce(a, n, at = null, drop = false) {
+    const team = a.team; const c = at || a.pos;
     for (let i = 0; i < n; i++) {
       let t = this.actors.find((x) => x.temp && x.gone && x.team === team);
       if (!t) { const k = this.actors.filter((x) => x.temp && x.team === team).length + 1; t = this.spawnActor(team, pick(TEAMS[team].skins), true, team === 'ordre' ? `CRS ${k}` : `Émeutier ${k}`); t.temp = true; }
       t.gone = false; this.respawn(t);
-      const [x, z] = this.world.randomFree(a.pos.x + rnd(-5, 5), a.pos.z + rnd(-5, 5), 3); t.pos.set(x, this.world.groundY(x, z), z); t.yaw = a.yaw;
+      const [x, z] = this.world.randomFree(c.x + rnd(-4, 4), c.z + rnd(-4, 4), 3); t.pos.set(x, this.world.groundY(x, z, c.y + 2), z); t.yaw = a.yaw; if (drop) this.startChute(t, t.pos);
       t.expire = this.time + 40; t.streak = 0; t.rewards = [];
       if (team === 'ordre') { t.armor = 100; t.slots[1] = { id: pick(['rifle', 'shotgun']), rarity: 'epique', mag: 30 }; t.slots[1].mag = WEAPONS[t.slots[1].id].mag; this.equip(t, 1, true); }
       else { t.slots[1] = { id: pick(['smg', 'shotgun']), rarity: 'rare', mag: 30 }; t.slots[1].mag = WEAPONS[t.slots[1].id].mag; this.equip(t, 1, true); }
@@ -314,6 +301,7 @@ export class Game {
       if (k.kind === 'mortier' && k.target?.alive) k.pos.copy(k.target.pos);
       const p = k.pos.clone(); p.y = this.world.groundY(p.x, p.z, p.y + 0.3);
       if (k.kind === 'gas') { this.fx.cloud(p, 'gas', k.owner); this.audio.play('thud', p, 0.8); this.fx.burst(p.clone().add(V(0, 0.3, 0)), 8, { color: '#e8e6cf', speed: 3, size: 0.1, life: 0.6 }); }
+      else if (k.kind === 'petard2') { for (let q = 0; q < 6; q++) this.trailPuff(p.clone().add(V(0, 0.3, 0)), pick(['#ffd23d', '#ff4fa0', '#5ad1ff', '#ffffff']), 0.35, rnd(1, 4), 3); this.audio.crack(p); }
       else if (k.kind === 'petard') { this.fx.burst(p.clone().add(V(0, 0.4, 0)), 14, { color: pick(['#ffd23d', '#ff4fa0', '#5ad1ff', '#ffffff']), speed: 6, size: 0.08, life: 0.4 }); this.audio.play('thud', p, 0.7, [1.8, 2.4], 0.01); }
       else if (k.kind === 'mortier') {
         this.fx.burst(p.clone().add(V(0, 9, 0)), 40, { color: pick(['#ff4fa0', '#ffd23d', '#5ad1ff', '#9ff59f']), speed: 9, size: 0.14, life: 1.2 });
@@ -503,13 +491,8 @@ export class Game {
 
   // ---------------------------------------------------------------- grenades (lacrymo / fumigène)
   throwNade(a, dir) {
-    if (a.nades <= 0 || !a.alive || a.inCar) return; a.nades--; this.overlay(a, 'U_Throw', 0.75, { busy: true });
-    const kind = a.team === 'ordre' ? 'gas' : 'smoke';
-    const p = a.pos.clone().add(V(0, 1.7, 0)); const v = dir.clone().multiplyScalar(15); v.y += 4;
-    const m = grenadeMesh(kind); m.position.copy(p); this.root.add(m);
-    this.grenades.push({ kind, pos: p, vel: v, m, t: 0, owner: a });
-    this.audio.play('cloth', p, 0.8);
-    if (a === this.player) this.toast(kind === 'gas' ? '💨 Lacrymogène lancée' : '🎆 Fumigène lancé', '#ddd');
+    if (!a.alive || a.inCar) return; const kind = a.frags > 0 && (a.nades <= 0 || Math.random() < 0.35) ? 'frag' : 'team'; if (kind === 'team' && a.nades <= 0) return;
+    const v = dir.clone().multiplyScalar(15); v.y += 4; this.castThrow(a, kind === 'frag' ? 'frag' : a.team === 'ordre' ? 'gas' : 'smoke', v);
   }
   launchBullet(a, origin, d, D, mult, W, muzzle, scoped) {
     const b = { p: origin.clone(), v: d.clone().multiplyScalar(BULLET_V), a, D, mult, W, t: 0, dist: 0, from: a.pos.clone() };
@@ -751,7 +734,7 @@ export class Game {
     // 51 voitures : on n'affiche que celles assez proches (et l'ombre seulement de près)
     if ((this.carCullT = (this.carCullT || 0) - dt) <= 0) { this.carCullT = 0.3; const cp = this.camera.position;
       for (const c of this.cars) { if (c.dead) continue; const d2 = c.obj.position.distanceToSquared(cp); c.obj.visible = d2 < 130 * 130 || !!c.driver; const sh = d2 < 50 * 50; if (c.sh !== sh) { c.sh = sh; c.obj.traverse((o) => { if (o.isMesh) o.castShadow = sh; }); } } }
-    this.updateBullets(dt); this.updatePip(dt); this.updateNades(dt); this.updateStreaks(dt); this.cloudEffects(dt); this.updateZones(dt); this.updateShops(dt); this.updateDrops(dt); this.socleIncome(dt);
+    this.updateBullets(dt); this.updatePip(dt); this.updateNades(dt); this.updateThrown(dt); this.updateStreaks(dt); this.cloudEffects(dt); this.updateZones(dt); this.updateShops(dt); this.updateDrops(dt); this.socleIncome(dt);
     for (const w of this.walls) { w.t += dt; w.mesh.scale.y = Math.min(1, 0.05 + w.t * 6); }
     this.specialT -= dt; if (this.specialT <= 0) { this.specialT = 120; this.specialDelivery(); }
     if (!this.over && (this.time >= this.matchLen || this.score.ordre >= this.scoreLimit || this.score.civils >= this.scoreLimit)) this.endMatch();
@@ -780,7 +763,7 @@ export class Game {
     if (I.pressed('view') && !scopedNow) { C.fps = !C.fps; this.save.settings.fps = C.fps; this.persist(); this.viewGun(); }
     if (I.pressed('map')) $('minimap').classList.toggle('big');
     if (I.pressed('inv')) this.toggleInv();
-    if (I.pressed('streak')) { if (a.rewards.length) this.useStreak(a); else this.toast(`Série : ${a.streak} — prochain bonus à ${STREAKS[a.team].find((r) => r.n > a.streak)?.n ?? '—'} éliminations`, '#ccc'); }
+    if (I.pressed('streak') && !this.thr?.spell) { if (a.rewards.length) this.useStreak(a); else this.toast(`Série : ${a.streak} — prochain bonus à ${STREAKS[a.team].find((r) => r.n > a.streak)?.n ?? '—'} éliminations`, '#ccc'); }
     if (I.pressed('pause')) { this.onPause?.(); return; }
     if (!a.alive) { a.respawnT -= dt; this.aiming = false; if (a.respawnT <= 0) this.respawn(a); return; }
     a.spawnProt = Math.max(0, (a.spawnProt || 0) - dt);
@@ -792,13 +775,14 @@ export class Game {
     if (I.pressed('w1')) this.equip(a, 0); if (I.pressed('w2')) this.equip(a, 1); if (I.pressed('w3')) this.equip(a, 2); if (I.pressed('w4')) this.equip(a, 3);
     if (I.pressed('next') && a.slots.length > 1) this.equip(a, (a.cur + 1) % a.slots.length);
     if (I.keys.has('WheelUp') || I.keys.has('WheelDown')) {}
-    if (I.pressed('reload')) this.startReload(a);
-    this.aiming = (I.down('aim') || I.st.triggerL > 0.3) && !a.climb && a.rollT <= 0;
+    if (this.thr || I.pressed('grenade')) this.updateThrowAim(a, I, dt);
+    if (I.pressed('reload') && !this.thr) this.startReload(a);
+    this.aiming = !this.thr && (I.down('aim') || I.st.triggerL > 0.3) && !a.climb && a.rollT <= 0;
     this.updateScope(dt, I, a);
     const W = this.weapon(a), D = WEAPONS[W.id];
     const wantFire = D.auto ? (I.down('fire') || I.st.triggerR > 0.4) : (I.pressed('fire') || (I.st.triggerR > 0.4 && !this._trigWas));
     this._trigWas = I.st.triggerR > 0.4;
-    if (wantFire && a.slideT <= 0.5 && !a.climb && a.rollT <= 0 && !a.channel) {
+    if (wantFire && !this.thr && (this._thrJust = Math.max(0, (this._thrJust || 0) - dt)) <= 0 && a.slideT <= 0.5 && !a.climb && a.rollT <= 0 && !a.channel) {
       if (!I.st.locked && !I.st.usingPad) { this.renderer.domElement.requestPointerLock?.(); }
       else {
         const o = this.camera.position.clone(); const d = V(); this.camera.getWorldDirection(d);
@@ -807,9 +791,8 @@ export class Game {
         if (this.fire(a, o, d)) { a.momentum *= 0.92; }
       }
     }
-    if (I.pressed('build')) this.placeWall(a);
-    if (I.pressed('grenade')) { const d = V(); this.camera.getWorldDirection(d); this.throwNade(a, d); }
-    if (I.pressed('shop') && this.atBase(a)) this.onShop?.();
+    if (I.pressed('build') && !this.thr) this.placeWall(a);
+    if (I.pressed('shop') && !this.thr && this.atBase(a)) this.onShop?.();
     // interactions : voiture, vitrine, butin, planque, receleur, vol
     this.interactions(a, dt);
     // déplacement
@@ -1661,7 +1644,7 @@ export class Game {
     $('bagkg').textContent = a.bag.length ? `${a.bag[0].nom} · ${fmt(a.bag[0].valeur)} €` : 'les mains vides';
     $('bagitems').innerHTML = a.bag.map((i) => `<span style="--c:${RARITY[i.rarity].color}" title="${i.nom}">${i.icon}</span>`).join('');
     $('hpbar').style.width = Math.max(0, a.hp) + '%'; $('hpn').textContent = Math.max(0, Math.ceil(a.hp)); $('armorbar').style.width = Math.min(100, a.armor) + '%';
-    $('weapons').innerHTML = a.slots.map((s, i) => `<div class="${i === a.cur ? 'on' : ''}" style="--c:${RARITY[s.rarity].color}"><em>${WEAPONS[s.id].icon}</em>${WEAPONS[s.id].name}</div>`).join('') + `<div style="--c:#888"><em>${a.team === 'ordre' ? '💨' : '🎆'}</em>${a.nades} · ${I.label('grenade')}</div>`;
+    $('weapons').innerHTML = a.slots.map((s, i) => `<div class="${i === a.cur ? 'on' : ''}" style="--c:${RARITY[s.rarity].color}"><em>${WEAPONS[s.id].icon}</em>${WEAPONS[s.id].name}</div>`).join('') + `<div style="--c:#888"><em>${a.team === 'ordre' ? '💨' : '🎆'}</em>${a.nades} · 💣${a.frags ?? 0} · ${I.label('grenade')}</div>`;
     const W = this.weapon(a); if (W) { $('mag').textContent = a.reloadT > 0 ? '…' : W.mag; $('reserve').textContent = `/ ${WEAPONS[W.id].mag}`; $('wname').textContent = `${WEAPONS[W.id].name.toUpperCase()} · ${RARITY[W.rarity].name.toUpperCase()}`; $('wname').style.color = RARITY[W.rarity].color; }
     const pr = $('prompt'); if (this.ui.prompt && a.alive) { pr.innerHTML = this.ui.prompt; pr.classList.add('on'); } else pr.classList.remove('on');
     const ch = $('channel'); if (a.channel) { ch.classList.add('on'); ch.querySelector('i').style.width = (a.channel.t / a.channel.dur * 100) + '%'; ch.querySelector('span').textContent = a.channel.label; } else ch.classList.remove('on');
@@ -1743,3 +1726,4 @@ export class Game {
 }
 Object.assign(Game.prototype, rideMethods);
 function lerp_angle(a, b, t) { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a + d * t; }
+installThrows(Game);
