@@ -13,6 +13,7 @@ import { heliMethods } from './helico.js';
 import { installThrows, THROWS, solveThrow } from './throws.js';
 import { svg, iconize } from './icons.js';
 import { installSeries } from './series.js';
+import { installConvois } from './convois.js';
 import { installBarricades, TIERS, tierInfo, fmtG } from './barricades.js';
 import { installLanceurs } from './lanceurs.js';
 import { installTurrets } from './tourelles.js';
@@ -39,18 +40,22 @@ const GRAV = 19, EYE = 1.62;
 const STREAKS = {
   ordre: [{ n: 3, id: 'drone', nom: 'Drone', icon: '🛸', ico: 'drone', desc: 'lance-le : il survole la zone et repère les Frungz' }, { n: 5, id: 'crs', nom: 'Renforts CRS', icon: '🪂', ico: 'parachute', desc: '4 CRS blindés largués là où tu vises' }, { n: 6, id: 'tourelle', side: 2, nom: 'Tourelle de garde', ico: 'turret', desc: 'tourelle automatique à poser : □ devant elle pour l\'améliorer (3 niveaux, selon tes galons), ↓ pour la démonter et la déplacer' }, { n: 7, id: 'lacry', nom: 'Salve lacrymogène', icon: '🚀', ico: 'missile', desc: 'salve de grenades lacrymogènes sur la zone visée' },
     { n: 10, id: 'heli', nom: 'Hélico de la Gendarmerie', ico: 'heli', desc: 'un hélicoptère armé tourne 35 s au-dessus de la zone visée et mitraille les Frungz' },
+    { n: 12, id: 'eau', nom: 'Camion lanceur d\'eau', ico: 'water', desc: 'un camion blindé arrive sur la zone visée et balaie les Frungz au canon à eau pendant 30 s' },
     { n: 14, id: 'frappe', nom: 'Frappe aérienne', ico: 'jet', desc: 'un chasseur passe en rase-mottes et tapisse de bombes une ligne vers la zone visée' },
     { n: 18, id: 'canon', nom: 'Canonnière', ico: 'gunship', desc: 'tu prends les commandes d\'un avion-canon : 25 mm et 105 mm vus du ciel pendant 25 s' },
+    { n: 21, id: 'armee', nom: 'Escouade militaire', ico: 'truck', desc: 'deux camions de l\'armée déposent 8 soldats lourdement armés sur la zone visée' },
     { n: 25, id: 'ultime', nom: 'Assaut général', ico: 'nuke', desc: 'bombardement de toutes les zones ennemies, Frungz repérés 30 s et renforts largués' }],
   civils: [{ n: 3, id: 'petards', nom: 'Pétards', icon: '🧨', ico: 'petards', desc: 'lance-le : il sonne les flics de la zone' }, { n: 5, id: 'emeute', nom: 'Renforts émeutiers', icon: '🪂', ico: 'parachute', desc: '4 émeutiers largués là où tu vises' }, { n: 6, id: 'tourelle', side: 2, nom: 'Tourelle bricolée', ico: 'turret', desc: 'tourelle automatique à poser : □ devant elle pour l\'améliorer (3 niveaux, selon tes galons), ↓ pour la démonter et la déplacer' }, { n: 7, id: 'artifice', nom: "Mortiers d'artifice", icon: '🎆', ico: 'artifice', desc: 'tir de mortiers sur la zone visée' },
     { n: 10, id: 'essaim', nom: 'Essaim de drones', ico: 'swarm', desc: '6 drones kamikazes qui traquent chacun un flic et explosent au contact' },
+    { n: 12, id: 'belier', nom: 'Camion-bélier', ico: 'ram', desc: 'un poids lourd fonce à travers la zone visée et écrase flics, barricades et voitures' },
     { n: 14, id: 'hdetourne', nom: 'Hélico détourné', ico: 'heli', desc: 'un hélicoptère volé tourne 35 s au-dessus de la zone visée et arrose la Brigade' },
     { n: 18, id: 'canon', nom: 'Canonnière détournée', ico: 'gunship', desc: 'tu prends les commandes d\'un avion-canon : 25 mm et 105 mm vus du ciel pendant 25 s' },
+    { n: 21, id: 'bande', nom: 'Bande organisée', ico: 'truck', desc: 'deux fourgons volés déposent 8 Frungz armés jusqu\'aux dents sur la zone visée' },
     { n: 25, id: 'ultime', nom: 'Frungzpocalypse', ico: 'nuke', desc: 'pluie de feu sur toutes les zones de la Brigade, flics repérés 30 s et renforts largués' }],
 };
 const STREAK_BY_ID = Object.fromEntries(Object.values(STREAKS).flat().map((r) => [r.id, r]));
 export { STREAKS };
-const TIER_COLS = ['#ffcc3d', '#ffcc3d', '#ff9d3d', '#57b6ff', '#ff7ad9', '#ff4a3d', '#c27bff'];
+const TIER_COLS = ['#ffcc3d', '#ffcc3d', '#ff9d3d', '#57b6ff', '#5ad1ff', '#ff7ad9', '#ff4a3d', '#ff7a2f', '#c27bff'];
 // séries sans fin : après le dernier palier, un bonus tous les 5 éliminations en reprenant les gros atouts (10, 14, 18, 25) en boucle
 function streakTiers(team, upto) {
   const L = STREAKS[team]; const last = L[L.length - 1].n; if (upto < last) return L;
@@ -368,7 +373,7 @@ export class Game {
     const L = streakTiers(a.team, a.streak), r = L.find((x) => x.n === a.streak); if (a.streak >= 30 && a.streak % 10 === 0) this.streakLegend(a, !!r); if (!r) return;
     a.rewards.push(r.id); const tier = r.loop ? r.tier : streakTier(STREAKS[a.team], r); const col = TIER_COLS[tier] || '#ffcc3d';
     if (a === this.player && r.loop && a.streak % 10 === 0) { this.streakDirty = 1; this.audio.streakReady(tier); return; } // le titre légendaire annonce déjà ce bonus
-    if (a === this.player) { this.bigText(`${svg(r.ico)} ${r.nom.toUpperCase()} !${tier >= 3 ? '!' : ''}${tier >= 5 ? '!' : ''}`, `série de ${a.streak} · ${this.input.label('streak')} pour l'activer`, col, `t${tier}`); this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,0) ${40 - tier * 4}%, ${col}${tier >= 3 ? 'cc' : '99'})`); this.audio.streakReady(tier); this.input.rumble(1, 0.8, 300 + tier * 80); this.cam.trauma = Math.min(1, this.cam.trauma + 0.35 + tier * 0.08); this.streakDirty = 1; if (tier >= 3) { $('hud').classList.remove('shake'); void $('hud').offsetWidth; $('hud').classList.add('shake'); } }
+    if (a === this.player) { this.bigText(`${svg(r.ico)} ${r.nom.toUpperCase()} !${tier >= 3 ? '!' : ''}${tier >= 6 ? '!' : ''}`, `série de ${a.streak} · ${this.input.label('streak')} pour l'activer`, col, `t${Math.min(6, Math.round(tier * 6 / 8))}`); this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,0) ${40 - tier * 4}%, ${col}${tier >= 3 ? 'cc' : '99'})`); this.audio.streakReady(Math.min(6, tier)); this.input.rumble(1, 0.8, 300 + tier * 80); this.cam.trauma = Math.min(1, this.cam.trauma + 0.35 + tier * 0.08); this.streakDirty = 1; if (tier >= 3) { $('hud').classList.remove('shake'); void $('hud').offsetWidth; $('hud').classList.add('shake'); } }
     else if (r.n >= 14) this.toast(`${a.name} : série de ${a.streak} · ${r.nom} !`, a.team === this.player.team ? TEAMS[a.team].color : '#ff4a4a');
     else if (a.bot) a.ai.streakT = rnd(1.5, 5);
   }
@@ -405,7 +410,7 @@ export class Game {
   }
   // renforts temporaires (40 s) : on recycle les acteurs partis
   reinforce(a, n, at = null, drop = false) {
-    const team = a.team; const c = at || a.pos;
+    const team = a.team; const c = at || a.pos; const out = [];
     for (let i = 0; i < n; i++) {
       let t = this.actors.find((x) => x.temp && x.gone && x.team === team);
       if (!t) { const k = this.actors.filter((x) => x.temp && x.team === team).length + 1; t = this.spawnActor(team, pick(TEAMS[team].skins), true, team === 'ordre' ? `CRS ${k}` : `Émeutier ${k}`); t.temp = true; }
@@ -414,8 +419,9 @@ export class Game {
       t.expire = this.time + 40; t.streak = 0; t.rewards = [];
       if (team === 'ordre') { t.armor = 100; t.slots[1] = { id: pick(['rifle', 'shotgun']), rarity: 'epique', mag: 30 }; t.slots[1].mag = WEAPONS[t.slots[1].id].mag; this.equip(t, 1, true); }
       else { t.slots[1] = { id: pick(['smg', 'shotgun']), rarity: 'rare', mag: 30 }; t.slots[1].mag = WEAPONS[t.slots[1].id].mag; this.equip(t, 1, true); }
-      t.ai.think = 0; t.ai.target = a.ai?.target || null; this.fx.ring(t.pos, TEAMS[team].color);
+      t.ai.think = 0; t.ai.target = a.ai?.target || null; this.fx.ring(t.pos, TEAMS[team].color); out.push(t);
     }
+    return out;
   }
   updateStreaks(dt) {
     for (const team of ['ordre', 'civils']) if (this.drone[team] > this.time && ((this._droneTick = (this._droneTick || 0) + dt) > 0.5)) { this._droneTick = 0; for (const t of this.actors) if (t.alive && t.team !== team) t.spotted = this.time; }
@@ -2013,6 +2019,7 @@ Object.assign(Game.prototype, heliMethods);
 function lerp_angle(a, b, t) { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a + d * t; }
 installThrows(Game);
 installSeries(Game);
+installConvois(Game);
 installBarricades(Game);
 installLanceurs(Game); // après les barricades : complète this.blast (vitrines)
 installTurrets(Game); // après les barricades : enrobe blast, wallPrompt, placeWall, updateWalls
