@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { makeCharacter, attachGun, gunInstance, chars, tintTeam, teamMarkings } from './assets.js';
-import { TEAMS, WEAPONS, CLASSES, classOf, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COMMERCE_TYPES, SHOP_NAMES, SKIN_NAMES } from './data.js';
+import { TEAMS, WEAPONS, CLASSES, classOf, kitOf, SECONDARIES, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COMMERCE_TYPES, SHOP_NAMES, SKIN_NAMES } from './data.js';
 import { shopCase, lootMesh, beam, socle, baseSign, receleur, barricade, BARRICADE, grenadeMesh, headMarker, textTex } from './props.js';
 import { pointInPoly } from './world.js';
 import * as Anim from './anim.js';
@@ -63,7 +63,7 @@ export class Game {
     Object.assign(this, env); // renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts, onEnd
     this.actors = []; this.shops = []; this.drops = []; this.socles = { ordre: [], civils: [] }; this.cars = []; this.walls = []; this.grenades = [];
     this.score = { ordre: 0, civils: 0 }; this.time = 0; this.matchLen = 600; this.over = false;
-    this.zoneState = this.world.zones.filter((z) => !z.optionnelle || this.opts.teamSize >= 30).map((z) => ({ ...z, owner: null, cap: null, p: 0, contested: false }));
+    this.zoneState = this.world.zones.filter((z) => !z.optionnelle || z.id === 'I' || this.opts.teamSize >= 30).map((z) => ({ ...z, owner: null, cap: null, p: 0, contested: false }));
     this.scoreLimit = 100 * this.zoneState.length;
     this.root = new THREE.Group(); this.scene.add(this.root);
     this.cam = { yaw: 0, pitch: 0, dist: 3, fps: !!this.save.settings?.fps, trauma: 0, bob: 0, dip: 0, roll: 0, kickP: 0, kickY: 0, fov: 70, shake: V() };
@@ -181,12 +181,13 @@ export class Game {
     this.actors.push(a); return a;
   }
   // équipement de la classe : arme secondaire + arme principale (celle choisie à l'armurerie remplace celle de la classe)
+  // équipement de la classe : l'arme principale et le pistolet choisis pour cette classe (menu ou armurerie) ; les bots tirent au sort parmi les armes de leur classe
   loadout(a) {
     const K = classOf(a.team, a.cls); a.perk = K.perk;
-    a.slots = [{ id: K.secondary, rarity: 'commun', mag: WEAPONS[K.secondary].mag }];
-    let prim = K.primary;
-    if (!a.bot) { const own = this.save.primary; if (own && own !== 'pistol' && this.save.unlocked.includes(own) && WEAPONS[own]) { if (WEAPONS[own].cat === 'pistolet') a.slots[0] = { id: own, rarity: 'rare', mag: WEAPONS[own].mag }; else prim = own; } }
-    a.slots.push({ id: prim, rarity: a.bot ? rollRarity() : 'rare', mag: WEAPONS[prim].mag }); a.cur = 1;
+    let prim = K.primary, sec = K.secondary;
+    if (a.bot) { if (Math.random() < 0.45) prim = pick(K.primaries); if (Math.random() < 0.3) sec = pick(SECONDARIES); }
+    else ({ p: prim, s: sec } = kitOf(this.save, a.team, K));
+    a.slots = [{ id: sec, rarity: a.bot ? 'commun' : 'rare', mag: WEAPONS[sec].mag }, { id: prim, rarity: a.bot ? rollRarity() : 'rare', mag: WEAPONS[prim].mag }]; a.cur = 1;
     this.equip(a, a.cur, true);
   }
   equip(a, i, silent) {
