@@ -214,7 +214,7 @@ export class Game {
   kill(t, by, opts) {
     t.alive = false; t.hp = 0; t.respawnT = t.bot ? 6 : 5; t.stats.d++; t.channel = null;
     if (t.inCar) this.exitCar(t, true);
-    t.overs = null; { const dn = this.deathAnim(t, by, opts); this.setAnim(t, dn, 0.1, /^MX_Death[FBLR]$/.test(dn) ? 1.5 : dn === 'MX_DeathFly' ? 1.15 : 1); } this.audio.play('voxDie', t.pos, 0.9);
+    t.overs = null; { const dn = this.deathAnim(t, by, opts); this.setAnim(t, dn, 0.1, /^MX_Death[FBLR]$/.test(dn) ? 1.2 : 1); } this.audio.play('voxDie', t.pos, 0.9);
     // le sac tombe au sol (et l'arme principale, parfois)
     if (by && by !== t && by.team === 'ordre' && t.bag.length) this.scoreEvent('ordre', 4, 'Interpellation', by);
     if (t.bag.length) { this.dropPile(t.pos, t.bag.splice(0)); t.bagKg = 0; this.carryMesh(t); }
@@ -222,7 +222,7 @@ export class Game {
     if (t.hitBy) { for (const [h, at] of t.hitBy) if (h !== by && h !== t && h.team !== t.team && this.time - at < 8) { h.stats.a++; if (h === this.player) this.toast('+ Assistance', '#cfe3ff'); } t.hitBy.clear(); }
     const w = t.slots[t.cur]; if (w && w.id !== 'pistol' && (Math.random() < 0.6 || !t.bot)) this.dropPile(t.pos.clone().add(V(rnd(-0.6, 0.6), 0, rnd(-0.6, 0.6))), [], { id: w.id, rarity: w.rarity });
     if (by && by !== t) {
-      by.stats.k++; this.addStreak(by); if (by.bot && by.alive && Math.random() < 0.45) this.overlay(by, 'U_FistPump', 1.2, { busy: true });
+      by.stats.k++; this.addStreak(by); if (by.bot && by.alive && Math.random() < 0.12) this.overlay(by, 'U_FistPump', 1.2, { busy: true });
       if (by === this.player) this.maybeKillcam(t, opts);
       if (by === this.player) { this.multiKill(opts); this.streakDirty = 1; }
       if (by === this.player) { this.medal(opts.head ? (opts.dist > 80 ? "TIR D'ÉLITE" : 'TIR À LA TÊTE') : 'ÉLIMINÉ', t.name + (by.streak >= 2 ? ` · série ${by.streak}` : ''), opts.head); this.stats.kills++; this.earn(50 + (opts.head ? 25 : 0), opts.head ? 'Tir à la tête' : 'Élimination'); this.audio.kill(); this.input.rumble(0.9, 0.6, 160); }
@@ -230,11 +230,11 @@ export class Game {
     if (t === this.player) { this.stats.deaths++; this.announce('ÉLIMINÉ', by ? `par ${by.name}` : '', '#ff4a4a', 2.5); }
     this.killFeed(by, t, opts);
   }
-  // mort mise en scène : projeté en arrière (fusil à pompe de près, explosion, parfois tête), emporté par l'élan en pleine course, ou chute selon le côté de l'impact
+  // mort : projeté en arrière (explosion, métro, fusil à pompe à bout portant), emporté par l'élan en pleine course, ou chute selon le côté de l'impact
   deathAnim(t, by, opts = {}) {
     const A = t.ch.actions; if (!A.MX_DeathF) return A.MX_Death ? 'MX_Death' : 'Death';
-    const W = by && by !== t ? WEAPONS[this.weapon(by)?.id] : null, near = by && by.pos.distanceTo(t.pos) < 8;
-    if (opts.blast || opts.weapon === 'metro' || (W && W.pellets > 1 && near) || (opts.head && Math.random() < 0.3)) return 'MX_DeathFly';
+    const W = by && by !== t ? WEAPONS[this.weapon(by)?.id] : null, near = by && by.pos.distanceTo(t.pos) < 4;
+    if (opts.blast || opts.weapon === 'metro' || (W && W.pellets > 1 && near)) return 'MX_DeathFly';
     if (this.feetSpeed(t) > 4.5) return 'MX_DeathRun';
     if (!by || by === t) return pick(['MX_Death', 'MX_DeathF']);
     const dx = by.pos.x - t.pos.x, dz = by.pos.z - t.pos.z, f = Math.sin(t.yaw) * dx + Math.cos(t.yaw) * dz, sd = Math.cos(t.yaw) * dx - Math.sin(t.yaw) * dz;
@@ -346,7 +346,7 @@ export class Game {
     const W = this.weapon(a); const D = WEAPONS[W.id]; const mult = RARITY[W.rarity].mult;
     if (a.reloadT > 0 || a.fireT > 0) return false;
     if (W.mag <= 0) { this.startReload(a); if (!a.bot) this.audio.click(); return false; }
-    W.mag--; a.fireT = 1 / D.rps; a.lastShot = this.time; { const heavy = D.pellets > 1 || D.dmg > 50; this.overlay(a, 'A_Recoil', heavy ? 0.4 : 0.16, { add: true, w: heavy ? 1.1 : 0.35 }); }
+    W.mag--; a.fireT = 1 / D.rps; a.lastShot = this.time; { const heavy = D.pellets > 1 || D.dmg > 50; this.overlay(a, 'A_Recoil', heavy ? 0.32 : 0.14, { add: true, w: heavy ? 0.8 : 0.3 }); }
     const muzzle = V(); (a.ch.gun?.userData.muzzle || a.ch.root).getWorldPosition(muzzle);
     if (!a.bot && this.cam.fps && this.vgun) this.vgun.userData.muzzle.getWorldPosition(muzzle);
     const moving = this.feetSpeed(a) > 2 ? 1.6 : 1; const aiming = !a.bot && this.aiming ? (this.cam.fps ? 0.1 : 0.18) : 1; const air = a.onGround ? 1 : 1.8;
@@ -956,7 +956,7 @@ export class Game {
     if (a.wantJump && a.onGround) {
       const cl = this.findClimb(a);
       if (cl) { a.climb = cl; a.wantJump = 0; this.audio.play('cloth', a.pos, 0.8); if (!a.bot) { this.cam.dip -= 0.08; this.input.rumble(0.2, 0.4, 80); } }
-      else { a.vel.y = civ ? 6.6 : 6.0; a.onGround = false; a.wantJump = 0; a.slideT = 0; if (a.momentum > 0.6) { a.vel.x *= 1.08; a.vel.z *= 1.08; } }
+      else { a.vel.y = civ ? 6.6 : 6.0; a.onGround = false; a.wantJump = 0; a.slideT = 0;  }
     }
     a.vel.y -= GRAV * dt;
     const prevY = a.pos.y, sw = a.swim ? 0.45 : 1;
@@ -1024,9 +1024,9 @@ export class Game {
     else if (a.rollT > 0) { name = ch.actions.MX_Roll ? 'MX_Roll' : 'Roll'; speed = name === 'MX_Roll' ? 1.9 : 1.6; fade = 0.06; }
     else if (a.channel) { name = a.channel.anim || 'Interact'; }
     else if (MX && a.slideT > 0) { name = ch.actions.MX_Slide ? 'MX_Slide' : 'MX_CrouchIdle'; speed = 1.25; fade = 0.08; }
-    else if (MX && a.landT > 0 && a.onGround) { name = 'MX_HardLand'; speed = 1.9; fade = 0.05; }
-    else if (!a.onGround && MX && a.airT > 0.06) { const J = P && ch.actions.MXP_Jump; name = a.vel.y > 0.5 && a.airT < 0.5 ? (J ? 'MXP_Jump' : 'MX_Jump') : (P && ch.actions.MXP_Fall ? 'MXP_Fall' : 'MX_Fall'); speed = name === 'MX_Jump' ? 1.4 : name === 'MXP_Jump' ? 1.1 : 1; fade = 0.12; }
-    else if (MX && a.stopT > 0) { name = 'MX_Stop'; speed = 1.5; fade = 0.1; }
+    else if (MX && a.landT > 0 && a.onGround) { name = 'MX_HardLand'; speed = 1.5; fade = 0.05; }
+    else if (!a.onGround && MX && a.airT > 0.06) { const J = P && ch.actions.MXP_Jump; name = a.vel.y > 0.5 && a.airT < 0.5 ? (J ? 'MXP_Jump' : 'MX_Jump') : (P && ch.actions.MXP_Fall ? 'MXP_Fall' : 'MX_Fall'); speed = name === 'MX_Jump' ? 1.2 : 1; fade = 0.12; }
+    else if (MX && a.stopT > 0) { name = 'MX_Stop'; speed = 1.3; fade = 0.1; }
     else if (!a.onGround && !MX) { name = 'Idle_Gun_Pointing'; }
     else if (MX) { name = 'LOCO'; }
     else if (sp > 0.8) {

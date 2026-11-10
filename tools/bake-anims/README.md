@@ -20,7 +20,7 @@ Une entrée par clip du jeu : `name` (nom dans le jeu) et `src` (nom Mixamo, voi
 | `seq: [{src, trim, mirror, speed, reverse}, …]` + `blend` | enchaîne plusieurs clips avec fondu (ex. sprint → glissade → relevé) |
 | `trim: [début, fin]` | coupe (secondes) |
 | `speed`, `reverse` | vitesse figée dans le clip, lecture à l'envers |
-| `exag: 1.2` | exagération burlesque : amplifie l'écart de chaque os à sa pose moyenne (jambes, bassin, buste, tête ; `exagAll` pour tout, `exagHips` pour le rebond du bassin) |
+| `exag: 1.2` | amplification : amplifie l'écart de chaque os à sa pose moyenne (jambes, bassin, buste, tête ; `exagAll` pour tout, `exagHips` pour le rebond du bassin) |
 | `loop: true` | raccorde la fin au début pour une boucle sans à-coup |
 | `upperOnly: true` | ne garde que le haut du corps : couche « U_ » posée par le jeu par-dessus la course (recharger, lancer, dégainer, célébrer) |
 | `spineOnly`, `additive: true` | couche additive « A_ » (écart à la 1re image) ajoutée à la pose courante : coups reçus, recul |
