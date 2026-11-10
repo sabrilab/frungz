@@ -1510,7 +1510,7 @@ export class Game {
     C.trauma = Math.max(0, C.trauma - dt * 1.4);
     C.kickP *= Math.exp(-dt * 9); C.kickY *= Math.exp(-dt * 9); C.dip *= Math.exp(-dt * 7);
     const sp = a.alive && !a.inCar ? this.feetSpeed(a) : 0; const fps = (C.fps || !!this.sc?.was) && !a.inCar && a.alive;
-    const k = fps ? 1 : 0.35; // balancement plus fort en vue subjective
+    const k = fps ? 1 : 0.55; // balancement plus fort en vue subjective
     if (a.onGround && sp > 0.5) C.bob += dt * sp * 1.25;
     const bobA = Math.min(1, sp / 7) * (a.slideT > 0 || a.rollT > 0 ? 0 : 1);
     const bobY = Math.abs(Math.sin(C.bob)) * 0.055 * bobA * k * (1 + a.momentum * 0.6), bobX = Math.cos(C.bob) * 0.035 * bobA * k;
@@ -1551,7 +1551,12 @@ export class Game {
       const d = want.clone().sub(sh); const L = d.length(); const h = this.world.ray(sh, d.clone().divideScalar(L), L + 0.2);
       if (h) want.copy(sh).addScaledVector(d.divideScalar(L), Math.max(0.3, h.t - 0.25));
       want.y += bobY; want.addScaledVector(right, bobX);
-      if (C.snap) { cam.position.copy(want); C.snap = false; } else cam.position.lerp(want, 1 - Math.exp(-dt * 25)); cam.lookAt(cam.position.clone().add(dir)); cam.rotateZ(C.roll * 0.6 + shR);
+      if (C.snap) { cam.position.copy(want); C.snap = false; } else cam.position.lerp(want, 1 - Math.exp(-dt * 25)); cam.lookAt(cam.position.clone().add(dir));
+      // caméra portée : elle encaisse chaque foulée (petit coup de tangage à l'appui, roulis d'un pied sur l'autre) et flotte à peine à la main ;
+      // tout est une fonction directe de la phase des pas, sans état à intégrer : stable même quand le jeu ralentit. Presque coupé en visée.
+      const run = bobA * (this.aiming ? 0.15 : 1) * (1 + a.momentum * 0.5) * (this.save.settings?.camShake ?? 1), ft = Math.abs(Math.sin(C.bob)), tt = this.time;
+      cam.rotateX((0.5 - ft) * 0.0085 * run + Math.sin(tt * 1.9) * 0.0012 * run); cam.rotateY(Math.cos(C.bob) * 0.003 * run + Math.sin(tt * 1.3 + 2) * 0.0012 * run);
+      cam.rotateZ(C.roll * 0.6 + shR + Math.cos(C.bob) * 0.0075 * run);
     }
     { const o = cam.position, d = V(); cam.getWorldDirection(d); const R = scope ? 400 : 120; const h = this.world.ray(o, d, R); const ha = scope ? this.rayActors(o, d, h ? h.t : R, a) : null; const t = ha ? ha.t : h ? Math.max(h.t, 4) : R; this.aimHit = !!(h || ha); this.aimPt = o.clone().addScaledVector(d, t); }
     a.ch.root.visible = a.alive || a.respawnT > 0 ? (fps ? false : !a.inCar || !!a.inCar.kind) : false;
