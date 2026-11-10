@@ -347,7 +347,7 @@ export class Game {
     this.fx.muzzle(muzzle, D.pellets > 1 ? 1.4 : 1);
     if (a !== this.player) this.notePing(a, muzzle);
     // douille éjectée à droite de l'arme (pas pour le revolver, qui garde ses douilles)
-    if (D.id !== 'revolver' && (a === this.player || a.pos.distanceToSquared(this.player.pos) < 625)) { const yw = a === this.player ? this.cam.yaw : a.yaw; const ep = V(); (a === this.player && this.cam.fps && this.vgun ? this.vgun : a.ch.gun || a.ch.root).getWorldPosition(ep); this.fx.casing(ep, V(-Math.cos(yw), 0, Math.sin(yw)), D.pellets > 1); }
+    if (D.id !== 'revolver' && (a === this.player || a.pos.distanceToSquared(this.player.pos) < 625)) { const yw = a === this.player ? this.cam.yaw : a.yaw; const ep = V(); const vg = a === this.player && this.cam.fps && this.vgun; if (vg) { const B = this.vgunBB; ep.set(B ? (B.min.x + B.max.x) / 2 + 0.03 : 0.03, B ? B.max.y - 0.02 : 0.05, B ? B.min.z * 0.3 : -0.1); this.vgun.localToWorld(ep); } else (a.ch.gun || a.ch.root).getWorldPosition(ep); // en vue subjective : fenêtre d'éjection, sur le dessus de l'arme this.fx.casing(ep, V(-Math.cos(yw), 0, Math.sin(yw)), D.pellets > 1); }
     if (a === this.player) {
       const k = D.kick * (this.aiming ? 0.7 : 1); this.cam.kickP += k * rnd(0.8, 1.2); this.cam.kickY += k * rnd(-0.4, 0.4); this.cam.trauma = Math.min(1, this.cam.trauma + k * 2.2);
       this.input.rumble(D.pellets > 1 || D.dmg > 50 ? 0.8 : 0.25, 0.5, 60); this.ui.crossKick = 1;

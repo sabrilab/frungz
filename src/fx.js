@@ -30,7 +30,7 @@ export function createFX(scene, camera) {
   function muzzle(pos, big = 1) {
     const s = new THREE.Sprite(flashMat); s.position.copy(pos); const k = (0.35 + Math.random() * 0.25) * big; s.scale.set(k, k, k); s.material.rotation = Math.random() * 6;
     scene.add(s); items.push({ o: s, t: 0, life: 0.05 });
-    flashLight.position.copy(pos); flashLight.intensity = 14 * big; flashT = 0.05;
+    flashLight.position.copy(pos); flashLight.position.y += 0.12; // jamais pile sur une surface (éclairage indéfini, taches noires avec le bloom) flashLight.intensity = 14 * big; flashT = 0.05;
   }
   let flashT = 0;
   // particules ponctuelles (étincelles, verre, débris, confettis)
@@ -68,7 +68,7 @@ export function createFX(scene, camera) {
   }
   // douilles éjectées : laiton qui rebondit sur le sol puis reste un moment
   const casingGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.028, 6).rotateZ(Math.PI / 2);
-  const casingMat = new THREE.MeshStandardMaterial({ color: '#c9a043', metalness: 0.85, roughness: 0.3 });
+  const casingMat = new THREE.MeshStandardMaterial({ color: '#d4a94a', metalness: 0.35, roughness: 0.4, emissive: '#3a2a08' }); // sans carte d'environnement, un métal trop pur rend noir
   const shellMat = new THREE.MeshStandardMaterial({ color: '#b3261e', metalness: 0.2, roughness: 0.5 });
   const casings = []; let groundFn = null; let onTink = null;
   function setGround(fn, tink) { groundFn = fn; onTink = tink; }
