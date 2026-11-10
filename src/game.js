@@ -78,8 +78,10 @@ export class Game {
     const W = this.world; if (W.cass) for (const e of W.cass.list) if (e.broken) W.cass.repair(e);
     if (W.metro) W.dynamic.push(...W.metro.cols);
     const T = this.save.team; const N = this.opts.teamSize;
-    this.player = this.spawnActor(T, this.save.skin, false, 'Toi');
-    for (const t of ['ordre', 'civils']) { const n = t === T ? N - 1 : N; for (let i = 0; i < n; i++) this.spawnActor(t, pick(TEAMS[t].skins), true, BOT_NAMES[t][i % 20] + (i >= 20 ? ' ' + (i / 20 | 0) : '')); }
+    this.player = this.spawnActor(T, this.save.skin, false, this.opts.pseudo || 'Toi');
+    // équipe du salon : les premiers alliés prennent le nom et la tenue des équipiers choisis
+    const squad = (this.opts.squad || []).slice(0, Math.max(0, N - 1)); for (const m of squad) { const b = this.spawnActor(T, m.skin, true, m.name); b.squad = true; }
+    for (const t of ['ordre', 'civils']) { const n = t === T ? N - 1 - squad.length : N; for (let i = 0; i < n; i++) this.spawnActor(t, pick(TEAMS[t].skins), true, BOT_NAMES[t][i % 20] + (i >= 20 ? ' ' + (i / 20 | 0) : '')); }
     for (const a of this.actors) this.respawn(a, true);
     this.cam.yaw = this.player.yaw;
     this.minimapInit(); this.hudInit();

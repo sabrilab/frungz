@@ -10,6 +10,7 @@ import { createCassables } from './cassables.js';
 import { createMetro } from './metro.js';
 import { Game } from './game.js';
 import { createPreview } from './preview.js';
+import { createLobby } from './lobby.js';
 import { applyRealism, skyEnvironment, realismUniforms } from './realisme.js';
 import { TEAMS, WEAPONS, WEAPON_CATS, CLASSES, classOf, UPGRADES, SKIN_NAMES } from './data.js';
 import { svg } from './icons.js';
@@ -90,7 +91,7 @@ const fx = createFX(scene, camera);
 // ---------- chargement ----------
 const ALL_SKINS = [...TEAMS.ordre.skins, ...TEAMS.civils.skins];
 const CARS = [['sportscar', 'sport', 'Coupé sport orange'], ['sportscar2', 'sport', 'Coupé sport blanc'], ['sports', 'sport', 'Coupé sport rouge'], ['roadster', 'sport', 'Cabriolet bleu'], ['muscle', 'sport', 'Muscle car jaune'], ['sports-armored', 'blinde', 'Sportive blindée'], ['cop', 'police', 'Voiture de police'], ['police-sedan', 'police', 'Berline de police'], ['suv-luxury', 'civil', 'SUV de luxe']];
-let world, mapRoot, carDefs = [], night = null;
+let world, mapRoot, carDefs = [], night = null, lobby = null;
 let progress = { map: 0, chars: 0, guns: 0, cars: 0 };
 const showProgress = () => { const p = progress.map * 0.6 + progress.chars / ALL_SKINS.length * 0.25 + progress.guns / Object.keys(WEAPONS).length * 0.05 + progress.cars / CARS.length * 0.1; $('loadbar').style.width = (p * 100).toFixed(0) + '%'; };
 async function loadAll() {
@@ -109,7 +110,9 @@ async function loadAll() {
   root.traverse((o) => { if (!o.isMesh) return; const n = o.name || ''; if (QN !== 'haut' && /leaf/.test(n)) o.castShadow = false; if (QN === 'bas' && /decor_lointain/.test(n)) o.visible = false; });
   const tw = performance.now(); world = new World(gp, ground); console.log('monde prêt en', (performance.now() - tw).toFixed(0), 'ms'); window.__world = world; window.__ground = ground;
   const tc = performance.now(); world.cass = createCassables({ nodes: cassables, scene, world, fx, audio }); world.metro = createMetro({ rame, gp, audio }); world.cass.onBreak((e, by, d) => game?.onCassable(e, by, d)); console.log('cassables', world.cass.list.length, 'fusionnés en', world.cass.merged.length, 'maillages,', (performance.now() - tc).toFixed(0), 'ms');
-  night = createNight({ scene, sun, hemi, renderer, world, mapRoot: root, fx, quality: QN }); night.set(!!save.settings.night); renderMenu();
+  night = createNight({ scene, sun, hemi, renderer, world, mapRoot: root, fx, quality: QN }); night.set(!!save.settings.night);
+  try { lobby = createLobby({ scene, camera, world, Q }); lobby.show(!game); window.__lobby = lobby; $('menu').classList.add('ready'); } catch (e) { console.warn('salon 3D indisponible', e); }
+  renderMenu();
   $('loading').classList.add('hidden'); $('play').disabled = false;
   window.__loaded = true;
 }
@@ -125,8 +128,12 @@ function renderMenu() {
   const K = classOf(save.team, cur), P = save.primary && save.unlocked.includes(save.primary) && WEAPONS[save.primary] ? WEAPONS[save.primary] : null;
   const prim = P && P.cat !== 'pistolet' ? P : WEAPONS[K.primary], sec = P && P.cat === 'pistolet' ? P : WEAPONS[K.secondary];
   $('clsInfo').innerHTML = `<span>${svg(prim.ico)} ${prim.name}${prim.id !== K.primary ? ' <i>(armurerie)</i>' : ''}</span><span>${svg(sec.ico)} ${sec.name}</span><span>${svg('vest')} ${K.armor ? 'Gilet ' + K.armor : 'Sans gilet'}</span><span>${svg('target')} <b>${K.perkName}</b> : ${K.perkDesc}</span>`;
-  $('nightBtn').textContent = save.settings.night ? 'Mode jour' : 'Mode nuit (émeute)';
+  $('nightBtn').classList.toggle('night', !!save.settings.night);
   $('bank').textContent = fmt(save.bank); $('lvl').textContent = save.lvl || 1;
+  { const l = save.lvl || 1, a = 100 * (l - 1) ** 2, b = 100 * l ** 2; $('xpbar').style.width = Math.max(4, Math.min(100, ((save.xp || 0) - a) / (b - a) * 100)).toFixed(0) + '%'; }
+  $('menu').classList.toggle('t-ordre', save.team === 'ordre'); $('invite').classList.toggle('t-ordre', save.team === 'ordre');
+  $('modeLine').textContent = `Domination · ${save.settings.teamSize} contre ${save.settings.teamSize}${save.settings.night ? ' · de nuit' : ''}`;
+  renderParty();
 }
 document.querySelectorAll('.side').forEach((b) => b.addEventListener('click', () => { save.team = b.dataset.team; persist(); renderMenu(); audio.init(); audio.play('uiSelect'); }));
 $('classes').addEventListener('click', (e) => { const b = e.target.closest('button[data-cls]'); if (!b) return; pickClass(b.dataset.cls); audio.init(); audio.play('uiTick'); });
@@ -138,7 +145,67 @@ $('play').addEventListener('click', () => start());
 $('openShop').addEventListener('click', () => openShop());
 $('nightBtn').addEventListener('click', () => { save.settings.night = !save.settings.night; persist(); night?.set(save.settings.night); renderMenu(); audio.init(); audio.play('uiTick'); });
 $('closeShop').addEventListener('click', () => closeShop());
-$('again').addEventListener('click', () => { $('end').classList.add('hidden'); $('menu').classList.remove('hidden'); renderMenu(); });
+$('again').addEventListener('click', () => { $('end').classList.add('hidden'); $('menu').classList.remove('hidden'); lobby?.show(true); renderMenu(); });
+
+// ---------- équipe du salon : toi + 3 places ----------
+// Pas encore de jeu en ligne : les places se remplissent d'équipiers IA (ils jouent vraiment à tes côtés, avec ce nom et cette tenue) ;
+// le code et le lien d'invitation sont prêts pour le jour où les parties entre amis seront branchées.
+const SQUAD_NAMES = { ordre: ['Brigadier Lenoir', 'Gardienne Diallo', 'Major Kessler'], civils: ['Nadia', 'Yanis', 'Sacha'] };
+save.squad = Array.isArray(save.squad) ? save.squad.slice(0, 3) : [null, null, null]; while (save.squad.length < 3) save.squad.push(null);
+if (!/^FRZ-[A-Z0-9]{4}$/.test(save.teamCode || '')) { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; save.teamCode = 'FRZ-' + Array.from({ length: 4 }, () => A[Math.random() * A.length | 0]).join(''); }
+persist();
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+function squadMember(k) {
+  if (!save.squad[k]) return null; const T = save.team, skins = TEAMS[T].skins; const cl = Object.values(CLASSES[T]); const K = cl[(k * 3 + 1) % cl.length];
+  const skin = skins.filter((s) => s !== save.skin)[k % (skins.length - 1)] || skins[0];
+  return { skin, team: T, gun: K.primary, name: SQUAD_NAMES[T][k], cls: K.name };
+}
+window.__squad = () => [0, 1, 2].map(squadMember).filter(Boolean);
+function renderParty() {
+  const T = save.team, K = classOf(T, save.cls[T]); const P = save.primary && save.unlocked.includes(save.primary) && WEAPONS[save.primary];
+  const gun = P && P.cat !== 'pistolet' ? P.id : K.primary;
+  const list = [{ skin: save.skin, team: T, gun }, squadMember(0), squadMember(1), squadMember(2)];
+  lobby?.setParty(list, T);
+  const n = list.filter(Boolean).length; $('squadN').textContent = n + '/4';
+  $('plates').innerHTML = list.map((m, i) => i === 0
+    ? `<div class="plate me" data-i="0"><span class="nm">${esc(save.pseudo || 'Toi')}</span><span class="sub ready">Prêt · ${K.name}</span></div>`
+    : m ? `<div class="plate" data-i="${i}"><span class="nm">${esc(m.name)}</span><span class="sub">Équipier IA · ${m.cls}</span><button class="x" data-rm="${i - 1}" title="Libérer la place">×</button></div>`
+      : `<div class="plate empty" data-i="${i}"><button class="addslot" data-add="${i - 1}" title="Inviter un ami">+</button><small>Inviter</small></div>`).join('');
+  $('slotList').innerHTML = `<div class="slotrow me"><span class="n">1</span><div><b>${esc(save.pseudo || 'Toi')}</b><small>chef d'équipe · ${K.name}</small></div></div>` + [0, 1, 2].map((k) => { const m = squadMember(k);
+    return `<div class="slotrow"><span class="n">${k + 2}</span><div><b>${m ? esc(m.name) : 'Place libre'}</b><small>${m ? 'Équipier IA · ' + m.cls : 'en attente d\'un ami'}</small></div><button data-${m ? 'rm' : 'bot'}="${k}">${m ? 'Retirer' : 'Équipier IA'}</button></div>`; }).join('');
+}
+function placePlates() {
+  if (!lobby?.visible || $('menu').classList.contains('hidden')) return;
+  const A = lobby.anchors(innerWidth, innerHeight);
+  for (const el of $('plates').children) { const a = A[+el.dataset.i]; if (!a) continue; const y = el.classList.contains('empty') ? (a.y + a.fy) / 2 : a.y; el.style.left = a.x.toFixed(1) + 'px'; el.style.top = y.toFixed(1) + 'px'; el.style.opacity = a.vis ? 1 : 0; }
+}
+function openInvite() { $('pseudo').value = save.pseudo || ''; $('teamCode').textContent = save.teamCode; renderParty(); $('invite').classList.remove('hidden'); audio.init(); audio.play('uiSelect'); }
+function closeInvite() { $('invite').classList.add('hidden'); renderParty(); }
+const inviteLink = () => `${location.origin}${location.pathname}?equipe=${save.teamCode}`;
+async function copyText(t) { try { await navigator.clipboard.writeText(t); return true; } catch { return false; } }
+const flashBtn = (b, txt) => { const o = b.dataset.o || (b.dataset.o = b.textContent); b.textContent = txt; clearTimeout(b._t); b._t = setTimeout(() => (b.textContent = o), 1600); };
+const partyClick = (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.add != null) return openInvite();
+  if (b.dataset.rm != null) save.squad[+b.dataset.rm] = null; else if (b.dataset.bot != null) save.squad[+b.dataset.bot] = { bot: true }; else return;
+  persist(); renderParty(); audio.init(); audio.play('uiTick');
+};
+$('plates').addEventListener('click', partyClick); $('slotList').addEventListener('click', partyClick);
+$('openInvite').addEventListener('click', openInvite); $('closeInvite').addEventListener('click', closeInvite);
+$('invite').addEventListener('click', (e) => { if (e.target.id === 'invite') closeInvite(); });
+$('fillBots').addEventListener('click', () => { save.squad = save.squad.map((m) => m || { bot: true }); persist(); renderParty(); audio.play('uiSelect'); });
+$('pseudo').addEventListener('input', () => { save.pseudo = $('pseudo').value.replace(/[<>&"]/g, '').trim().slice(0, 16); persist(); renderParty(); });
+$('copyLink').addEventListener('click', async () => flashBtn($('copyLink'), (await copyText(inviteLink())) ? 'Lien copié !' : save.teamCode));
+$('shareLink').addEventListener('click', async () => { const url = inviteLink(); if (navigator.share) { try { await navigator.share({ title: 'Frungz', text: `Rejoins mon équipe sur Frungz : ${save.teamCode}`, url }); } catch {} } else flashBtn($('shareLink'), (await copyText(url)) ? 'Lien copié !' : save.teamCode); });
+$('joinBtn').addEventListener('click', () => { const c = $('joinCode').value.trim().toUpperCase(); $('joinCode').value = c;
+  $('inviteNote').textContent = /^FRZ-[A-Z0-9]{4}$/.test(c) ? `Code ${c} noté. Les parties entre amis en ligne ne sont pas encore branchées : en attendant, tu joues avec tes équipiers IA.` : 'Un code d\'équipe ressemble à FRZ-7K2Q.'; });
+if (Q.get('equipe')) { $('joinCode').value = Q.get('equipe').toUpperCase().slice(0, 8); $('inviteNote').textContent = `Tu as reçu une invitation dans l'équipe ${$('joinCode').value}. Les parties entre amis en ligne arrivent bientôt : pour l'instant, tu joues avec des équipiers IA.`; setTimeout(openInvite, 50); }
+$('openSettings').addEventListener('click', () => openSettings());
+// glisser sur le décor pour faire tourner ton perso
+{ let px = null; const m = $('menu');
+  m.addEventListener('pointerdown', (e) => { if (e.target === m) { px = e.clientX; m.setPointerCapture?.(e.pointerId); } });
+  m.addEventListener('pointermove', (e) => { if (px == null) return; lobby?.drag(e.clientX - px); px = e.clientX; });
+  const up = () => (px = null); m.addEventListener('pointerup', up); m.addEventListener('pointercancel', up); }
 
 // ---------- armurerie ----------
 function openShop() {
@@ -214,7 +281,7 @@ $('shopList').addEventListener('click', (e) => {
 // ---------- navigation manette dans les menus ----------
 // croix / stick : déplacer le focus vers le contrôle le plus proche dans la direction ; ✕ valider ; ○ retour ; ← → régler curseurs et listes
 let padFocus = null, navRep = 0;
-function activeScreen() { for (const id of ['pause', 'shop', 'end', 'menu']) { const el = $(id); if (el && !el.classList.contains('hidden')) return el; } return null; }
+function activeScreen() { for (const id of ['pause', 'shop', 'invite', 'end', 'menu']) { const el = $(id); if (el && !el.classList.contains('hidden')) return el; } return null; }
 function focusables(scr) { return [...scr.querySelectorAll('button, input, select')].filter((e) => !e.disabled && e.offsetParent !== null); }
 function setPadFocus(el) { padFocus?.classList.remove('padfocus'); padFocus = el; if (el) { el.classList.add('padfocus'); el.scrollIntoView?.({ block: 'nearest' }); if (el.closest?.('#shopList')) pvFrom(el); } }
 function padMenu(dt) {
@@ -238,7 +305,7 @@ function padMenu(dt) {
     if (best) { setPadFocus(best); audio.play('uiTick'); } return;
   }
   if (H(0)) { if (f.tagName === 'SELECT') { if (f.dataset.dirty) { delete f.dataset.dirty; f.dispatchEvent(new Event('change')); } } else if (f.type !== 'range') { f.click(); audio.play('uiSelect'); } return; }
-  if (H(1)) { if (scr.id === 'pause') closePause(); else if (scr.id === 'shop') closeShop(); }
+  if (H(1)) { if (scr.id === 'pause') closePause(); else if (scr.id === 'shop') closeShop(); else if (scr.id === 'invite') closeInvite(); }
 }
 
 // ---------- pause et réglages ----------
@@ -277,8 +344,9 @@ document.head.appendChild(st);
 const bindSet = (id, key, prop = 'value', conv = Number) => { const el = $(id); el[prop] = save.settings[key]; el.addEventListener('input', () => { save.settings[key] = conv(el[prop]); input.settings[key] = save.settings[key]; persist(); if (key === 'fps' && game) { game.cam.fps = save.settings.fps; game.viewGun(); } }); };
 if (save.settings.killcam === undefined) save.settings.killcam = true; bindSet('s-killcam', 'killcam', 'checked', Boolean); bindSet('s-sens', 'sens'); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); bindSet('s-team', 'teamSize');
 { const el = $('s-quality'); el.value = save.settings.quality || 'auto'; el.addEventListener('change', () => { save.settings.quality = el.value; persist(); location.reload(); }); }
-function openPause() { if (!game || game.over) return; game.paused = true; pause.classList.remove('hidden'); document.exitPointerLock?.(); $('s-fps').checked = game.cam.fps; }
-function closePause() { pause.classList.add('hidden'); if (game) game.paused = false; renderer.domElement.requestPointerLock?.(); }
+function openSettings() { pause.querySelector('h2').textContent = 'RÉGLAGES'; $('resume').style.display = 'none'; $('quit').textContent = 'Retour au salon'; pause.classList.remove('hidden'); audio.init(); audio.play('uiSelect'); }
+function openPause() { if (!game || game.over) return; pause.querySelector('h2').textContent = 'PAUSE'; $('resume').style.display = ''; $('quit').textContent = 'Quitter la partie'; game.paused = true; pause.classList.remove('hidden'); document.exitPointerLock?.(); $('s-fps').checked = game.cam.fps; }
+function closePause() { pause.classList.add('hidden'); if (game) { game.paused = false; renderer.domElement.requestPointerLock?.(); } else renderMenu(); }
 $('resume').addEventListener('click', closePause);
 $('quit').addEventListener('click', () => { pause.classList.add('hidden'); endGame(null); });
 document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && game && !game.paused && !game.over && !input.st.usingPad && $('shop').classList.contains('hidden') && $('inv').classList.contains('hidden')) openPause(); });
@@ -288,16 +356,16 @@ renderer.domElement.addEventListener('click', () => { if (game && !game.paused) 
 let game = null;
 function start() {
   audio.init(); persist();
-  $('menu').classList.add('hidden'); $('hud').classList.remove('hidden');
+  $('menu').classList.add('hidden'); $('hud').classList.remove('hidden'); lobby?.show(false);
   if (game) { scene.remove(game.root); world.dynamic.length = 0; }
-  game = new Game({ mapRoot, renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts: { teamSize: +(Q.get('n') || save.settings.teamSize), botSkill: 1, cars: carDefs, lod: QS.lod, lodShadow: QS.lodShadow } });
+  game = new Game({ mapRoot, renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts: { squad: window.__squad(), pseudo: save.pseudo, teamSize: +(Q.get('n') || save.settings.teamSize), botSkill: 1, cars: carDefs, lod: QS.lod, lodShadow: QS.lodShadow } });
   game.onShop = openShop; game.onPause = openPause; game.onEnd = (r) => endGame(r);
   game.build(); window.__game = game;
   renderer.domElement.requestPointerLock?.();
 }
 function endGame(r) {
   document.exitPointerLock?.(); $('hud').classList.add('hidden'); audio.engine(false); renderer.domElement.style.filter = '';
-  if (!r) { if (game) { scene.remove(game.root); world.dynamic.length = 0; game = null; } $('menu').classList.remove('hidden'); renderMenu(); return; }
+  if (!r) { if (game) { scene.remove(game.root); world.dynamic.length = 0; game = null; } $('menu').classList.remove('hidden'); lobby?.show(true); renderMenu(); return; }
   $('endTitle').textContent = r.draw ? 'ÉGALITÉ' : r.win ? 'VICTOIRE' : 'DÉFAITE';
   const s = r.stats; $('endStats').innerHTML = `<div>${r.score.ordre}<br><span>Brigade</span></div><div>—</div><div>${r.score.civils}<br><span>Frungz</span></div><div>${s.kills}<br><span>éliminations</span></div><div>${s.captures}<br><span>captures</span></div><div>${fmt(s.earned)} €<br><span>gagnés</span></div><div>${s.broken}<br><span>vitrines</span></div><div>${s.stolen}<br><span>vols</span></div><div>${s.deaths}<br><span>morts</span></div>`;
   $('end').classList.remove('hidden');
@@ -327,8 +395,9 @@ function frame() {
     else { input.poll(); if (input.pressed('pause') && !pause.classList.contains('hidden')) closePause(); else if (!input.st.usingPad && input.pressed('shop') && !$('shop').classList.contains('hidden')) closeShop(); else padMenu(dt); input.endFrame(); }
   } else if (world) {
     // menu : survol lent de la place
-    menuT += dt * 0.04; camera.position.set(Math.cos(menuT) * 150, 55, Math.sin(menuT) * 150); camera.lookAt(0, 4, 0); // au-dessus des toits, jamais dans les bâtiments
-    followShadow(camera.position); world.metro?.update(menuT * 25, dt, null);
+    // salon : l'équipe sur la place (sinon, survol lent au-dessus des toits)
+    if (lobby?.visible) { lobby.update(dt); placePlates(); followShadow(lobby.focusPoint()); }
+    else { menuT += dt * 0.04; camera.position.set(Math.cos(menuT) * 150, 55, Math.sin(menuT) * 150); camera.lookAt(0, 4, 0); followShadow(camera.position); } world.metro?.update(menuT * 25, dt, null);
     input.poll(); padMenu(dt); input.endFrame(); night?.update(dt, camera.position, null);
   }
   if (composer) composer.render(); else renderer.render(scene, camera); if (game && !game.paused) game.renderPip(renderer, scene); window.__frames = (window.__frames || 0) + 1;
