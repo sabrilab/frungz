@@ -68,7 +68,7 @@ export class Game {
     this.root = new THREE.Group(); this.scene.add(this.root);
     this.cam = { yaw: 0, pitch: 0, dist: 3, fps: !!this.save.settings?.fps, trauma: 0, bob: 0, dip: 0, roll: 0, kickP: 0, kickY: 0, fov: 70, shake: V() };
     this.ui = {}; this.nextUi = 0; this.feed = []; this.specialT = 75; this.stats = { kills: 0, deaths: 0, earned: 0, captures: 0, broken: 0, stolen: 0 };
-    this.fb = createFeedback(this); this.losQueue = 0; this.drone = { ordre: 0, civils: 0 }; this.strikes = []; this.streakCd = { ordre: 0, civils: 0 };
+    this.net = this.opts.net || null; this.fb = createFeedback(this); this.losQueue = 0; this.drone = { ordre: 0, civils: 0 }; this.strikes = []; this.streakCd = { ordre: 0, civils: 0 };
   }
 
   // ---------------------------------------------------------------- mise en place
@@ -78,15 +78,71 @@ export class Game {
     const W = this.world; if (W.cass) for (const e of W.cass.list) if (e.broken) W.cass.repair(e);
     if (W.metro) W.dynamic.push(...W.metro.cols);
     const T = this.save.team; const N = this.opts.teamSize;
+    if (this.opts.roster) return this.buildFromRoster(this.opts.roster);
     this.player = this.spawnActor(T, this.save.skin, false, this.opts.pseudo || 'Toi');
+    // en ligne (chef d'équipe) : les amis connectés prennent les premières places de l'équipe ; leur perso est piloté par leur navigateur
+    for (const f of (this.opts.friends || []).slice(0, Math.max(0, N - 1))) { const sk = TEAMS[T].skins.includes(f.skin) ? f.skin : TEAMS[T].skins[0]; const b = this.spawnActor(T, sk, true, f.pseudo || 'Ami'); b.squad = true; b.puppet = true; b.owner = f.id; if (f.cls && CLASSES[T][f.cls]) { b.cls = f.cls; b.perk = classOf(T, f.cls).perk; } }
     // équipe du salon : les premiers alliés prennent le nom et la tenue des équipiers choisis
-    const squad = (this.opts.squad || []).slice(0, Math.max(0, N - 1)); for (const m of squad) { const b = this.spawnActor(T, m.skin, true, m.name); b.squad = true; }
-    for (const t of ['ordre', 'civils']) { const n = t === T ? N - 1 - squad.length : N; for (let i = 0; i < n; i++) this.spawnActor(t, pick(TEAMS[t].skins), true, BOT_NAMES[t][i % 20] + (i >= 20 ? ' ' + (i / 20 | 0) : '')); }
+    const nf = this.actors.length - 1; const squad = (this.opts.squad || []).slice(0, Math.max(0, Math.min(3 - nf, N - 1 - nf))); for (const m of squad) { const b = this.spawnActor(T, m.skin, true, m.name); b.squad = true; }
+    for (const t of ['ordre', 'civils']) { const n = t === T ? N - 1 - nf - squad.length : N; for (let i = 0; i < n; i++) this.spawnActor(t, pick(TEAMS[t].skins), true, BOT_NAMES[t][i % 20] + (i >= 20 ? ' ' + (i / 20 | 0) : '')); }
     for (const a of this.actors) this.respawn(a, true);
     this.cam.yaw = this.player.yaw;
     this.minimapInit(); this.hudInit();
     this.announce('DOMINATION', 'Tiens A · B · C — casse, vole, revends', '#fff');
   }
+
+  // invité en ligne : on recrée exactement la distribution du chef (mêmes persos, même ordre, donc mêmes numéros)
+  buildFromRoster(roster) {
+    const me = this.net.id, host = this.net.hostId;
+    for (const [team, skin, name, cls, owner, squad] of roster) {
+      const mine = owner === me; const a = this.spawnActor(team, skin, !mine, mine ? (this.opts.pseudo || name) : name);
+      if (cls && CLASSES[team][cls]) { a.cls = cls; a.perk = classOf(team, cls).perk; }
+      if (mine) this.player = a; else { a.puppet = true; a.owner = owner || host; }
+      if (squad) a.squad = true;
+    }
+    for (const a of this.actors) this.respawn(a, true);
+    for (const a of this.actors) if (a.marker) a.marker.visible = a.team === this.player.team;
+    this.cam.yaw = this.player.yaw;
+    this.minimapInit(); this.hudInit();
+    this.announce('DOMINATION', 'En ligne avec ton équipe · tiens A · B · C', '#fff');
+  }
+  // ---------------------------------------------------------------- en ligne
+  // ce navigateur décide-t-il pour ce perso ? (son propre joueur ; et tous les bots chez le chef)
+  netOwns(a) { return !this.net || a === this.player || !a.puppet; }
+  // un perso piloté à distance : on rejoint en douceur la dernière position reçue (prolongée par la vitesse), puis on l'anime comme les autres
+  updatePuppet(a, dt) {
+    if (a.gone) return; const n = a.net;
+    if (n && (n.fl & 1) && !a.alive && performance.now() / 1000 - n.at < 1) { this.respawn(a); a.pos.set(n.x, n.y, n.z); a.ch.root.visible = true; }
+    if (!a.alive) { a.respawnT = 99; this.updateActor(a, dt); return; }
+    a.spawnProt = Math.max(0, (a.spawnProt || 0) - dt); a.fireT -= dt;
+    if (n) {
+      const age = Math.min(0.3, performance.now() / 1000 - n.at);
+      const tx = n.x + n.vx * age, tz = n.z + n.vz * age, ty = n.y + ((n.fl & 2) ? 0 : n.vy * age);
+      const d2 = (a.pos.x - tx) ** 2 + (a.pos.z - tz) ** 2 + (a.pos.y - ty) ** 2;
+      if (d2 > 25) a.pos.set(tx, ty, tz); else { const k = 1 - Math.exp(-dt * 14); a.pos.x += (tx - a.pos.x) * k; a.pos.y += (ty - a.pos.y) * k; a.pos.z += (tz - a.pos.z) * k; }
+      a.vel.set(n.vx, n.vy, n.vz); a.onGround = !!(n.fl & 2); a.crouch = !!(n.fl & 4);
+      a.yaw = lerp_angle(a.yaw, n.yaw, 1 - Math.exp(-dt * 16)); a.pitch = n.pitch;
+      const hd = V(n.vx, 0, n.vz); if (hd.lengthSq() > 0.01) hd.normalize(); else hd.set(Math.sin(a.yaw), 0, Math.cos(a.yaw));
+      if (n.fl & 8) { if (!(a.slideT > 0)) a.slideDir = hd.clone(); a.slideT = 0.3; } else a.slideT = 0;
+      if (n.fl & 16) { if (!(a.rollT > 0)) a.rollDir = hd.clone(); a.rollT = 0.3; } else a.rollT = 0;
+      if (n.gun && a.slots[a.cur]?.id !== n.gun && WEAPONS[n.gun]) { a.slots = [{ id: n.gun, rarity: 'commun', mag: WEAPONS[n.gun].mag }]; this.equip(a, 0, true); }
+      if (n.hp != null) a.hp = n.hp;
+    }
+    a.crouchK = lerp(a.crouchK || 0, a.crouch ? 1 : 0, 1 - Math.exp(-dt * 12));
+    this.animate(a, dt);
+  }
+  // tir d'un perso distant : éclair, son, traceur dans la direction de son regard (les dégâts, eux, sont décidés chez le tireur)
+  netShot(a, k) {
+    a.lastShot = this.time; const W = WEAPONS[a.slots[a.cur]?.id]; if (!W) return;
+    const muzzle = V(); (a.ch.gun?.userData.muzzle || a.ch.root).getWorldPosition(muzzle);
+    this.audio.gun(W.sound, a.pos, 1); this.fx.muzzle(muzzle, W.pellets > 1 ? 1.4 : 1);
+    const c = Math.cos(a.pitch || 0), d = V(Math.sin(a.yaw) * c, Math.sin(a.pitch || 0), Math.cos(a.yaw) * c);
+    const o = a.pos.clone().add(V(0, 1.45, 0)); const hw = this.world.ray(o, d, W.range || 120); const end = o.clone().addScaledVector(d, hw ? hw.t : (W.range || 120));
+    if (a.pos.distanceToSquared(this.player.pos) < 90 * 90) { for (let i = 0; i < Math.min(k, 2); i++) this.fx.tracer(muzzle, end); if (hw) this.fx.impact(end, hw.n, 'world'); }
+    if (a !== this.player) this.notePing(a, muzzle);
+  }
+  // un ami a quitté le salon : son perso disparaît
+  netGone(a) { a.alive = false; a.gone = true; a.ch.root.visible = false; if (a.bag.length) { this.dropPile(a.pos, a.bag.splice(0)); this.carryMesh(a); } this.toast(`${a.name} a quitté la partie`, '#ccc'); }
 
   buildZones() {
     for (const z of this.zoneState) {
@@ -222,6 +278,8 @@ export class Game {
   // ---------------------------------------------------------------- dégâts
   damage(t, amount, by, opts = {}) {
     if (!t.alive || this.over) return;
+    // en ligne : la cible appartient à un autre navigateur, on lui envoie le coup (et on affiche le retour de touche tout de suite)
+    if (this.net && !this.netOwns(t)) { if (by && by.team === t.team && by !== t) return; if (by && !this.netOwns(by)) return; this.net.hit(t, amount, by, opts); if (by === this.player) { this.flashBody(t); this.fb.dealt(t, amount, opts, 0, false, false); t.spotted = this.time; } return; }
     if (t.spawnProt > 0) amount *= 0.2;
     if (t.rollT > 0) amount *= 0.5; // roulade : on esquive à moitié
     if (by && by.team === t.team && by !== t) return;
@@ -254,6 +312,7 @@ export class Game {
     }
     if (t === this.player) { this.stats.deaths++; this.announce('ÉLIMINÉ', by ? `par ${by.name}` : '', '#ff4a4a', 2.5); }
     this.killFeed(by, t, opts);
+    if (this.net && this.netOwns(t) && !opts?.fromNet) this.net.kill(t, by, opts);
   }
   // mort : projeté en arrière (explosion, métro, fusil à pompe à bout portant), emporté par l'élan en pleine course, ou chute selon le côté de l'impact
   deathAnim(t, by, opts = {}) {
@@ -281,7 +340,9 @@ export class Game {
   }
   pistolStance(a) { const id = this.weapon(a)?.id; return WEAPONS[id]?.hand === 'pistol' && !!a.ch.actions.MXP_Idle; }
   scoreEvent(team, pts, why, by) {
-    if (this.over || !pts) return; this.score[team] += pts; if (by) by.stats.sac += pts;
+    if (this.over || !pts) return;
+    if (this.net?.guest && !this._netScore) { this.net.score(team, pts, why, by); if (by === this.player) this.toast(`+${pts} pts équipe · ${why}`, TEAMS[team].color); return; } // le chef tient le score
+    this.score[team] += pts; if (by) by.stats.sac += pts;
     if (by === this.player) this.toast(`+${pts} pts équipe · ${why}`, TEAMS[team].color);
   }
   // ---------------------------------------------------------------- séries
@@ -361,7 +422,7 @@ export class Game {
     const W = this.weapon(a); const D = WEAPONS[W.id]; const mult = RARITY[W.rarity].mult;
     if (a.reloadT > 0 || a.fireT > 0) return false;
     if (W.mag <= 0) { this.startReload(a); if (!a.bot) this.audio.click(); return false; }
-    W.mag--; a.fireT = 1 / D.rps; if (D.burst) { a.burstLeft = a.burstLeft > 0 ? a.burstLeft - 1 : D.burst - 1; if (a.burstLeft <= 0 || W.mag <= 0) { a.burstLeft = 0; a.fireT += D.burstPause || 0.25; } } a.lastShot = this.time; Anim.kick(a, W.id); { const heavy = D.pellets > 1 || D.dmg > 50; this.overlay(a, 'A_Recoil', heavy ? 0.32 : 0.14, { add: true, w: heavy ? 0.8 : 0.3 }); }
+    W.mag--; a.netShots = (a.netShots || 0) + 1; a.fireT = 1 / D.rps; if (D.burst) { a.burstLeft = a.burstLeft > 0 ? a.burstLeft - 1 : D.burst - 1; if (a.burstLeft <= 0 || W.mag <= 0) { a.burstLeft = 0; a.fireT += D.burstPause || 0.25; } } a.lastShot = this.time; Anim.kick(a, W.id); { const heavy = D.pellets > 1 || D.dmg > 50; this.overlay(a, 'A_Recoil', heavy ? 0.32 : 0.14, { add: true, w: heavy ? 0.8 : 0.3 }); }
     const muzzle = V(); (a.ch.gun?.userData.muzzle || a.ch.root).getWorldPosition(muzzle);
     if (!a.bot && this.cam.fps && this.vgun) this.vgun.userData.muzzle.getWorldPosition(muzzle);
     const moving = this.feetSpeed(a) > 2 ? 1.6 : 1; const aiming = !a.bot && this.aiming ? (this.cam.fps ? 0.1 : 0.18) : 1; const air = a.onGround ? 1 : 1.8;
@@ -784,14 +845,16 @@ export class Game {
   }
 
   // ---------------------------------------------------------------- boucle
-  update(dt) {
-    if (this.paused) return;
-    this.time += dt; this.input.poll(); this.pathBudget = 4;
+  // bg : en ligne, la partie continue derrière un menu (pause, armurerie) sans lire les commandes du joueur
+  update(dt, bg = false) {
+    if (this.paused && !bg) return;
+    this.time += dt; if (!bg) this.input.poll(); this.pathBudget = 4;
     this.lodT = (this.lodT || 0) - dt; if (this.lodT <= 0) { this.lodT = 0.4; this.updateLod(); }
-    if (!this.over) { this.updatePlayer(dt); }
+    if (!this.over && !bg) { this.updatePlayer(dt); }
     this.cullActors();
-    for (const a of this.actors) if (a.bot) this.updateBot(a, dt);
-    for (const a of this.actors) this.updateActor(a, dt);
+    for (const a of this.actors) if (a.bot && !a.puppet) this.updateBot(a, dt);
+    for (const a of this.actors) if (a.puppet) this.updatePuppet(a, dt); else this.updateActor(a, dt);
+    this.net?.tick(dt);
     for (const c of this.cars) this.updateCar(c, dt);
     this.updateMetro(dt); this.world.cass?.update(dt); this.world.flushNav();
     // 51 voitures : on n'affiche que celles assez proches (et l'ombre seulement de près)
@@ -810,7 +873,7 @@ export class Game {
     this.fx.update(dt);
     if (this.time > this.nextUi) { this.nextUi = this.time + 0.1; this.updateHud(); }
     this.mmT = (this.mmT || 0) - dt; if (this.mmT <= 0) { this.mmT = 1 / 20; this.drawMinimap(); } // minimap à 20 i/s
-    this.input.endFrame();
+    if (!bg) this.input.endFrame();
   }
 
   // ---------------------------------------------------------------- joueur
@@ -1386,7 +1449,8 @@ export class Game {
       const only = !z.contested ? (n.ordre ? 'ordre' : n.civils ? 'civils' : null) : null;
       const was = z.threat; z.threat = !!(only && z.owner && only !== z.owner) || (z.contested && !!z.owner);
       if (z.threat && !was && z.owner === this.player.team && this.time - (z.warnT || -99) > 8) { z.warnT = this.time; this.toast(`⚠ ${z.id} est attaquée`, '#ff8080'); }
-      if (only && z.owner !== only) {
+      if (this.net?.guest) {} // invité : captures et score viennent du chef
+      else if (only && z.owner !== only) {
         let pk = 1; for (const a of this.actors) if (a.alive && a.team === only && a.perk?.cap > pk && !a.inCar && this.inZone(a, z)) pk = a.perk.cap;
         const rate = dt / 10 * (1 + 0.4 * (Math.min(3, n[only]) - 1)) * pk; // 10 s seul, plus vite à plusieurs ; une zone ennemie se neutralise d'abord
         if (z.cap && z.cap !== only) { z.p -= rate; if (z.p <= 0) { z.p = 0; z.cap = only; } } else { z.cap = only; z.p += rate; if (z.p >= 1) this.captureZone(z, only); }
@@ -1395,7 +1459,7 @@ export class Game {
       for (const m of z.mats) m.color?.set(col); if (z.mats[2].uniforms) z.mats[2].uniforms.c.value.set(z.contested ? (this.time * 3 | 0) % 2 ? '#fff' : col : col);
       z.flag.position.y = 6 + Math.sin(this.time * 2 + z.center[0]) * 0.2; z.flag.material.color.set(col);
     }
-    if (this.zoneTick >= 1) { this.zoneTick -= 1; for (const z of this.zoneState) if (z.owner) this.score[z.owner] += 1; }
+    if (this.zoneTick >= 1 && !this.net?.guest) { this.zoneTick -= 1; for (const z of this.zoneState) if (z.owner) this.score[z.owner] += 1; }
   }
   captureZone(z, team) {
     const prev = z.owner; z.owner = team; z.p = 1; this.fx.ring(V(z.center[0], this.world.groundY(z.center[0], z.center[1], (z.y ?? 0.17) + 0.5), z.center[1]), TEAMS[team].color);
