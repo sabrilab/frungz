@@ -23,6 +23,7 @@ const STREAKS = {
 const STREAK_BY_ID = Object.fromEntries(Object.values(STREAKS).flat().map((r) => [r.id, r]));
 const LOOT_PTS = { commun: 2, rare: 4, epique: 6, legendaire: 10 };
 // contribution à la partie (classement)
+const V2 = new THREE.Vector2(); const BULLET_V = 380; const BULLET_GEO = new THREE.CylinderGeometry(0.012, 0.02, 0.09, 6).rotateX(Math.PI / 2); const BULLET_MAT = new THREE.MeshStandardMaterial({ color: '#d9a441', metalness: 0.9, roughness: 0.25, emissive: '#5a3a00' });
 const contrib = (a) => a.stats.k * 100 + a.stats.a * 50 + a.stats.cap * 150 + a.stats.sac * 10;
 const BOT_NAMES = {
   ordre: ['Brigadier Lemoine', 'Gardien Diallo', 'Major Fontaine', 'Cdt Mercier', 'Agent Benali', 'Lt Garnier', 'Brigadier Roux', 'Agent Petit', 'Cpt Morel', 'Agent Nguyen', 'Agent Faure', 'Brigadier Haddad', 'Agent Lambert', 'Major Caron', 'Agent Leroy', 'Gardien Rey', 'Agent Blanc', 'Lt Masson', 'Agent Perrin', 'Agent Colin'],
@@ -214,7 +215,8 @@ export class Game {
     if (by && by !== t) {
       by.stats.k++; this.addStreak(by);
       if (by === this.player) this.maybeKillcam(t, opts);
-      if (by === this.player) { this.medal(opts.head ? 'TIR À LA TÊTE' : 'ÉLIMINÉ', t.name, opts.head); this.stats.kills++; this.earn(50 + (opts.head ? 25 : 0), opts.head ? 'Tir à la tête' : 'Élimination'); this.audio.kill(); this.input.rumble(0.9, 0.6, 160); }
+      if (by === this.player) { this.multiKill(opts); this.streakDirty = 1; }
+      if (by === this.player) { this.medal(opts.head ? (opts.dist > 80 ? "TIR D'ÉLITE" : 'TIR À LA TÊTE') : 'ÉLIMINÉ', t.name + (by.streak >= 2 ? ` · série ${by.streak}` : ''), opts.head); this.stats.kills++; this.earn(50 + (opts.head ? 25 : 0), opts.head ? 'Tir à la tête' : 'Élimination'); this.audio.kill(); this.input.rumble(0.9, 0.6, 160); }
     }
     if (t === this.player) { this.stats.deaths++; this.announce('ÉLIMINÉ', by ? `par ${by.name}` : '', '#ff4a4a', 2.5); }
     this.killFeed(by, t, opts);
@@ -227,13 +229,14 @@ export class Game {
   addStreak(a) {
     a.streak++; const r = STREAKS[a.team].find((x) => x.n === a.streak); if (!r) return;
     a.rewards.push(r.id);
-    if (a === this.player) { this.announce(`SÉRIE DE ${a.streak}`, `${r.icon} ${r.nom} prêt · ${this.input.label('streak')}`, '#ffcc3d', 2.2); this.audio.rarity('epique'); }
+    if (a === this.player) { this.bigText(`${r.icon} ${r.nom.toUpperCase()} !`, `série de ${a.streak} · appuie sur ${this.input.label('streak')} pour lancer`, '#ffcc3d'); this.flash('radial-gradient(ellipse at center, rgba(255,204,61,0) 30%, rgba(255,204,61,.75))'); this.audio.streakReady(); this.input.rumble(1, 0.8, 300); this.cam.trauma = Math.min(1, this.cam.trauma + 0.35); this.streakDirty = 1; }
     else if (a.bot) a.ai.streakT = rnd(1.5, 5);
   }
   useStreak(a) {
     if (!a.alive || !a.rewards.length || this.over) return;
     const id = a.rewards.pop(), r = STREAK_BY_ID[id], mine = a.team === this.player.team, me = a === this.player;
-    const say = (enemyMsg) => { if (me) this.announce(`${r.icon} ${r.nom.toUpperCase()}`, r.desc, '#ffcc3d', 1.8); else if (mine) this.toast(`${r.icon} ${a.name} : ${r.nom}`, TEAMS[a.team].color); else this.toast(enemyMsg, '#ff4a4a'); };
+    if (me) { this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,.35), ${TEAMS[a.team].color})`); this.audio.streakGo(); this.cam.trauma = 0.8; this.input.rumble(1, 1, 400); $('hud').classList.remove('shake'); void $('hud').offsetWidth; $('hud').classList.add('shake'); this.streakUsed = id; this.streakDirty = 1; }
+    const say = (enemyMsg) => { if (me) this.bigText(`${r.icon} ${r.nom.toUpperCase()}`, r.desc, TEAMS[a.team].color); else if (mine) this.toast(`${r.icon} ${a.name} : ${r.nom}`, TEAMS[a.team].color); else this.toast(enemyMsg, '#ff4a4a'); };
     const foes = this.actors.filter((t) => t.alive && !t.gone && t.team !== a.team && !t.inCar);
     const near = (R) => foes.filter((t) => t.pos.distanceTo(a.pos) < R).sort((p, q) => p.pos.distanceToSquared(a.pos) - q.pos.distanceToSquared(a.pos));
     if (id === 'drone') { this.drone[a.team] = this.time + 25; this.droneOwner = this.droneOwner || {}; this.droneOwner[a.team] = a; say('🛸 Drone de la Brigade : tu es repéré !'); }
@@ -313,7 +316,9 @@ export class Game {
     const muzzle = V(); (a.ch.gun?.userData.muzzle || a.ch.root).getWorldPosition(muzzle);
     if (!a.bot && this.cam.fps && this.vgun) this.vgun.userData.muzzle.getWorldPosition(muzzle);
     const moving = this.feetSpeed(a) > 2 ? 1.6 : 1; const aiming = !a.bot && this.aiming ? (this.cam.fps ? 0.1 : 0.18) : 1; const air = a.onGround ? 1 : 1.8;
-    const spread = D.spread * moving * aiming * air * (a.crouch ? 0.7 : 1);
+    const scopedShot = a === this.player && D.scope && this.aiming;
+    const hip = D.scope && !a.bot && !scopedShot ? 22 : 1, settle = scopedShot ? 1 + (1 - (this.sc?.settle ?? 1)) * 14 : 1;
+    const spread = D.spread * moving * aiming * air * (a.crouch ? 0.7 : 1) * hip * settle;
     this.audio.gun(D.sound, a === this.player ? null : a.pos, a === this.player ? 0.9 : 1);
     this.fx.muzzle(muzzle, D.pellets > 1 ? 1.4 : 1);
     if (a !== this.player) this.notePing(a, muzzle);
@@ -324,8 +329,10 @@ export class Game {
       this.input.rumble(D.pellets > 1 || D.dmg > 50 ? 0.8 : 0.25, 0.5, 60); this.ui.crossKick = 1;
     }
     if (a.bot) { a.ch.actions.Gun_Shoot && this.setUpper(a); }
+    if (scopedShot) { $('scope')?.classList.remove('kick'); void $('scope')?.offsetWidth; $('scope')?.classList.add('kick'); this.audio.bolt(); this.cam.trauma = Math.min(1, this.cam.trauma + 0.25); }
     for (let p = 0; p < D.pellets; p++) {
       const d = dir.clone(); d.x += rnd(-1, 1) * spread; d.y += rnd(-1, 1) * spread; d.z += rnd(-1, 1) * spread; d.normalize();
+      if (a === this.player && D.scope) { this.launchBullet(a, origin, d, D, mult, W, muzzle, scopedShot); continue; }
       const hw = this.world.ray(origin, d, D.range); const ha = this.rayActors(origin, d, hw ? hw.t : D.range, a);
       let end;
       if (ha) {
@@ -335,19 +342,22 @@ export class Game {
         this.fx.impact(end, [-d.x, -d.y, -d.z], 'flesh');
       } else if (hw) {
         end = origin.clone().addScaledVector(d, hw.t);
-        const c = hw.c; let kind = 'world';
-        if (c?.vit) { kind = this.hitVitrine(c.vit, D.dmg * mult, a) ? 'glass' : 'metal'; }
-        else if (c?.wall) { this.hitWall(c.wall, D.dmg * mult, a); kind = c.wall.team === 'ordre' ? 'metal' : 'world'; }
-        else if (c?.car) { this.hitCar(c.car, D.dmg * mult * 0.6, a); kind = 'metal'; }
-        else if (c?.cassable && this.world.cass) { const e = this.world.cass.byId.get(c.cassable); if (e) this.world.cass.damage(e, D.dmg * mult, d, a); kind = /lampadaire|feu|dab|parcmetre|vauban|potelet|panneau|distributeur|scooter/.test(c.tag || '') ? 'metal' : /abribus|kiosque|colonne_verre/.test(c.tag || '') ? 'glass' : 'world'; }
-        else if (c && (c.tag === 'voiture' || c.tag === 'lampadaire' || c.tag === 'fourgon')) kind = 'metal';
-        if (a === this.player || end.distanceTo(this.player.pos) < 40) this.fx.impact(end, hw.n, kind);
+        this.hitWorld(a, hw, d, end, D, mult);
       } else end = origin.clone().addScaledVector(d, D.range);
       if (p < 3 || a === this.player) this.fx.tracer(muzzle, end);
     }
     // les bots entendent les coups de feu
     for (const b of this.actors) if (b.bot && b.alive && b.team !== a.team && !b.ai.target && b.pos.distanceToSquared(a.pos) < 900) { b.ai.target = a; b.ai.seeT = 0.5; }
     return true;
+  }
+  hitWorld(a, hw, d, end, D, mult) {
+        const c = hw.c; let kind = 'world';
+        if (c?.vit) { kind = this.hitVitrine(c.vit, D.dmg * mult, a) ? 'glass' : 'metal'; }
+        else if (c?.wall) { this.hitWall(c.wall, D.dmg * mult, a); kind = c.wall.team === 'ordre' ? 'metal' : 'world'; }
+        else if (c?.car) { this.hitCar(c.car, D.dmg * mult * 0.6, a); kind = 'metal'; }
+        else if (c?.cassable && this.world.cass) { const e = this.world.cass.byId.get(c.cassable); if (e) this.world.cass.damage(e, D.dmg * mult, d, a); kind = /lampadaire|feu|dab|parcmetre|vauban|potelet|panneau|distributeur|scooter/.test(c.tag || '') ? 'metal' : /abribus|kiosque|colonne_verre/.test(c.tag || '') ? 'glass' : 'world'; }
+        else if (c && (c.tag === 'voiture' || c.tag === 'lampadaire' || c.tag === 'fourgon')) kind = 'metal';
+    if (a === this.player || end.distanceTo(this.player.pos) < 40) this.fx.impact(end, hw.n, kind);
   }
   setUpper(a) { const s = a.ch.actions.Idle_Gun_Shoot; }
   startReload(a) { const W = this.weapon(a); if (a.reloadT > 0 || W.mag >= WEAPONS[W.id].mag) return; a.reloadT = WEAPONS[W.id].reload; if (!a.bot) this.audio.reload(); }
@@ -464,6 +474,29 @@ export class Game {
     this.grenades.push({ kind, pos: p, vel: v, m, t: 0, owner: a });
     this.audio.play('cloth', p, 0.8);
     if (a === this.player) this.toast(kind === 'gas' ? '💨 Lacrymogène lancée' : '🎆 Fumigène lancé', '#ddd');
+  }
+  launchBullet(a, origin, d, D, mult, W, muzzle, scoped) {
+    const b = { p: origin.clone(), v: d.clone().multiplyScalar(BULLET_V), a, D, mult, W, t: 0, dist: 0, from: a.pos.clone() };
+    const m = new THREE.Mesh(BULLET_GEO, BULLET_MAT); m.position.copy(b.p); m.lookAt(b.p.clone().add(d)); this.root.add(m); b.m = m;
+    (this.bullets ||= []).push(b); this.fx.tracer(muzzle, origin.clone().addScaledVector(d, 6));
+    // caméra balle dans la bulle : seulement pour un tir lointain à la lunette
+    const far = this.aimPt ? this.aimPt.distanceTo(origin) : 0;
+    if (scoped && far > 45 && this.save.settings?.killcam !== false) this.startPip({ mode: 'bullet', bullet: b, dur: Math.min(2.6, far / BULLET_V + 1.1), label: 'CAM BALLE', title: `TIR À ${Math.round(far)} m`, sub: 'calibre .338 · ' + Math.round(BULLET_V) + ' m/s' });
+  }
+  updateBullets(dt) {
+    const L = this.bullets; if (!L) return;
+    for (let i = L.length - 1; i >= 0; i--) {
+      const b = L[i]; b.t += dt; const p0 = b.p.clone(); b.v.y -= 9.8 * dt; const np = b.p.clone().addScaledVector(b.v, dt);
+      const seg = np.clone().sub(p0); const len = seg.length(); const d = seg.divideScalar(len);
+      const hw = this.world.ray(p0, d, len); const ha = this.rayActors(p0, d, hw ? hw.t : len, b.a); let end = null;
+      if (ha) { end = p0.clone().addScaledVector(d, ha.t); const dist = end.distanceTo(b.from);
+        this.damage(ha.a, b.D.dmg * b.mult * (ha.head ? 2.2 : 1) * (dist > 120 ? 1.1 : 1), b.a, { head: ha.head, weapon: b.W.id, dist, sniper: true });
+        this.fx.impact(end, [-d.x, -d.y, -d.z], 'flesh'); this.fx.burst(end, 10, { color: '#b3122a', speed: 4, size: 0.05, life: 0.5 }); }
+      else if (hw) { end = p0.clone().addScaledVector(d, hw.t); this.hitWorld(b.a, hw, d, end, b.D, b.mult); }
+      this.fx.tracer(p0, end || np); b.p.copy(end || np); b.dist += len; b.m.position.copy(b.p); b.m.lookAt(b.p.clone().add(d));
+      // balle qui frôle un ennemi : sifflement
+      if (end || b.dist > 340 || b.t > 2) { this.root.remove(b.m); L.splice(i, 1); b.done = true; const K = this.killcam; if (K?.bullet === b) { K.hitPt = (end || np).clone(); if (!K.keep) K.dur = Math.min(K.dur, K.t + 0.55); } }
+    }
   }
   updateNades(dt) {
     for (let i = this.grenades.length - 1; i >= 0; i--) {
@@ -680,7 +713,7 @@ export class Game {
     // 51 voitures : on n'affiche que celles assez proches (et l'ombre seulement de près)
     if ((this.carCullT = (this.carCullT || 0) - dt) <= 0) { this.carCullT = 0.3; const cp = this.camera.position;
       for (const c of this.cars) { if (c.dead) continue; const d2 = c.obj.position.distanceToSquared(cp); c.obj.visible = d2 < 130 * 130 || !!c.driver; const sh = d2 < 50 * 50; if (c.sh !== sh) { c.sh = sh; c.obj.traverse((o) => { if (o.isMesh) o.castShadow = sh; }); } } }
-    this.updateNades(dt); this.updateStreaks(dt); this.cloudEffects(dt); this.updateZones(dt); this.updateShops(dt); this.updateDrops(dt); this.socleIncome(dt);
+    this.updateBullets(dt); this.updatePip(dt); this.updateNades(dt); this.updateStreaks(dt); this.cloudEffects(dt); this.updateZones(dt); this.updateShops(dt); this.updateDrops(dt); this.socleIncome(dt);
     for (const w of this.walls) { w.t += dt; w.mesh.scale.y = Math.min(1, 0.05 + w.t * 6); }
     this.specialT -= dt; if (this.specialT <= 0) { this.specialT = 120; this.specialDelivery(); }
     if (!this.over && (this.time >= this.matchLen || this.score.ordre >= this.scoreLimit || this.score.civils >= this.scoreLimit)) this.endMatch();
@@ -697,15 +730,16 @@ export class Game {
   updatePlayer(dt) {
     const a = this.player, I = this.input, C = this.cam;
     // regard
-    const sensM = 0.0032 * I.settings.sens * (this.aiming ? (WEAPONS[this.weapon(a)?.id]?.scope ? 0.35 : 0.6) : 1);
-    let padK = 3.8 * I.settings.padSens * (this.aiming ? 0.55 : 1) * dt;
+    const sensM = 0.0032 * I.settings.sens * (this.aiming ? (WEAPONS[this.weapon(a)?.id]?.scope ? (this.sc?.zoom ? 0.15 : 0.3) : 0.6) : 1);
+    let padK = 3.8 * I.settings.padSens * (this.aiming ? (WEAPONS[this.weapon(a)?.id]?.scope ? (this.sc?.zoom ? 0.2 : 0.35) : 0.55) : 1) * dt;
     // visée assistée manette : ralentit près d'une cible et la suit légèrement
     if (I.st.usingPad && I.settings.assist && a.alive && !a.inCar) {
       const t = this.assistTarget(); if (t) { padK *= 0.55; if (this.aiming || I.st.triggerR > 0.3) { C.yaw += t.dy * Math.min(1, dt * (this.aiming ? 5 : 2.5)); C.pitch += t.dp * Math.min(1, dt * (this.aiming ? 4 : 2)); } }
     }
     C.yaw -= I.st.mx * sensM + I.st.lookX * padK; C.pitch -= (I.st.my * sensM + I.st.lookY * padK) * (I.settings.invertY ? -1 : 1);
     C.pitch = clamp(C.pitch, -1.3, 1.25);
-    if (I.pressed('view')) { C.fps = !C.fps; this.save.settings.fps = C.fps; this.persist(); this.viewGun(); }
+    const scopedNow = this.aiming && WEAPONS[this.weapon(a)?.id]?.scope;
+    if (I.pressed('view') && !scopedNow) { C.fps = !C.fps; this.save.settings.fps = C.fps; this.persist(); this.viewGun(); }
     if (I.pressed('map')) $('minimap').classList.toggle('big');
     if (I.pressed('inv')) this.toggleInv();
     if (I.pressed('streak')) { if (a.rewards.length) this.useStreak(a); else this.toast(`Série : ${a.streak} — prochain bonus à ${STREAKS[a.team].find((r) => r.n > a.streak)?.n ?? '—'} éliminations`, '#ccc'); }
@@ -722,6 +756,7 @@ export class Game {
     if (I.keys.has('WheelUp') || I.keys.has('WheelDown')) {}
     if (I.pressed('reload')) this.startReload(a);
     this.aiming = (I.down('aim') || I.st.triggerL > 0.3) && !a.climb && a.rollT <= 0;
+    this.updateScope(dt, I, a);
     const W = this.weapon(a), D = WEAPONS[W.id];
     const wantFire = D.auto ? (I.down('fire') || I.st.triggerR > 0.4) : (I.pressed('fire') || (I.st.triggerR > 0.4 && !this._trigWas));
     this._trigWas = I.st.triggerR > 0.4;
@@ -1244,41 +1279,100 @@ export class Game {
   }
 
   // ---------------------------------------------------------------- caméra : TPS / FPS, balancement, tremblement, recul
-  // kill-cam façon caméra de surveillance : plan fixe de côté sur la victime, 1,4 s, sans ralenti (le jeu continue :
-  // compatible multijoueur, c'est un simple point de vue local). Seulement sur un beau tir et quand aucun ennemi n'est proche.
+  // kill-cam en bulle : petite caméra de surveillance incrustée sur le côté pendant que le jeu continue en plein écran
+  // (aucune prise de contrôle de la caméra : on reste dans l'action, compatible multijoueur)
   maybeKillcam(t, opts) {
-    const a = this.player; if (this.save.settings?.killcam === false || this.killcam || this.time < (this.killcamCd || 0) || !a.alive || a.inCar) return;
-    const dist = a.pos.distanceTo(t.pos); const stylish = opts.head || dist > 32 || a.slideT > 0 || !a.onGround || a.rollT > 0;
-    if (!stylish) return;
-    if (this.actors.some((e) => e.alive && !e.gone && e !== t && e.team !== a.team && (e.pos.distanceTo(a.pos) < 30 || (e.ai.target === a && e.ai.los)))) return;
-    // point de vue : en hauteur, de côté par rapport à la ligne de tir, avec vue dégagée sur la victime
+    const a = this.player; if (this.save.settings?.killcam === false || !a.alive) return;
+    const dist = opts.dist ?? a.pos.distanceTo(t.pos);
+    // la balle filmée vient de tuer : on reste sur la balle puis on suit la victime
+    const B = this.killcam; if (B?.mode === 'bullet' && opts.sniper) { B.target = t; B.keep = true; B.dur = B.t + 1.9; const el = $('killcam'); el?.classList.add('gold'); const bt = el?.querySelector('.kc-bot'); if (bt) bt.innerHTML = `${opts.head ? 'TIR À LA TÊTE' : 'ÉLIMINÉ'} · ${Math.round(dist)} m<small>${t.name}</small>`; return; }
     const shot = V(t.pos.x - a.pos.x, 0, t.pos.z - a.pos.z).normalize(), side = V(shot.z, 0, -shot.x), head = t.pos.clone().add(V(0, 1.2, 0));
     let eye = null;
-    for (const [s, back, up] of [[1, 1.5, 2.6], [-1, 1.5, 2.6], [1, -1, 3.2], [-1, -1, 3.2], [1, 3, 1.8], [-1, 3, 1.8]]) {
+    for (const [s, back, up] of [[1, 1.5, 2.6], [-1, 1.5, 2.6], [1, -1, 3.2], [-1, -1, 3.2], [1, 3, 1.8], [-1, 3, 1.8], [1, 0, 1]]) {
       const e = head.clone().addScaledVector(side, s * 4.5).addScaledVector(shot, -back); e.y = this.world.groundY(e.x, e.z, head.y) + up;
       if (this.world.los(e, head)) { eye = e; break; }
     }
-    if (!eye) return;
-    this.killcam = { t: 0, dur: 1.4, eye, target: t, dist, head: !!opts.head, cam: 1 + ((this.time * 7) | 0) % 9 };
-    this.killcamCd = this.time + 18;
-    const el = $('killcam'); if (el) { el.innerHTML = `<div class="kc-top"><span class="rec">● REC</span> CAM 0${this.killcam.cam} · PLACE FRUNGZ</div><div class="kc-bot">${opts.head ? 'TIR À LA TÊTE' : 'ÉLIMINATION'} · ${Math.round(dist)} m<span class="kc-time"></span></div>`; el.classList.add('on'); }
-    this.audio.play('click', null, 0.6);
+    if (!eye) eye = head.clone().addScaledVector(shot, -2.5).add(V(0, 1.2, 0));
+    const style = opts.head && dist > 80 ? "TIR D'ÉLITE" : opts.head ? 'TIR À LA TÊTE' : a.slideT > 0 ? 'EN GLISSADE' : !a.onGround ? 'EN PLEIN VOL' : a.rollT > 0 ? 'EN ROULADE' : 'ÉLIMINÉ';
+    this.startPip({ mode: 'victim', target: t, eye, dur: 2.4, gold: !!opts.head || dist > 60, title: `${style} · ${Math.round(dist)} m`, sub: t.name });
+  }
+  startPip(K) {
+    K.t = 0; K.cam = 1 + ((this.time * 7) | 0) % 9; this.killcam = K;
+    const el = $('killcam'); if (!el) return;
+    el.innerHTML = `<div class="kc-top"><span><span class="rec">●</span> ${K.label || 'CAM 0' + K.cam} · PLACE FRUNGZ</span><span class="kc-time"></span></div><div class="kc-bot">${K.title}<small>${K.sub || ''}</small></div>`;
+    el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); el.classList.toggle('gold', !!K.gold);
+    if (K.mode !== 'bullet') this.audio.play('click', null, 0.4);
+  }
+  updatePip(dt) {
+    const K = this.killcam; if (!K) return; K.t += dt;
+    const tt = $('killcam')?.querySelector('.kc-time'); if (tt) { const d = new Date(); tt.textContent = d.toLocaleTimeString('fr-FR') + '.' + String(((K.t * 100) | 0) % 100).padStart(2, '0'); }
+    if (K.t > K.dur || (K.mode === 'victim' && !K.target)) { this.killcam = null; $('killcam')?.classList.remove('on'); }
+  }
+  // rendu de la bulle (appelé après l'image principale)
+  renderPip(renderer, scene) {
+    const K = this.killcam; if (!K) return; const el = $('killcam'); if (!el) return;
+    const r = el.getBoundingClientRect(), cr = renderer.domElement.getBoundingClientRect(); if (r.width < 10) return;
+    const cam = this.pipCam || (this.pipCam = new THREE.PerspectiveCamera(46, 1.6, 0.05, 600)); cam.aspect = r.width / r.height;
+    if (K.mode === 'bullet') {
+      const b = K.bullet; const d = b.v.clone().normalize(); const side = V(d.z, 0, -d.x).normalize();
+      if (K.hitPt) { const look = K.target ? K.target.pos.clone().add(V(0, 0.8, 0)) : K.hitPt; if (!K.eye2) K.eye2 = K.hitPt.clone().addScaledVector(d, -3.2).addScaledVector(side, 1.4).add(V(0, 0.6, 0)); cam.fov = 42; cam.position.copy(K.eye2); cam.lookAt(look); if (K.target) K.target.ch.model.visible = true; }
+      else { cam.fov = 34; cam.position.copy(b.p).addScaledVector(d, -1.1).addScaledVector(side, 0.22).add(V(0, 0.1, 0)); cam.lookAt(b.p.clone().addScaledVector(d, 4)); }
+    } else {
+      const t = K.target, head = t.pos.clone().add(V(0, t.alive ? 1.2 : 0.45, 0)); const k = Math.min(1, K.t / K.dur);
+      cam.fov = 46 - k * 10; cam.position.copy(K.eye).lerp(head, k * 0.2); cam.lookAt(head); t.ch.model.visible = true;
+    }
+    cam.updateProjectionMatrix();
+    const x = r.left - cr.left, y = cr.bottom - r.bottom, sz = renderer.getSize(V2);
+    const au = renderer.shadowMap.autoUpdate; renderer.shadowMap.autoUpdate = false;
+    renderer.setScissorTest(true); renderer.setScissor(x, y, r.width, r.height); renderer.setViewport(x, y, r.width, r.height);
+    const vg = this.vgun?.visible; if (this.vgun) this.vgun.visible = false;
+    renderer.render(scene, cam);
+    if (this.vgun) this.vgun.visible = vg;
+    renderer.setScissorTest(false); renderer.setViewport(0, 0, sz.x, sz.y); renderer.shadowMap.autoUpdate = au;
+  }
+  // ---------------------------------------------------------------- lunette de précision
+  // deux grossissements (molette ou R3 / V), entrée de lunette qui se stabilise, balancement de la respiration,
+  // souffle retenu (Maj / L3) limité, cœur qui bat, télémètre, réticule avec repères de chute de balle
+  updateScope(dt, I, a) {
+    const W = this.weapon(a); const scoped = !!(this.aiming && W && WEAPONS[W.id].scope && a.alive && !a.inCar);
+    const S = this.sc || (this.sc = { zoom: 0, breath: 1, out: 0, settle: 1, hb: 0, was: false, held: false, T: 0, A: 0 });
+    if (scoped !== S.was) { this.audio.scope(scoped); if (scoped) S.settle = 0; S.was = scoped; S.retFov = 0; }
+    if (!scoped) { S.held = false; S.breath = Math.min(1, S.breath + dt / 3); S.out = Math.max(0, S.out - dt); return; }
+    S.settle = Math.min(1, S.settle + dt / 0.38);
+    if (I.pressed('view') || I.st.wheel) { S.zoom = I.st.wheel ? (I.st.wheel < 0 ? 1 : 0) : 1 - S.zoom; this.audio.click(); }
+    const hold = I.down('sprint') && S.out <= 0 && S.breath > 0;
+    if (hold && !S.held) this.audio.breath(true);
+    if (hold) { S.breath -= dt / 4.5; if (S.breath <= 0) { S.breath = 0; S.out = 2.6; this.audio.breath(false); } }
+    else { S.breath = Math.min(1, S.breath + dt / (S.out > 0 ? 6 : 3)); if (S.held) this.audio.breath(false); }
+    S.held = hold; S.out = Math.max(0, S.out - dt);
+    S.hb -= dt; if ((hold || S.out > 0) && S.hb <= 0) { S.hb = S.out > 0 ? 0.42 : 0.85; this.audio.heart(S.out > 0 ? 1 : 0.6); }
+  }
+  scopeSway(dt) {
+    const S = this.sc; if (!S?.was) { if (S) S.A = 0; return [0, 0]; }
+    const a = this.player; S.T += dt;
+    const want = 0.0042 * (this.feetSpeed(a) > 1 ? 2.6 : 1) * (a.crouch ? 0.55 : 1) * (S.held ? 0.06 : 1) * (S.out > 0 ? 2.6 : 1) * (1 + (1 - S.settle) * 3) * (a.onGround ? 1 : 3);
+    S.A = lerp(S.A, want, 1 - Math.exp(-dt * 6)); const T = S.T;
+    return [S.A * (Math.sin(T * 0.83) + 0.45 * Math.sin(T * 2.1 + 0.7)), S.A * 0.8 * (Math.sin(T * 1.21 + 1) + 0.35 * Math.sin(T * 2.7))];
+  }
+  drawScope(fov) {
+    const S = this.sc, el = $('scope'); if (!S || !el) return;
+    const sv = el.querySelector('.ret'); if (sv && Math.abs((S.retFov || 0) - fov) > 0.01) { S.retFov = fov;
+      const k = 147 / Math.tan(fov * Math.PI / 360); // unités du réticule par radian
+      let h = '<g stroke="#111" fill="none">';
+      h += '<path d="M-100 0H-14M14 0H100M0 -100V-14M0 14V100" stroke-width="0.6"/><path d="M-100 0H-52M52 0H100M0 52V100" stroke-width="3.2"/>';
+      for (let m = 2.5; m * 0.001 * k < 46; m += 2.5) { const u = m * 0.001 * k; h += `<circle cx="${u}" cy="0" r="0.9" fill="#111"/><circle cx="${-u}" cy="0" r="0.9" fill="#111"/><circle cx="0" cy="${-u}" r="0.9" fill="#111"/>`; }
+      for (const d of [100, 150, 200, 250, 300]) { const u = 9.8 * d / (2 * BULLET_V * BULLET_V) * k; if (u > 92) break; const w = d % 100 ? 3 : 6; h += `<path d="M${-w} ${u.toFixed(1)}H${w}" stroke-width="0.8"/>`; if (!(d % 100)) h += `<text x="${w + 2}" y="${(u + 1.6).toFixed(1)}" font-size="5" fill="#111" stroke="none" font-family="Inter">${d / 100}</text>`; }
+      h += '</g><circle cx="0" cy="0" r="0.9" fill="#ff3b2a"/>'; sv.innerHTML = h; }
+    const [sy, sp] = S.sw || [0, 0]; el.style.setProperty('--sx', (-sy * 1400).toFixed(1) + 'px'); el.style.setProperty('--sy', (sp * 1400).toFixed(1) + 'px');
+    const z = el.querySelector('.zoom'); if (z) z.textContent = S.zoom ? '×8' : '×4';
+    const rg = el.querySelector('.rng'); if (rg && this.aimPt) rg.textContent = `${Math.round(this.aimPt.distanceTo(this.camera.position))} m${this.aimHit ? '' : '+'}`;
+    const br = el.querySelector('.breath'); if (br) { br.classList.toggle('held', S.held); br.classList.toggle('out', S.out > 0); br.querySelector('i').style.width = (S.breath * 100).toFixed(0) + '%'; br.querySelector('span').textContent = S.out > 0 ? 'À BOUT DE SOUFFLE' : S.held ? 'SOUFFLE RETENU' : `${this.input.label('sprint')} RETENIR SON SOUFFLE · ${this.input.st.usingPad ? 'R3' : 'MOLETTE'} ZOOM`; }
   }
   updateCamera(dt) {
     const a = this.player, C = this.cam, cam = this.camera;
-    if (this.killcam) {
-      const K = this.killcam; K.t += dt; const head = K.target.pos.clone().add(V(0, K.target.alive ? 1.2 : 0.5, 0));
-      cam.fov = 48; cam.updateProjectionMatrix(); cam.position.copy(K.eye); cam.lookAt(head);
-      this.renderer.domElement.style.filter = 'grayscale(.8) contrast(1.25) sepia(.3) hue-rotate(55deg) brightness(1.05)'; $('hud').classList.add('kc');
-      const tt = $('killcam')?.querySelector('.kc-time'); if (tt) { const d = new Date(); tt.textContent = ' · ' + d.toLocaleTimeString('fr-FR') + '.' + String(((K.t * 100) | 0) % 100).padStart(2, '0'); }
-      // on rend la main tout de suite si un ennemi surgit ou si on se fait toucher
-      const danger = this.time - (a.lastHit || -9) < 0.2 || this.actors.some((e) => e.alive && e.team !== a.team && e.pos.distanceTo(a.pos) < 18);
-      if (K.t < K.dur && !danger && a.alive) return;
-      this.killcam = null; $('killcam')?.classList.remove('on'); $('hud').classList.remove('kc'); this.renderer.domElement.style.filter = ''; C.snap = true;
-    }
     C.trauma = Math.max(0, C.trauma - dt * 1.4);
     C.kickP *= Math.exp(-dt * 9); C.kickY *= Math.exp(-dt * 9); C.dip *= Math.exp(-dt * 7);
-    const sp = a.alive && !a.inCar ? this.feetSpeed(a) : 0; const fps = C.fps && !a.inCar && a.alive;
+    const sp = a.alive && !a.inCar ? this.feetSpeed(a) : 0; const fps = (C.fps || !!this.sc?.was) && !a.inCar && a.alive;
     const k = fps ? 1 : 0.35; // balancement plus fort en vue subjective
     if (a.onGround && sp > 0.5) C.bob += dt * sp * 1.25;
     const bobA = Math.min(1, sp / 7) * (a.slideT > 0 || a.rollT > 0 ? 0 : 1);
@@ -1293,9 +1387,10 @@ export class Game {
     const shY = (Math.sin(t * 1.1) + Math.sin(t * 2.3) * 0.5) * 0.035 * tr * (fps ? 1 : 0.6), shP = (Math.sin(t * 1.7 + 1) + Math.sin(t * 2.9) * 0.5) * 0.035 * tr * (fps ? 1 : 0.6), shR = Math.sin(t * 1.3 + 2) * 0.05 * tr * (fps ? 1 : 0.5);
     // champ de vision : élan → plus large, visée → zoom
     const W = this.weapon(a); const scope = this.aiming && W && WEAPONS[W.id].scope;
-    const fovT = (scope ? 26 : this.aiming ? (C.fps ? 50 : 52) : 72) + (a.momentum * (fps ? 10 : 7)) + (a.inCar ? Math.abs(a.inCar.speed) / a.inCar.max * 14 : 0);
+    const fovT = (scope ? (this.sc?.zoom ? 7.5 : 15) + (1 - (this.sc?.settle ?? 1)) * 8 : this.aiming ? (C.fps ? 50 : 52) : 72) + (a.momentum * (fps ? 10 : 7)) + (a.inCar ? Math.abs(a.inCar.speed) / a.inCar.max * 14 : 0);
     C.fov = lerp(C.fov, fovT, 1 - Math.exp(-dt * 10)); if (Math.abs(cam.fov - C.fov) > 0.05) { cam.fov = C.fov; cam.updateProjectionMatrix(); }
-    const yaw = C.yaw + C.kickY + shY, pitch = C.pitch + C.kickP + shP;
+    const sw = this.scopeSway(dt); if (this.sc) this.sc.sw = sw;
+    const yaw = C.yaw + C.kickY + shY + sw[0], pitch = C.pitch + C.kickP + shP + sw[1];
     const dir = V(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
     if (a.inCar) {
       const c = a.inCar; C.carYaw = lerp_angle(C.carYaw ?? c.yaw, c.yaw, 1 - Math.exp(-dt * 3));
@@ -1319,7 +1414,7 @@ export class Game {
       want.y += bobY; want.addScaledVector(right, bobX);
       if (C.snap) { cam.position.copy(want); C.snap = false; } else cam.position.lerp(want, 1 - Math.exp(-dt * 25)); cam.lookAt(cam.position.clone().add(dir)); cam.rotateZ(C.roll * 0.6 + shR);
     }
-    { const o = cam.position, d = V(); cam.getWorldDirection(d); const h = this.world.ray(o, d, 120); const t = h ? Math.max(h.t, 4) : 120; this.aimPt = o.clone().addScaledVector(d, t); }
+    { const o = cam.position, d = V(); cam.getWorldDirection(d); const R = scope ? 400 : 120; const h = this.world.ray(o, d, R); const ha = scope ? this.rayActors(o, d, h ? h.t : R, a) : null; const t = ha ? ha.t : h ? Math.max(h.t, 4) : R; this.aimHit = !!(h || ha); this.aimPt = o.clone().addScaledVector(d, t); }
     a.ch.root.visible = a.alive || a.respawnT > 0 ? (fps ? false : !a.inCar) : false;
     if (this.vgun) { this.vgun.visible = fps && a.alive && !scope; this.updateViewGun(dt, sp, bobA); }
     this.audio.listener.x = cam.position.x; this.audio.listener.y = cam.position.y; this.audio.listener.z = cam.position.z; this.audio.listener.yaw = -C.yaw + Math.PI;
@@ -1330,7 +1425,7 @@ export class Game {
     this.renderer.domElement.style.filter = gas > 0.08 ? `blur(${(Math.max(0, gas - 0.3) * 1.6).toFixed(2)}px) saturate(${(1 - gas * 0.3).toFixed(2)}) brightness(${(1 + gas * 0.08).toFixed(2)})` : '';
     $('vignette').style.opacity = a.alive ? Math.max(clamp((60 - a.hp) / 60, 0, 1) * 0.9, gas * 0.45, Math.min(0.7, pd * 0.5)) : 0.8;
     $('vignette').style.background = pd > 0.15 && a.hp > 50 ? 'radial-gradient(ellipse at center, rgba(220,222,225,.55) 0%, rgba(215,217,220,.9))' : gas > 0.15 && a.hp > 50 ? 'radial-gradient(ellipse at center, rgba(255,255,255,0) 45%, rgba(235,232,200,.75))' : '';
-    document.body.classList.toggle('scoped', !!scope);
+    document.body.classList.toggle('scoped', !!scope); if (scope) this.drawScope(C.fov > 11 ? 15 : 7.5);
   }
   // arme en vue subjective, accrochée à la caméra
   viewGun() {
@@ -1423,6 +1518,33 @@ export class Game {
     if (ring && ring._h !== html) { ring.innerHTML = html; ring._h = html; }
     if (this.pings && this.pings.length && this.time - this.pings[0].t > 2) this.pings = this.pings.filter((p) => this.time - p.t <= 2);
   }
+  // grosses lettres qui rebondissent (DOUBLÉ, TRIPLÉ, séries prêtes…)
+  bigText(big, small, color = '#fff') {
+    const el = $('multik'); if (!el) return; const letters = [...big].map((c, i) => `<span style="animation-delay:${(i * 0.035).toFixed(3)}s">${c === ' ' ? '&nbsp;' : c}</span>`).join('');
+    el.innerHTML = `${letters}<small>${small || ''}</small>`; el.style.color = color; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  }
+  flash(bg) { const f = $('flash'); if (!f) return; f.style.background = bg; f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); }
+  multiKill(opts) {
+    const M = this.mk || (this.mk = { n: 0, t: -9 }); M.n = this.time - M.t < 4.5 ? M.n + 1 : 1; M.t = this.time;
+    const sb = $('streakbar')?.querySelector('.count'); if (sb) { sb.classList.remove('bump'); void sb.offsetWidth; sb.classList.add('bump'); }
+    if (M.n < 2) { this.flash('radial-gradient(ellipse at center, rgba(255,60,40,0) 55%, rgba(255,60,40,.35))'); return; }
+    const names = ['DOUBLÉ !', 'TRIPLÉ !', 'QUADRUPLÉ !', 'CARNAGE !!', 'FRUNGZTASTIQUE !!!'];
+    const cols = ['#fff', '#9ff59f', '#57b6ff', '#ff7ad9', '#ffcc3d'];
+    this.bigText(names[Math.min(M.n - 2, 4)], `${M.n} éliminations d'affilée`, cols[Math.min(M.n - 2, 4)]);
+    this.audio.multi(M.n); if (M.n >= 3) this.audio.boing();
+    this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,0) 35%, ${cols[Math.min(M.n - 2, 4)]}99)`);
+    $('hud').classList.remove('shake'); void $('hud').offsetWidth; $('hud').classList.add('shake'); this.cam.trauma = Math.min(1, this.cam.trauma + 0.2 * M.n);
+    this.earn(25 * M.n, names[Math.min(M.n - 2, 4)].replace(/ !+/, ''));
+  }
+  // barre des séries : progression vers chaque bonus, bonus prêt mis en avant avec la touche à presser
+  drawStreakbar() {
+    const a = this.player, el = $('streakbar'); if (!el) return; const L = STREAKS[a.team];
+    const key = `${a.streak}|${a.rewards.join(',')}|${this.input.st.usingPad}|${this.streakUsed || ''}`; if (key === this._sbKey) return; this._sbKey = key;
+    let prev = 0; const cards = L.map((r) => { const ready = a.rewards.includes(r.id); const seg = r.n - prev, got = Math.max(0, Math.min(seg, a.streak - prev)); prev = r.n;
+      const next = !ready && a.streak < r.n && L.find((x) => x.n > a.streak) === r;
+      return `<div class="sk${ready ? ' ready' : next ? ' next' : ''}${this.streakUsed === r.id ? ' used' : ''}">${ready ? `<span class="key">${this.input.label('streak')} ACTIVER</span>` : ''}<div class="ic">${r.icon}</div><div class="nm">${r.nom}</div><div class="pips">${Array.from({ length: seg }, (_, i) => `<i class="${i < got || ready ? 'f' : ''}"></i>`).join('')}</div></div>`; });
+    el.innerHTML = `<div class="count">${a.streak}<small>SÉRIE</small></div>` + cards.join(''); this.streakUsed = null;
+  }
   medal(big, small, gold) { const el = $('medal'); if (!el) return; el.innerHTML = `<b>${gold ? '🎯' : '💀'} ${big}</b><small>${small}</small>`; el.className = gold ? 'gold' : ''; void el.offsetWidth; el.classList.add('on'); clearTimeout(this._medT); this._medT = setTimeout(() => el.classList.remove('on'), 1600); }
   flashBody(t) { t.ch.model.traverse((o) => { if (o.isSkinnedMesh && o.name === 'corps') { o.material.emissive.set('#ffffff'); o.material.emissiveIntensity = 0.55; } }); t.flashT = 0.07; }
   hitmark(kill, head) { const h = $('hitmark'); h.className = ''; void h.offsetWidth; h.className = 'on' + (kill ? ' kill' : '') + (head ? ' head' : ''); }
@@ -1446,6 +1568,7 @@ export class Game {
     const a = this.player, I = this.input;
     $('sc-ordre').textContent = this.score.ordre; $('sc-civils').textContent = this.score.civils;
     if (this.time > (this.rankT || 0)) { this.rankT = this.time + 0.5; this.drawRank(); }
+    this.drawStreakbar();
     const left = Math.max(0, this.matchLen - this.time); $('timer').textContent = `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')} · premier à ${this.scoreLimit}`;
     for (const z of this.zoneState) { const el = $('z' + z.id); el.className = 'zone' + (z.owner ? ' ' + z.owner : '') + (z.contested || z.threat ? ' contested' : ''); const f = el.firstChild; f.style.height = (z.owner && z.cap === z.owner ? 100 : z.p * 100) + '%'; f.style.background = z.cap ? TEAMS[z.cap].color : 'transparent'; }
     $('cash').textContent = fmt(this.save.bank);

@@ -98,5 +98,19 @@ export function createAudio() {
   }
   function horn() { if (!ctx) return; const out = spatial(null, 0.5), t = ctx.currentTime; tone(out, t, 0.45, 392, 392, 0.3, 'square'); tone(out, t, 0.45, 494, 494, 0.25, 'square'); }
   function siren(pos) { if (!ctx) return; const out = spatial(pos, 0.5, 16); if (!out) return; const t = ctx.currentTime; for (let i = 0; i < 3; i++) { tone(out, t + i * 0.7, 0.35, 660, 660, 0.25, 'triangle'); tone(out, t + i * 0.7 + 0.35, 0.35, 880, 880, 0.25, 'triangle'); } }
-  return { init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, horn, siren, listener, get ready() { return !!ctx; } };
+  // --- effets « Frungz » : un peu burlesques (sifflet à coulisse, klaxon de fanfare, boing) mais courts
+  function multi(n) { if (!ctx) return; const out = spatial(null, 0.55), t = ctx.currentTime; // arpège qui monte avec le nombre d'éliminations
+    for (let i = 0; i <= Math.min(n, 5); i++) tone(out, t + i * 0.055, 0.16, 523 * Math.pow(1.26, i), 523 * Math.pow(1.26, i) * 1.02, 0.28, 'square');
+    tone(out, t + 0.06 * (n + 1), 0.35, 400, 1400, 0.22, 'sine'); } // sifflet qui monte
+  function streakReady() { if (!ctx) return; const out = spatial(null, 0.7), t = ctx.currentTime; // fanfare de klaxon
+    [[392, 0], [392, 0.12], [523, 0.24], [659, 0.42]].forEach(([f, d]) => { tone(out, t + d, d > 0.3 ? 0.5 : 0.1, f, f, 0.3, 'sawtooth'); tone(out, t + d, d > 0.3 ? 0.5 : 0.1, f * 1.005, f * 1.005, 0.2, 'square'); });
+    noise(out, t + 0.42, 0.5, 'highpass', 6000, 9000, 0.7, 0.25); }
+  function streakGo() { if (!ctx) return; const out = spatial(null, 0.8), t = ctx.currentTime; tone(out, t, 0.6, 120, 50, 0.7, 'sine'); noise(out, t, 0.4, 'lowpass', 1800, 200, 1, 0.6); tone(out, t + 0.05, 0.5, 300, 1200, 0.2, 'triangle'); }
+  function boing() { if (!ctx) return; const out = spatial(null, 0.4), t = ctx.currentTime; const o = ctx.createOscillator(); o.type = 'sine'; const g = ctx.createGain(); g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.45); o.frequency.setValueAtTime(180, t); for (let i = 1; i < 9; i++) o.frequency.linearRampToValueAtTime(180 + (i % 2 ? 160 : -40) * (1 - i / 9), t + i * 0.05); o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.5); }
+  function scope(on) { if (!ctx) return; const out = spatial(null, 0.3), t = ctx.currentTime; noise(out, t, 0.12, 'bandpass', on ? 1200 : 2400, on ? 2400 : 1200, 2, 0.35); tone(out, t + 0.08, 0.04, 2200, 2000, 0.15, 'square'); }
+  function bolt() { if (!ctx) return; const out = spatial(null, 0.5), t = ctx.currentTime; [0, 0.16, 0.34, 0.46].forEach((d, i) => { noise(out, t + 0.25 + d, 0.06, 'bandpass', [2500, 1800, 2200, 3200][i], 1500, 4, 0.6); tone(out, t + 0.25 + d, 0.03, 900, 700, 0.2, 'square'); }); }
+  function heart(v) { if (!ctx) return; const out = spatial(null, 0.25 * v), t = ctx.currentTime; tone(out, t, 0.12, 70, 45, 0.9, 'sine'); tone(out, t + 0.16, 0.1, 62, 40, 0.6, 'sine'); }
+  function breath(inhale) { if (!ctx) return; const out = spatial(null, 0.2), t = ctx.currentTime; noise(out, t, inhale ? 0.5 : 0.8, 'bandpass', inhale ? 700 : 500, inhale ? 1100 : 300, 1.2, 0.5); }
+  function whiz(pos) { if (!ctx) return; const out = spatial(pos, 0.6, 4); if (!out) return; const t = ctx.currentTime; noise(out, t, 0.18, 'bandpass', 4000, 1500, 6, 0.6); }
+  return { init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; } };
 }

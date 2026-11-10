@@ -181,7 +181,7 @@ pause.innerHTML = `<h2>PAUSE</h2>
 <label><input type="checkbox" id="s-assist"> Visée assistée (manette)</label>
 <label><input type="checkbox" id="s-inv"> Inverser l'axe vertical</label>
 <label><input type="checkbox" id="s-fps"> Vue première personne (V / R3)</label>
-<label><input type="checkbox" id="s-killcam"> Kill-cam sur les beaux tirs</label>
+<label><input type="checkbox" id="s-killcam"> Kill-cam en incrustation (bulle)</label>
 <label>Qualité graphique <select id="s-quality"><option value="auto">Auto</option><option value="bas">Basse (PC modestes)</option><option value="moyen">Moyenne</option><option value="haut">Haute</option></select></label>
 <label><input type="checkbox" id="s-dynres"> Résolution adaptée aux images/s</label>
 <label>Images/s <b id="s-fpsn">–</b></label>
@@ -251,7 +251,7 @@ function frame() {
     followShadow(camera.position); world.metro?.update(menuT * 25, dt, null);
     input.poll(); padMenu(dt); input.endFrame(); night?.update(dt, camera.position, null);
   }
-  if (composer) composer.render(); else renderer.render(scene, camera); window.__frames = (window.__frames || 0) + 1;
+  if (composer) composer.render(); else renderer.render(scene, camera); if (game && !game.paused) game.renderPip(renderer, scene); window.__frames = (window.__frames || 0) + 1;
 }
 renderMenu(); frame();
 loadAll().catch((e) => { $('loadtxt').textContent = 'Erreur de chargement : ' + e.message; console.error(e); });

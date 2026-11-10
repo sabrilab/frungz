@@ -15,7 +15,7 @@ export const KB = { jump: 'Espace', crouch: 'Ctrl', duck: 'C', interact: 'E', ne
 
 export function createInput(dom) {
   const keys = new Set(); const pressedQ = new Set();
-  const st = { mx: 0, my: 0, lookX: 0, lookY: 0, moveX: 0, moveY: 0, pad: null, usingPad: false, locked: false, triggerR: 0, triggerL: 0 };
+  const st = { mx: 0, my: 0, lookX: 0, lookY: 0, moveX: 0, moveY: 0, pad: null, usingPad: false, locked: false, triggerR: 0, triggerL: 0, wheel: 0 };
   const settings = { sens: 1, padSens: 1, invertY: false, assist: true };
   addEventListener('keydown', (e) => { if (e.repeat) return; keys.add(e.code); pressedQ.add(e.code); st.usingPad = false; if (e.code === 'Tab') e.preventDefault(); });
   addEventListener('keyup', (e) => keys.delete(e.code));
@@ -23,6 +23,7 @@ export function createInput(dom) {
   dom.addEventListener('mousedown', (e) => { keys.add('Mouse' + e.button); pressedQ.add('Mouse' + e.button); st.usingPad = false; });
   addEventListener('mouseup', (e) => keys.delete('Mouse' + e.button));
   dom.addEventListener('contextmenu', (e) => e.preventDefault());
+  addEventListener('wheel', (e) => { if (st.locked) st.wheel += Math.sign(e.deltaY); }, { passive: true });
   addEventListener('mousemove', (e) => { if (!st.locked) return; st.mx += e.movementX; st.my += e.movementY; });
   document.addEventListener('pointerlockchange', () => { st.locked = document.pointerLockElement === dom; });
   const padPrev = []; const padPressed = new Set();
@@ -51,7 +52,7 @@ export function createInput(dom) {
   function pressed(a) { return KEYMAP[a]?.some((k) => pressedQ.has(k)) || PADMAP[a]?.some((i) => padPressed.has(i)) || false; }
   // boutons bruts de la manette (navigation dans les menus)
   const padHit = (i) => padPressed.has(i);
-  function endFrame() { pressedQ.clear(); st.mx = 0; st.my = 0; }
+  function endFrame() { pressedQ.clear(); st.mx = 0; st.my = 0; st.wheel = 0; }
   // déplacement clavier (ZQSD et WASD : codes physiques)
   function move() {
     let x = 0, y = 0;

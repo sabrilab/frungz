@@ -197,12 +197,69 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 @media (max-height: 620px) { #rank table { display: none; } #minimap { width: 160px !important; height: 160px !important; } }
 
 /* kill-cam : image de caméra de surveillance */
-#killcam { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .08s; font: 700 15px 'Courier New', monospace; color: #e8ffe8; text-shadow: 0 0 4px rgba(0,0,0,.9); z-index: 4; }
-#killcam.on { opacity: 1; }
-#killcam::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 2px, transparent 2px 4px), radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.65)); mix-blend-mode: multiply; }
-#killcam::after { content: ''; position: absolute; inset: 18px; border: 2px solid rgba(232,255,232,.35); }
-#killcam .kc-top { position: absolute; top: 34px; left: 40px; letter-spacing: .08em; }
-#killcam .kc-bot { position: absolute; bottom: 34px; right: 40px; font-size: 18px; letter-spacing: .1em; }
+/* kill-cam : bulle incrustée façon caméra de surveillance, le jeu continue derrière */
+#killcam { position: absolute; right: 16px; top: 168px; width: 300px; height: 186px; pointer-events: none; opacity: 0; transform: translateX(40px) rotate(4deg) scale(.7); transition: opacity .15s, transform .35s cubic-bezier(.3,1.8,.5,1);
+  font: 700 11px 'Courier New', monospace; color: #e8ffe8; text-shadow: 0 0 4px rgba(0,0,0,.9); border-radius: 14px; box-shadow: 0 0 0 3px rgba(255,255,255,.85), 0 0 0 6px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.6); overflow: hidden; }
+#killcam.on { opacity: 1; transform: none; }
+#killcam.on.gold { box-shadow: 0 0 0 3px var(--gold), 0 0 0 6px rgba(0,0,0,.45), 0 0 24px rgba(255,204,61,.6); }
+#killcam::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.2) 0 2px, transparent 2px 4px), radial-gradient(ellipse at center, rgba(40,90,40,.1) 40%, rgba(0,0,0,.55)); mix-blend-mode: multiply; }
+#killcam::after { content: ''; position: absolute; inset: 0; background: rgba(60,120,60,.16); mix-blend-mode: color; }
+#killcam .kc-top { position: absolute; top: 7px; left: 10px; right: 10px; display: flex; justify-content: space-between; letter-spacing: .06em; z-index: 1; }
+#killcam .kc-bot { position: absolute; bottom: 7px; left: 10px; right: 10px; font: 13px Bungee, Inter; letter-spacing: .04em; color: #fff; z-index: 1; text-shadow: 0 2px 0 #000; }
+#killcam .kc-bot small { display: block; font: 700 10px 'Courier New', monospace; color: #cfe; }
 #killcam .rec { color: #ff3b3b; animation: recblink 0.5s steps(1) infinite; }
 @keyframes recblink { 50% { opacity: 0; } }
-#hud.kc #cross, #hud.kc #zmarks, #hud.kc #prompt, #hud.kc #capbox, #hud.kc #rank, #hud.kc #minimap, #hud.kc #bag, #hud.kc #weapons, #hud.kc #ammo, #hud.kc #vitals, #hud.kc #keys, #hud.kc #money, #hud.kc #mats, #hud.kc #compass, #hud.kc #shotring { visibility: hidden; }
+
+/* séries : barre au-dessus de la vie */
+#streakbar { position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); display: flex; gap: 8px; align-items: flex-end; pointer-events: none; }
+#streakbar .sk { position: relative; width: 112px; padding: 5px 8px 6px; border-radius: 10px; background: var(--panel); border: 2px solid rgba(255,255,255,.12); text-align: center; transition: transform .25s cubic-bezier(.3,1.8,.5,1), border-color .2s; }
+#streakbar .sk .ic { font-size: 20px; line-height: 1; filter: grayscale(1) opacity(.55); }
+#streakbar .sk .nm { font: 900 10px Inter; letter-spacing: .06em; color: var(--dim); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#streakbar .sk .pips { display: flex; gap: 3px; justify-content: center; margin-top: 4px; }
+#streakbar .sk .pips i { width: 9px; height: 9px; border-radius: 3px; background: rgba(255,255,255,.14); transform: rotate(45deg); }
+#streakbar .sk .pips i.f { background: #9ff59f; box-shadow: 0 0 6px #9ff59f; }
+#streakbar .sk.next { border-color: rgba(159,245,159,.5); } #streakbar .sk.next .ic { filter: none; }
+#streakbar .sk.ready { border-color: var(--gold); background: linear-gradient(180deg, rgba(255,204,61,.35), rgba(20,20,20,.75)); transform: translateY(-10px) scale(1.12); animation: skready .6s ease-in-out infinite alternate; }
+#streakbar .sk.ready .ic { filter: none; font-size: 26px; animation: skwob .5s ease-in-out infinite alternate; }
+#streakbar .sk.ready .nm { color: #fff; }
+#streakbar .sk .key { position: absolute; left: 50%; top: -24px; transform: translateX(-50%); background: var(--gold); color: #111; font: 900 12px Inter; padding: 2px 8px; border-radius: 6px; white-space: nowrap; box-shadow: 0 3px 0 #a37a00; }
+#streakbar .sk.used { animation: skused .6s ease-out; }
+@keyframes skready { to { box-shadow: 0 0 22px rgba(255,204,61,.8); } }
+@keyframes skwob { from { transform: rotate(-12deg) scale(1); } to { transform: rotate(12deg) scale(1.15); } }
+@keyframes skused { 0% { transform: translateY(-10px) scale(1.4); filter: brightness(3); } 100% { transform: none; } }
+#streakbar .count { font: 26px Bungee, Inter; color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,.5); min-width: 44px; text-align: center; padding-bottom: 6px; }
+#streakbar .count small { display: block; font: 900 9px Inter; letter-spacing: .1em; color: var(--dim); }
+#streakbar .count.bump { animation: cbump .35s cubic-bezier(.3,2,.5,1); }
+@keyframes cbump { from { transform: scale(1.8) rotate(-10deg); color: #9ff59f; } }
+
+/* multi-éliminations : grosses lettres qui rebondissent */
+#multik { position: absolute; left: 0; right: 0; top: 30%; text-align: center; pointer-events: none; font: 54px Bungee, Inter; color: #fff; opacity: 0; -webkit-text-stroke: 2px #111; text-shadow: 0 6px 0 #111, 0 0 30px rgba(255,204,61,.5); }
+#multik small { display: block; font: 900 16px Inter; letter-spacing: .14em; -webkit-text-stroke: 0; text-shadow: 0 2px 4px #000; color: #ffe9a8; }
+#multik.on { animation: mk 1.7s cubic-bezier(.2,1.6,.4,1) forwards; }
+#multik span { display: inline-block; animation: mkl .5s cubic-bezier(.3,2.2,.5,1) both; }
+@keyframes mk { 0% { opacity: 0; transform: scale(2.6) rotate(-8deg); } 12% { opacity: 1; transform: scale(.9) rotate(3deg); } 22% { transform: scale(1.06) rotate(-2deg); } 30%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-40px) scale(.8) rotate(4deg); } }
+@keyframes mkl { from { transform: translateY(-60px) scaleY(1.6) scaleX(.6); opacity: 0; } 60% { transform: translateY(6px) scaleY(.7) scaleX(1.3); } }
+
+/* flash plein écran (série prête, activation, gros tir) */
+#flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+#flash.on { animation: flash .6s ease-out; }
+@keyframes flash { 0% { opacity: .9; } 100% { opacity: 0; } }
+#hud.shake { animation: hudshake .4s; }
+@keyframes hudshake { 20% { transform: translate(-6px, 3px) rotate(-.6deg); } 40% { transform: translate(5px, -4px) rotate(.5deg); } 60% { transform: translate(-3px, 2px); } 80% { transform: translate(2px, -1px); } }
+
+/* lunette de précision */
+#scope { position: absolute; inset: 0; pointer-events: none; display: none; }
+body.scoped #scope { display: block; }
+body.scoped #cross, body.scoped #streakbar { visibility: hidden; }
+#scope .lens { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0, transparent calc(var(--r, 34vh) - 3px), rgba(10,10,10,.9) calc(var(--r, 34vh) - 1px), #050505 calc(var(--r, 34vh) + 18px)); transform: translate(var(--sx, 0), var(--sy, 0)); }
+#scope .lens::after { content: ''; position: absolute; left: 50%; top: 50%; width: calc(var(--r, 34vh) * 2); height: calc(var(--r, 34vh) * 2); transform: translate(-50%, -50%); border-radius: 50%; box-shadow: inset 0 0 40px 10px rgba(0,0,0,.75), inset 0 0 0 2px rgba(120,160,255,.25), inset 6px -4px 18px rgba(255,80,60,.18); }
+#scope .ret { position: absolute; left: 50%; top: 50%; width: calc(var(--r, 34vh) * 2); height: calc(var(--r, 34vh) * 2); transform: translate(calc(-50% + var(--sx, 0)), calc(-50% + var(--sy, 0))); overflow: visible; }
+#scope .sinfo { position: absolute; left: calc(50% + var(--r, 34vh) * .45); top: calc(50% + var(--r, 34vh) * .45); font: 700 13px 'Courier New', monospace; color: #ff5a3a; text-shadow: 0 0 6px rgba(255,80,40,.6); line-height: 1.3; }
+#scope .sinfo b { font: 16px Bungee, Inter; color: #fff; text-shadow: 0 2px 0 #000; display: block; }
+#scope .breath { position: absolute; left: 50%; bottom: 9vh; transform: translateX(-50%); text-align: center; font: 900 10px Inter; letter-spacing: .14em; color: #cfd6e0; opacity: .85; }
+#scope .breath .bar { width: 160px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.15); margin-top: 4px; overflow: hidden; }
+#scope .breath .bar i { display: block; height: 100%; width: 100%; background: #8fd3ff; transition: width .1s; }
+#scope .breath.held .bar i { background: #fff; } #scope .breath.out .bar i { background: #ff5a3a; } #scope .breath.out span { color: #ff5a3a; }
+#scope.kick .ret { animation: skick .35s ease-out; }
+@keyframes skick { 0% { margin-top: -60px; } 100% { margin-top: 0; } }
+
