@@ -165,7 +165,7 @@ function showPv(k, id) {
     const K = classOf(save.team, id), P = WEAPONS[K.primary], S = WEAPONS[K.secondary];
     pv.show('w', K.primary);
     $('pvinfo').innerHTML = `<h3>${svg(K.ico)} ${K.name}</h3><p class="pvtag">${K.role}${save.cls[save.team] === id ? ' · ta classe' : ''}</p><p class="pvdesc">${svg(P.ico)} ${P.name} · ${svg(S.ico)} ${S.name}</p><p class="pvdesc"><b>${K.perkName}</b> : ${K.perkDesc}</p>`
-      + stat('Protection', K.armor / 100, K.armor ? K.armor + ' / 100' : 'aucune') + stat('Vitesse', (K.speed - 0.8) / 0.35, Math.round(K.speed * 100) + ' %') + stat('Grenades', (K.nades + K.frags) / 4, `${K.nades} ${save.team === 'ordre' ? 'lacrymo' : 'fumigène'} · ${K.frags} grenade`);
+      + stat('Protection', K.armor / 100, K.armor ? K.armor + ' / 100' : 'aucune') + stat('Vitesse', (K.speed - 0.8) / 0.35, Math.round(K.speed * 100) + ' %') + stat('Grenades', (K.nades + K.frags) / 4, `${K.nades} ${save.team === 'ordre' ? 'lacrymo' : 'fumigène'}${K.nades > 1 ? 's' : ''} · ${K.frags} grenade${K.frags > 1 ? 's' : ''}`);
   } else {
     const U = UPGRADES[id], l = save.upgrades[id] || 0;
     pv.show('u', id, id === 'gilet' ? Math.max(1, Math.min(U.max, l + 1)) : 0);
