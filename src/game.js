@@ -229,8 +229,8 @@ export class Game {
     if (by?.perk?.spot && by !== t) t.spotMark = this.time + by.perk.spot; // atout repérage : la cible reste marquée pour tout le camp
     if (by) { t.ai.target = by; t.ai.seeT = 1; if (by.bot === false || t.bot === false) by.spotted = this.time; }
     if (t === this.player) this.fb.taken(by, amount, opts, ab, brk);
-    if (by === this.player && t !== this.player) { this.fb.dealt(t, amount, opts, ab, brk, t.hp <= 0); t.spotted = this.time; this.flashBody(t); }
-    if (t.hp > 0) { if (Math.random() < 0.3) this.audio.play('voxPain', t.pos, 0.7, [0.95, 1.1], 0.2); if (by && by !== t && t.ch.actions.A_HitF) { const dx = by.pos.x - t.pos.x, dz = by.pos.z - t.pos.z, f = Math.sin(t.yaw) * dx + Math.cos(t.yaw) * dz, sd = Math.cos(t.yaw) * dx - Math.sin(t.yaw) * dz; Anim.flinch(t, f, sd, amount); this.overlay(t, Math.abs(f) > Math.abs(sd) ? (f > 0 ? 'A_HitF' : 'A_HitB') : (sd > 0 ? 'A_HitL' : 'A_HitR'), 0.5, { add: true, w: Math.min(1.4, 0.55 + amount / 35) }); }
+    if (by === this.player && t !== this.player) { this.flashBody(t); this.fb.dealt(t, amount, opts, ab, brk, t.hp <= 0); t.spotted = this.time; }
+    if (t.hp > 0) { if (Math.random() < 0.3) this.audio.play('voxPain', t.pos, 0.7, [0.95, 1.1], 0.2); if (by && by !== t && t.ch.actions.A_HitF) { const dx = by.pos.x - t.pos.x, dz = by.pos.z - t.pos.z, f = Math.sin(t.yaw) * dx + Math.cos(t.yaw) * dz, sd = Math.cos(t.yaw) * dx - Math.sin(t.yaw) * dz; Anim.flinch(t, f, sd, amount); this.overlay(t, Math.abs(f) > Math.abs(sd) ? (f > 0 ? 'A_HitF' : 'A_HitB') : (sd > 0 ? 'A_HitL' : 'A_HitR'), 0.6, { add: true, w: Math.min(1.7, 0.8 + amount / 30) }); }
       else if (!t.channel && Math.random() < 0.25 && t.ch.actions.HitRecieve) { const h = t.ch.actions.HitRecieve; h.reset().setEffectiveWeight(0.6).fadeIn(0.05).play(); setTimeout(() => h.fadeOut(0.15), 250); } if (t.channel) t.channel = null; return; }
     this.kill(t, by, opts);
   }
@@ -1421,11 +1421,11 @@ export class Game {
     const B = this.killcam; if (B?.mode === 'bullet' && opts.sniper) { B.target = t; B.keep = true; B.dur = B.t + 1.9; const el = $('killcam'); el?.classList.add('gold'); const bt = el?.querySelector('.kc-bot'); if (bt) bt.innerHTML = `${opts.head ? 'TIR À LA TÊTE' : 'ÉLIMINÉ'} · ${Math.round(dist)} m<small>${t.name}</small>`; return; }
     const shot = V(t.pos.x - a.pos.x, 0, t.pos.z - a.pos.z).normalize(), side = V(shot.z, 0, -shot.x), head = t.pos.clone().add(V(0, 1.2, 0));
     let eye = null;
-    for (const [s, back, up] of [[1, 1.5, 2.6], [-1, 1.5, 2.6], [1, -1, 3.2], [-1, -1, 3.2], [1, 3, 1.8], [-1, 3, 1.8], [1, 0, 1]]) {
-      const e = head.clone().addScaledVector(side, s * 4.5).addScaledVector(shot, -back); e.y = this.world.groundY(e.x, e.z, head.y) + up;
+    for (const [s, back, up, w] of [[1, 1.2, 1.5, 3], [-1, 1.2, 1.5, 3], [1, -0.8, 1.9, 3.2], [-1, -0.8, 1.9, 3.2], [1, 2, 2.1, 4], [-1, 2, 2.1, 4], [1, 0, 1.3, 2.2]]) {
+      const e = head.clone().addScaledVector(side, s * w).addScaledVector(shot, -back); e.y = this.world.groundY(e.x, e.z, head.y) + up;
       if (this.world.los(e, head)) { eye = e; break; }
     }
-    if (!eye) eye = head.clone().addScaledVector(shot, -2.5).add(V(0, 1.2, 0));
+    if (!eye) eye = head.clone().addScaledVector(shot, -1.8).add(V(0, 0.7, 0));
     const style = opts.head && dist > 80 ? "TIR D'ÉLITE" : opts.head ? 'TIR À LA TÊTE' : a.slideT > 0 ? 'EN GLISSADE' : !a.onGround ? 'EN PLEIN VOL' : a.rollT > 0 ? 'EN ROULADE' : 'ÉLIMINÉ';
     this.startPip({ mode: 'victim', target: t, eye, dur: 2.4, gold: !!opts.head || dist > 60, title: `${style} · ${Math.round(dist)} m`, sub: t.name });
   }
@@ -1451,8 +1451,8 @@ export class Game {
       if (K.hitPt) { const look = K.target ? K.target.pos.clone().add(V(0, 0.8, 0)) : K.hitPt; if (!K.eye2) K.eye2 = K.hitPt.clone().addScaledVector(d, -3.2).addScaledVector(side, 1.4).add(V(0, 0.6, 0)); cam.fov = 42; cam.position.copy(K.eye2); cam.lookAt(look); if (K.target) K.target.ch.model.visible = true; }
       else { cam.fov = 34; cam.position.copy(b.p).addScaledVector(d, -1.1).addScaledVector(side, 0.22).add(V(0, 0.1, 0)); cam.lookAt(b.p.clone().addScaledVector(d, 4)); }
     } else {
-      const t = K.target, head = t.pos.clone().add(V(0, t.alive ? 1.2 : 0.45, 0)); const k = Math.min(1, K.t / K.dur);
-      cam.fov = 46 - k * 10; cam.position.copy(K.eye).lerp(head, k * 0.2); cam.lookAt(head); t.ch.model.visible = true;
+      const t = K.target, head = t.pos.clone().add(V(0, t.alive ? 1.2 : Math.max(0.5, 1.1 - K.t * 0.6), 0)); const k = Math.min(1, K.t / K.dur); // vise le corps qui tombe
+      cam.fov = 42 - k * 10; cam.position.copy(K.eye).lerp(head, k * 0.25); cam.lookAt(head); t.ch.model.visible = true;
     }
     cam.updateProjectionMatrix();
     const x = r.left - cr.left, y = cr.bottom - r.bottom, sz = renderer.getSize(V2);
@@ -1520,7 +1520,7 @@ export class Game {
     const shY = (Math.sin(t * 1.1) + Math.sin(t * 2.3) * 0.5) * 0.035 * tr * (fps ? 1 : 0.6), shP = (Math.sin(t * 1.7 + 1) + Math.sin(t * 2.9) * 0.5) * 0.035 * tr * (fps ? 1 : 0.6), shR = Math.sin(t * 1.3 + 2) * 0.05 * tr * (fps ? 1 : 0.5);
     // champ de vision : élan → plus large, visée → zoom
     const W = this.weapon(a); const scope = this.aiming && W && WEAPONS[W.id].scope;
-    const fovT = (scope ? (this.sc?.zoom ? 7.5 : 15) + (1 - (this.sc?.settle ?? 1)) * 8 : this.aiming ? (C.fps ? 50 : 52) : 72) + (a.momentum * (fps ? 10 : 7)) + (a.inCar ? Math.abs(a.inCar.speed) / a.inCar.max * 14 : 0);
+    const fovT = -(scope ? 0 : C.zoomP || 0) + (scope ? (this.sc?.zoom ? 7.5 : 15) + (1 - (this.sc?.settle ?? 1)) * 8 : this.aiming ? (C.fps ? 50 : 52) : 72) + (a.momentum * (fps ? 10 : 7)) + (a.inCar ? Math.abs(a.inCar.speed) / a.inCar.max * 14 : 0);
     C.fov = lerp(C.fov, fovT, 1 - Math.exp(-dt * 10)); if (Math.abs(cam.fov - C.fov) > 0.05) { cam.fov = C.fov; cam.updateProjectionMatrix(); }
     const sw = this.scopeSway(dt); if (this.sc) this.sc.sw = sw;
     const yaw = C.yaw + C.kickY + shY + sw[0], pitch = C.pitch + C.kickP + shP + sw[1];
