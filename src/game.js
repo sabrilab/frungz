@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { makeCharacter, attachGun, gunInstance, chars, tintTeam, teamMarkings } from './assets.js';
 import { TEAMS, WEAPONS, CLASSES, classOf, kitOf, SECONDARIES, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COMMERCE_TYPES, SHOP_NAMES, SKIN_NAMES } from './data.js';
-import { shopCase, lootMesh, beam, socle, baseSign, receleur, barricade, BARRICADE, grenadeMesh, headMarker, textTex } from './props.js';
+import { shopCase, lootMesh, beam, socle, baseSign, receleur, grenadeMesh, headMarker, textTex } from './props.js';
 import { pointInPoly } from './world.js';
 import * as Anim from './anim.js';
 import { rideMethods } from './deuxroues.js';
@@ -12,6 +12,7 @@ import { heliMethods } from './helico.js';
 import { installThrows, THROWS, solveThrow } from './throws.js';
 import { svg, iconize } from './icons.js';
 import { installSeries } from './series.js';
+import { installBarricades, TIERS, tierInfo, fmtG } from './barricades.js';
 import { createFeedback } from './feedback.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -312,10 +313,10 @@ export class Game {
     if (by && by !== t && by.team === 'ordre' && t.bag.length) this.scoreEvent('ordre', 4, 'Interpellation', by);
     if (t.bag.length) { this.dropPile(t.pos, t.bag.splice(0)); t.bagKg = 0; this.carryMesh(t); }
     t.streak = 0;
-    if (t.hitBy) { for (const [h, at] of t.hitBy) if (h !== by && h !== t && h.team !== t.team && this.time - at < 8) { h.stats.a++; if (h === this.player) this.toast('+ Assistance', '#cfe3ff'); } t.hitBy.clear(); }
+    if (t.hitBy) { for (const [h, at] of t.hitBy) if (h !== by && h !== t && h.team !== t.team && this.time - at < 8) { h.stats.a++; this.addGalons(h, 0.5); if (h === this.player) this.toast('+ Assistance', '#cfe3ff'); } t.hitBy.clear(); }
     const w = t.slots[t.cur]; if (w && WEAPONS[w.id].cat !== 'pistolet' && (Math.random() < 0.6 || !t.bot)) this.dropPile(t.pos.clone().add(V(rnd(-0.6, 0.6), 0, rnd(-0.6, 0.6))), [], { id: w.id, rarity: w.rarity });
     if (by && by !== t) {
-      by.stats.k++; this.addStreak(by); if (by.inCar?.kind === 'heli') this.heliKill(by); if (by.bot && by.alive && Math.random() < 0.12) this.overlay(by, 'U_FistPump', 1.2, { busy: true });
+      by.stats.k++; this.addGalons(by, opts.head ? 2 : 1); this.addStreak(by); if (by.inCar?.kind === 'heli') this.heliKill(by); if (by.bot && by.alive && Math.random() < 0.12) this.overlay(by, 'U_FistPump', 1.2, { busy: true });
       if (by === this.player) this.maybeKillcam(t, opts);
       if (by === this.player) { this.multiKill(opts); this.streakDirty = 1; }
       if (by === this.player) { this.medal(opts.head ? (opts.dist > 80 ? "TIR D'ÉLITE" : 'TIR À LA TÊTE') : 'ÉLIMINÉ', t.name + (by.streak >= 2 ? ` · série ${by.streak}` : ''), opts.head); this.stats.kills++; this.earn(50 + (opts.head ? 25 : 0), opts.head ? 'Tir à la tête' : 'Élimination'); this.audio.kill(); this.input.rumble(0.9, 0.6, 160); }
@@ -495,7 +496,7 @@ export class Game {
         const brk = D.dmg * mult * D.veh * (a.perk?.casse || 1); // armes lourdes et atout « casse » : vitrines, barricades, voitures, mobilier
         const c = hw.c; let kind = 'world';
         if (c?.vit) { kind = this.hitVitrine(c.vit, brk, a) ? 'glass' : 'metal'; }
-        else if (c?.wall) { this.hitWall(c.wall, brk, a); kind = c.wall.team === 'ordre' ? 'metal' : 'world'; }
+        else if (c?.wall) { kind = TIERS[c.wall.tier].imp[c.wall.team]; this.hitWall(c.wall, brk, a); }
         else if (c?.car) { this.hitCar(c.car, brk * 0.6, a); kind = 'metal'; }
         else if (c?.cassable && this.world.cass) { const e = this.world.cass.byId.get(c.cassable); if (e) this.world.cass.damage(e, brk, d, a); kind = /lampadaire|feu|dab|parcmetre|vauban|potelet|panneau|distributeur|scooter/.test(c.tag || '') ? 'metal' : /abribus|kiosque|colonne_verre/.test(c.tag || '') ? 'glass' : 'world'; }
         else if (c && (c.tag === 'voiture' || c.tag === 'lampadaire' || c.tag === 'fourgon')) kind = 'metal';
@@ -582,30 +583,10 @@ export class Game {
 
   // ---------------------------------------------------------------- barricades
   // barricades : 3 charges, une revient toutes les 15 s ; au plus 3 posées par joueur (la plus ancienne disparaît)
-  placeWall(a) {
-    if (a.walls == null) a.walls = 3;
-    if (a.walls < 1 || !a.alive || a.inCar) { if (a === this.player && a.alive) this.toast(`Barricade dans ${Math.ceil(a.wallT || 15)} s`, '#ff8080'); return; }
-    const yaw = a === this.player ? this.cam.yaw : a.yaw; const f = V(Math.sin(yaw), 0, Math.cos(yaw));
-    const p = a.pos.clone().addScaledVector(f, 2.4); p.y = this.world.groundY(p.x, p.z, p.y + 0.3);
-    if (!this.world.free(...this.world.cell(p.x, p.z))) { if (a === this.player) this.toast('Pas de place ici', '#ff8080'); return; }
-    a.walls--; if (!a.wallT) a.wallT = this.wallDelay(a);
-    const mine = this.walls.filter((w) => w.owner === a); if (mine.length >= 3) this.destroyWall(mine[0]);
-    const m = barricade(a.team); m.position.copy(p); m.rotation.y = yaw; m.scale.set(1, 0.05, 1); this.root.add(m);
-    const w = { team: a.team, owner: a, hp: 260, mesh: m, t: 0, pos: p };
-    w.col = { type: 'box', x: p.x, z: p.z, hx: BARRICADE.w / 2, hz: 0.12, h: BARRICADE.h, yaw, cs: Math.cos(yaw), sn: Math.sin(yaw), y0: p.y, wall: w, holes: BARRICADE.holes };
-    this.world.dynamic.push(w.col); this.walls.push(w); this.audio.build(p); this.wallNav(p);
-    if (this.walls.length > 60) this.destroyWall(this.walls[0]);
-  }
   wallDelay(a) { return a.bot ? 15 : 15 - 3 * (this.save.upgrades.mats || 0); }
   wallRecharge(a, dt) { if (a.walls == null) a.walls = 3; if (a.walls >= 3) { a.wallT = 0; return; } a.wallT = (a.wallT || this.wallDelay(a)) - dt; if (a.wallT <= 0) { a.walls++; a.wallT = a.walls < 3 ? this.wallDelay(a) : 0; if (a === this.player) this.toast('🧱 Barricade prête', '#9ff59f'); } }
   // la grille de déplacement des bots suit les barricades ; ceux dont le trajet passe par là recalculent
   wallNav(p) { this.world.refreshNav(p.x - 3.5, p.z - 3.5, p.x + 3.5, p.z + 3.5); for (const b of this.actors) if (b.bot && b.ai.path && b.pos.distanceTo(p) < 60) b.ai.checkT = 0; }
-  hitWall(w, dmg) { w.hp -= dmg; w.mesh.position.x += rnd(-0.02, 0.02); if (w.hp <= 0) this.destroyWall(w); }
-  destroyWall(w) {
-    const i = this.walls.indexOf(w); if (i < 0) return; this.walls.splice(i, 1); this.root.remove(w.mesh);
-    const j = this.world.dynamic.indexOf(w.col); if (j >= 0) this.world.dynamic.splice(j, 1); this.wallNav(w.pos);
-    this.fx.burst(w.pos.clone().add(V(0, 1, 0)), 14, { color: w.team === 'ordre' ? '#1c2a4a' : '#b48a5a', speed: 4, size: 0.2, life: 1 }); this.audio.play('debris', w.pos, 0.8);
-  }
 
   // ---------------------------------------------------------------- grenades (lacrymo / fumigène)
   throwNade(a, dir) {
@@ -777,7 +758,7 @@ export class Game {
     if (c.hp <= 0) this.explodeCar(c, by);
   }
   explodeCar(c, by) {
-    c.dead = 40; const p = c.pos.clone().add(V(0, 0.8, 0)); this.fx.explosion(p); this.audio.explode(p); this.world.cass?.blast(p, 7, 500, by);
+    c.dead = 40; const p = c.pos.clone().add(V(0, 0.8, 0)); this.fx.explosion(p); this.audio.explode(p); this.blast(p, 7, 500, by);
     if (c.driver) { const d = c.driver; this.exitCar(d, true); this.damage(d, 200, by); }
     for (const a of this.actors) { if (!a.alive) continue; const d = a.pos.distanceTo(c.pos); if (d < 7) this.damage(a, 110 * (1 - d / 7), by, { blast: true }); }
     if (this.player.pos.distanceTo(c.pos) < 30) this.cam.trauma = 1;
@@ -897,7 +878,7 @@ export class Game {
         // voiture garée : un seul maillage par matière (≈ 6 dessins) ; détaillée (roues qui tournent) dès qu'elle roule
         if (c.stat) { const mv = !!c.driver || Math.abs(c.speed) > 0.05; if (c.mv !== mv) { c.mv = mv; c.stat.visible = !mv; for (const o of c.detail) o.visible = mv; } } const sh = d2 < 50 * 50; if (c.sh !== sh) { c.sh = sh; c.obj.traverse((o) => { if (o.isMesh) o.castShadow = sh; }); } } }
     this.updateBullets(dt); this.updatePip(dt); this.updateNades(dt); this.updateThrown(dt); this.updateStreaks(dt); this.cloudEffects(dt); this.updateZones(dt); this.updateShops(dt); this.updateDrops(dt); this.socleIncome(dt);
-    for (const w of this.walls) { w.t += dt; w.mesh.scale.y = Math.min(1, 0.05 + w.t * 6); }
+    this.updateWalls(dt);
     this.specialT -= dt; if (this.specialT <= 0) { this.specialT = 120; this.specialDelivery(); }
     if (!this.over && (this.time >= this.matchLen || this.score.ordre >= this.scoreLimit || this.score.civils >= this.scoreLimit)) this.endMatch();
     this.updateCamera(dt); this.fb.update(dt);
@@ -1020,6 +1001,7 @@ export class Game {
       const foe = this.socles[ENEMY[a.team]].find((s) => s.item && s.pos.distanceTo(a.pos) < 2);
       if (!own && foe) { const it = foe.item; prompt = `<b>${I.label('interact')}</b> (maintenir) Voler <span class="r" style="color:${RARITY[it.rarity].color}">${it.icon} ${it.nom}</span> · ${fmt(it.valeur)} €`; if (I.pressed('interact') && !a.channel) this.startChannel(a, 'Vol…', 1.4, () => foe.item === it, () => { const x = this.takeFromSocle(foe); x.stolen = true; if (!this.bagAdd(a, x)) this.dropPile(a.pos, [x]); else { this.stats.stolen++; this.scoreEvent(a.team, 3, 'Vol à la base', a); this.announce('BUTIN VOLÉ !', 'Ramène-le à ta base', '#ffcc3d', 1.6); this.alertTeam(ENEMY[a.team], `🚨 ${a.name} vole ${x.nom} !`); } }, 'Interact'); }
     }
+    if (!prompt) prompt = this.wallPrompt(a);
     if (!prompt && a.bag.length && a.pos.distanceTo(this.recel.pos) < this.recel.r) {
       const k = a.team === 'ordre' ? 0.6 : 1; prompt = `<b>${I.label('interact')}</b> Revendre à ${this.recel.nom} : <span class="r" style="color:#ffcc3d">${fmt(a.bag.reduce((t, i) => t + this.recelPrice(i), 0) * k)} €</span>${k < 1 ? ' (−40 % : on est flic)' : ''}`;
       if (I.pressed('interact')) this.sell(a);
@@ -1380,6 +1362,8 @@ export class Game {
     if (lookAt) { const d = V(lookAt.x - b.pos.x, 0, lookAt.z - b.pos.z); if (d.lengthSq() > 0.01) { // la rotation prend de l'élan puis se pose, plafonnée (plus vive au combat) : plus de demi-tour instantané
         const diff = lerp_angle(0, Math.atan2(d.x, d.z) - b.yaw, 1), fight = !!(ai.target && ai.los), maxR = fight ? 7.5 : 4.6;
         ai.yawV = lerp(ai.yawV || 0, clamp(diff * (fight ? 9 : 6), -maxR, maxR), 1 - Math.exp(-dt * 14)); b.yaw += ai.yawV * dt; ai.facing = Math.abs(diff); } b.pitch = Math.atan2(lookAt.y - b.pos.y - 1.5, Math.hypot(d.x, d.z)); }
+    // barricades : poser face à une menace, renforcer celles du camp
+    this.botWalls(b, dt);
     // tâches à l'arrivée
     this.botTaskTick(b, dt);
     // coincé ?
@@ -1387,7 +1371,7 @@ export class Game {
     ai.progT = (ai.progT || 0) + dt; if (!ai.progP) ai.progP = b.pos.clone();
     if (ai.progT > 6) { const moved = b.pos.distanceTo(ai.progP) > 1.5; if (!moved && !b.channel && !(ai.target && ai.los) && !b.inCar) { ai.fails = (ai.fails || 0) + 1; ai.task = null; ai.path = null; ai.think = 0; if (ai.fails >= 2) { const [i, j] = this.world.nearestFree(...this.world.cell(b.pos.x, b.pos.z)); const B = this.world.bounds, S = this.world.nav.S; b.pos.x = B.x0 + (i + 0.5) * S; b.pos.z = B.z0 + (j + 0.5) * S; b.pos.y = this.world.groundY(b.pos.x, b.pos.z); ai.fails = 0; } } else ai.fails = 0; ai.progT = 0; ai.progP.copy(b.pos); }
     if (b.wish.lengthSq() > 0.1 && !(ai.backT > 0)) { if (b.pos.distanceTo(ai.lastPos) < 0.05 * 60 * dt) { ai.stuck += dt; if (ai.stuck > 0.8) { ai.stuck = 0; ai.stuckN = (ai.stuckN || 0) + 1;
-      const wall = this.walls.find((w) => w.team !== b.team && w.pos.distanceTo(b.pos) < 4.5);
+      const wall = this.walls.find((w) => w.team !== b.team && w.pos.distanceTo(b.pos) < 4.5 && this.botCanBreak(b, w));
       if (wall && !ai.target) { ai.wallTarget = wall; ai.wallT = 2.5; }
       if (ai.stuckN % 2 === 1) b.wantJump = 0.1; // d'abord tenter de sauter / escalader
       else { const side = Math.random() < 0.5 ? 1 : -1; ai.backDir = V(-b.wish.x + b.wish.z * side * 0.8, 0, -b.wish.z - b.wish.x * side * 0.8).normalize(); ai.backT = rnd(0.5, 0.9); }
@@ -1449,6 +1433,7 @@ export class Game {
   }
   botTaskTick(b, dt) {
     const ai = b.ai, t = ai.task; if (!t) return;
+    if (t.kind === 'wall') { this.botWallTask(b, dt); if (!b.channel) return; }
     if (t.kind === 'loot') {
       const s = t.shop, v = t.vit;
       if (b.channel) {}
@@ -1500,7 +1485,7 @@ export class Game {
     const prev = z.owner; z.owner = team; z.p = 1; this.fx.ring(V(z.center[0], this.world.groundY(z.center[0], z.center[1], (z.y ?? 0.17) + 0.5), z.center[1]), TEAMS[team].color);
     const mine = team === this.save.team; this.audio.capture(mine);
     this.announce(mine ? `${z.id} CAPTURÉE` : prev === this.save.team ? `${z.id} PERDUE` : `L'ENNEMI PREND ${z.id}`, mine ? 'Nous tenons la zone' : prev === this.save.team ? 'Reprenez-la !' : `${z.name || ''}`, mine ? '#5ad1ff' : '#ff5a4a', 1.8);
-    for (const a of this.actors) if (a.alive && !a.gone && a.team === team && this.inZone(a, z)) a.stats.cap++;
+    for (const a of this.actors) if (a.alive && !a.gone && a.team === team && this.inZone(a, z)) { a.stats.cap++; this.addGalons(a, 3); }
     const p = this.player; if (p.alive && p.team === team && this.inZone(p, z)) { this.stats.captures++; this.earn(150, `Capture de ${z.id}`); }
   }
   endMatch() {
@@ -1900,7 +1885,7 @@ export class Game {
     const a = this.player, card = (c, t, ...sm) => `<div class="card" style="--c:${c}"><b>${t}</b>${sm.map((x) => `<small>${x}</small>`).join('')}</div>`;
     const weapons = a.slots.map((w, i) => { const W = WEAPONS[w.id]; return card(RARITY[w.rarity].color, `${svg(W.ico)} ${W.name}${i === a.cur ? ' ' + svg('check') : ''}`, `<span style="color:${RARITY[w.rarity].color}">${RARITY[w.rarity].name}</span> · chargeur ${w.mag}/${W.mag}`, `Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.rps} coups/s`); });
     const K = classOf(a.team, a.cls);
-    const gear = [card(TEAMS[a.team].color, `${svg(K.ico)} ${K.name} · ${K.role}`, `${K.perkName} : ${K.perkDesc}`), card('#888', `${svg(a.team === 'ordre' ? 'gas' : 'smoke')} ${a.team === 'ordre' ? 'Lacrymo' : 'Fumigène'} × ${a.nades} · ${svg('frag')} Grenade × ${a.frags ?? 0}`, `maintenir ${this.input.label('grenade')} pour viser`), card('#c98a4a', `${svg('barricade')} Barricades ${a.walls ?? 3}/3`, a.walls < 3 ? `prochaine dans ${Math.ceil(a.wallT || 0)} s` : 'prêtes'), card('#57b6ff', `${svg('vest')} Gilet ${Math.round(a.armor)}`, `santé ${Math.ceil(a.hp)}`)];
+    const gear = [card(TEAMS[a.team].color, `${svg(K.ico)} ${K.name} · ${K.role}`, `${K.perkName} : ${K.perkDesc}`), card('#888', `${svg(a.team === 'ordre' ? 'gas' : 'smoke')} ${a.team === 'ordre' ? 'Lacrymo' : 'Fumigène'} × ${a.nades} · ${svg('frag')} Grenade × ${a.frags ?? 0}`, `maintenir ${this.input.label('grenade')} pour viser`), (() => { const B = tierInfo(a); return card(B.T.col, `${svg('barricade')} Barricades ${a.walls ?? 3}/3 · ${B.T.mat[a.team]}`, a.walls < 3 ? `prochaine dans ${Math.ceil(a.wallT || 0)} s` : 'prêtes', B.next ? `${B.next.mat[a.team]} à ${B.next.need} galons (${fmtG(B.g)})` : 'béton débloqué', `${this.input.label('interact')} devant une barricade du camp : renforcer`); })(), card('#57b6ff', `${svg('vest')} Gilet ${Math.round(a.armor)}`, `santé ${Math.ceil(a.hp)}`)];
     const carried = a.bag.length ? a.bag.map((i) => card(RARITY[i.rarity].color, `${i.icon} ${i.nom}`, `<span style="color:${RARITY[i.rarity].color}">${RARITY[i.rarity].name}</span>${i.stolen ? ' · volé' : ''}`, `${fmt(i.valeur)} € · receleur ${fmt(this.recelPrice(i) * (a.team === 'ordre' ? 0.6 : 1))} €`)) : [card('#555', 'Les mains vides', 'Casse une vitrine de luxe et rapporte un objet')];
     const socs = this.socles[a.team], held = socs.filter((x) => x.item), inc = held.reduce((t, x) => t + x.item.valeur * 0.006, 0);
     const base = held.length ? held.map((x) => card(RARITY[x.item.rarity].color, `${x.item.icon} ${x.item.nom}`, `${fmt(x.item.valeur)} €${x.owner === a ? ' · à toi' : x.owner ? ' · ' + x.owner.name : ''}`)) : [card('#555', 'Rien d\'exposé', 'Dépose ton objet à la base : il rapporte chaque seconde')];
@@ -1918,7 +1903,7 @@ export class Game {
     $('cash').textContent = fmt(this.save.bank);
     this.incomeSmooth = lerp(this.incomeSmooth || 0, (this.incomeAcc || 0) * 10, 0.1); this.incomeAcc = 0;
     const inc = this.socles[a.team].reduce((s, x) => s + (x.owner === a && x.item ? x.item.valeur * 0.006 : 0), 0); $('income').textContent = inc ? `+${inc.toFixed(1)} €/s` : '';
-    $('matsN').textContent = `${a.walls ?? 3}/3` + (a.walls < 3 && a.wallT > 0 ? ` · ${Math.ceil(a.wallT)} s` : '');
+    { const B = tierInfo(a); const k = `${a.walls ?? 3}|${a.walls < 3 && a.wallT > 0 ? Math.ceil(a.wallT) : ''}|${B.t}|${fmtG(B.g)}`; if (k !== this._matsK) { this._matsK = k; $('matsN').innerHTML = `${a.walls ?? 3}/3` + (a.walls < 3 && a.wallT > 0 ? ` · ${Math.ceil(a.wallT)} s` : '') + ` <span class="tier t${B.t}" style="color:${B.T.col}">${B.T.mat[a.team]}</span>` + (B.next ? `<small class="gal"><i style="width:${Math.min(100, (B.g - B.T.need) / (B.next.need - B.T.need) * 100).toFixed(0)}%;background:${B.next.col}"></i></small>` : ''); } }
     $('bagkg').textContent = a.bag.length ? `${a.bag[0].nom} · ${fmt(a.bag[0].valeur)} €` : 'les mains vides';
     $('bagitems').innerHTML = a.bag.map((i) => `<span style="--c:${RARITY[i.rarity].color}" title="${i.nom}">${i.icon}</span>`).join('');
     $('hpbar').style.width = Math.max(0, a.hp) + '%'; $('hpn').textContent = Math.max(0, Math.ceil(a.hp)); $('armorbar').style.width = Math.min(100, a.armor) + '%';
@@ -2017,3 +2002,4 @@ Object.assign(Game.prototype, heliMethods);
 function lerp_angle(a, b, t) { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a + d * t; }
 installThrows(Game);
 installSeries(Game);
+installBarricades(Game);

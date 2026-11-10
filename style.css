@@ -510,3 +510,7 @@ body.scoped #cross, body.scoped #streakbar { visibility: hidden; }
   .lb-right { left: 16px; right: 16px; width: auto; bottom: 34px; } .lobby .help { display: none; }
   .inv-grid { grid-template-columns: 1fr; } }
 #menu:not(.ready) #plates { display: none; }
+/* barricades : matériau débloqué et progression des galons vers le suivant */
+#mats .tier { font: 800 11px Inter; letter-spacing: .04em; text-transform: uppercase; margin-left: 6px; }
+#mats .gal { display: block; height: 3px; margin-top: 3px; border-radius: 2px; background: rgba(255,255,255,.15); overflow: hidden; }
+#mats .gal i { display: block; height: 100%; transition: width .3s; }
