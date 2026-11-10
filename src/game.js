@@ -2,9 +2,9 @@
 // lacrymogènes et fumigènes, barricades, interface.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { makeCharacter, attachGun, gunInstance, chars, tintTeam, backPoint } from './assets.js';
+import { makeCharacter, attachGun, gunInstance, chars, tintTeam, teamMarkings } from './assets.js';
 import { TEAMS, WEAPONS, CLASSES, classOf, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COMMERCE_TYPES, SHOP_NAMES, SKIN_NAMES } from './data.js';
-import { shopCase, lootMesh, beam, socle, baseSign, receleur, barricade, BARRICADE, grenadeMesh, policeBadge, brassard, headMarker, textTex } from './props.js';
+import { shopCase, lootMesh, beam, socle, baseSign, receleur, barricade, BARRICADE, grenadeMesh, headMarker, textTex } from './props.js';
 import { pointInPoly } from './world.js';
 import * as Anim from './anim.js';
 import { rideMethods } from './deuxroues.js';
@@ -172,12 +172,8 @@ export class Game {
     // tenue : police nationale (bleu marine, brassard orange, POLICE dans le dos) ou civils loufoques
     tintTeam(ch.model, skin, team);
     if (team === 'ordre') {
-      // écusson POLICE posé à plat sur le dos, à hauteur de poitrine (mesuré sur le maillage de chaque tenue)
-      const bp = backPoint(ch, skin), chest = ch.bones.Chest || ch.bones.Torso;
-      if (bp && chest) { const back = policeBadge(); ch.root.updateMatrixWorld(true); const wp = ch.root.localToWorld(V(0, bp.y, bp.z - 0.015)); chest.add(back); back.position.copy(chest.worldToLocal(wp));
-        const cq = new THREE.Quaternion(); chest.getWorldQuaternion(cq); const mq = new THREE.Quaternion(); ch.root.getWorldQuaternion(mq); back.quaternion.copy(cq.invert().multiply(mq).multiply(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI)));
-        const ws = V(); chest.getWorldScale(ws); back.scale.setScalar(1 / ws.x); }
-      const arm = ch.bones.UpperArmL; if (arm) { const b = brassard(); const ws = V(); arm.getWorldScale(ws); b.scale.setScalar(1 / ws.x); b.position.set(0, 0.12 / ws.x, 0); arm.add(b); }
+      // « POLICE » dans le dos et sur la poitrine, brassard orange : peints sur le tissu de la tenue (ils suivent le vêtement)
+      teamMarkings(ch, skin);
     }
     if (bot) { const mk = headMarker(team === this.save.team ? (team === 'ordre' ? '#3d8bff' : '#34c759') : '#ff3030'); mk.position.y = 2.25; mk.visible = team === this.save.team; ch.root.add(mk); a.marker = mk; }
     for (const k of Object.keys(ch.actions)) { const act = ch.actions[k]; if (ONCE.test(k)) { act.setLoop(THREE.LoopOnce); act.clampWhenFinished = true; } if (/Roll|Gun_Shoot|HitRecieve|Interact|Punch/.test(k)) { act.setLoop(THREE.LoopOnce); act.clampWhenFinished = false; } }
@@ -1543,7 +1539,7 @@ export class Game {
       eye.addScaledVector(V(-Math.cos(C.yaw), 0, Math.sin(C.yaw)), bobX);
       cam.position.copy(eye); cam.lookAt(eye.clone().add(dir)); cam.rotateZ(C.roll + shR);
     } else {
-      const back = this.aiming ? 0.78 : 2.15 - a.momentum * 0.15 + (a.slideT > 0 ? -0.4 : 0);
+      const back = this.aiming ? 0.72 : 1.65 - a.momentum * 0.1 + (a.slideT > 0 ? -0.4 : 0);
       // composition au nombre d'or : hors visée, le perso se tient sur la verticale des 38,2 % de la largeur
       const shoulder = this.aiming ? 0.5 : clamp((1 - 2 * 0.382) * back * Math.tan(cam.fov * Math.PI / 360) * cam.aspect, 0.4, 0.85);
       const piv = a.pos.clone().add(V(0, (a.slideT > 0 ? 1.0 : (this.aiming ? 1.62 : 1.58) - (a.crouchK || 0) * 0.5) + C.dip * 0.6, 0));
@@ -1679,7 +1675,7 @@ export class Game {
     const key = cam.fov.toFixed(1) + cam.aspect.toFixed(3); if (this.vgunLayout?.key === key) return this.vgunLayout.v;
     const L = this.vgunLen || 0.6, fz = this.vgunBB ? -this.vgunBB.min.z : L * 0.7, rz = this.vgunBB ? this.vgunBB.max.z : L * 0.3;
     const fx = 2 * PHI - 1, fy = -(2 * PHI - 1); // point d'or en coordonnées écran (-1..1)
-    const rear = this.vgunPistol ? fx + (1 - PHI) * PHI * PHI : fx + (1 - PHI) * clamp(0.3 + L * 0.9, 0.7, 1.15); // les armes courtes restent plus loin, à proportion de leur longueur // abscisse visée pour l'arrière de l'arme
+    const rear = this.vgunPistol ? fx + (1 - PHI) * 0.9 : fx + (1 - PHI) * clamp(1.5 + L * 0.9, 2.0, 2.5); /* arme proche : l'arrière sort de l'écran à droite, l'arme tient le tiers d'or bas-droit (38,2 % de la largeur) */ // les armes courtes restent plus loin, à proportion de leur longueur // abscisse visée pour l'arrière de l'arme
     // arme parallèle à l'axe de vue : x/(prof·tx) donne fx au bout et rear à l'arrière → profondeur de la poignée
     const k = rear / fx; const d = (fz + k * rz) / (k - 1); // profondeur de la poignée (origine)
     const X = fx * (d + fz) * tx, Y = fy * (d + fz) * ty - (this.vgunTop || 0.1); // le dessus de l'arme affleure la ligne des 61,8 %
