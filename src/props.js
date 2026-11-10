@@ -41,10 +41,24 @@ export function lootMesh(type, rarity) {
   lootCache[key] = g; return g.clone();
 }
 // faisceau vertical de rareté (objets au sol)
+// repère de butin au sol : colonne fine et courte qui s'efface vers le haut, et petit disque lumineux (zone éclairée limitée)
+let beamAlpha = null, ringAlpha = null;
+const beamMats = {};
 export function beam(rarity) {
   const c = RARITY[rarity].color;
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.25, 4, 8, 1, true), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-  m.position.y = 2; return m;
+  if (!beamAlpha) {
+    const cv = document.createElement('canvas'); cv.width = 4; cv.height = 64; const g = cv.getContext('2d'); const gr = g.createLinearGradient(0, 64, 0, 0); gr.addColorStop(0, '#fff'); gr.addColorStop(0.35, '#777'); gr.addColorStop(1, '#000'); g.fillStyle = gr; g.fillRect(0, 0, 4, 64); beamAlpha = new THREE.CanvasTexture(cv);
+    const cr = document.createElement('canvas'); cr.width = cr.height = 64; const h = cr.getContext('2d'); const rg = h.createRadialGradient(32, 32, 0, 32, 32, 32); rg.addColorStop(0, '#fff'); rg.addColorStop(0.5, '#555'); rg.addColorStop(1, '#000'); h.fillStyle = rg; h.fillRect(0, 0, 64, 64); ringAlpha = new THREE.CanvasTexture(cr);
+  }
+  const k = { commun: 0, rare: 1, epique: 2, legendaire: 3 }[rarity] ?? 0;
+  const mats = beamMats[rarity] || (beamMats[rarity] = [
+    new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.16 + k * 0.03, alphaMap: beamAlpha, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }),
+    new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.35, alphaMap: ringAlpha, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+  ]);
+  const H = 0.9 + k * 0.3; const g = new THREE.Group();
+  const col = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.09, H, 8, 1, true), mats[0]); col.position.y = H / 2; g.add(col);
+  const disc = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9).rotateX(-Math.PI / 2), mats[1]); disc.position.y = 0.03; g.add(disc);
+  return g;
 }
 
 // ---------- vitrine de boutique (adossée à la façade) ----------

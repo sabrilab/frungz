@@ -427,7 +427,7 @@ export class Game {
   // un seul objet porté à la fois, bien visible au-dessus de la tête (on sait qui transporte du butin)
   carryMesh(a) {
     if (a.carry) { a.ch.root.remove(a.carry); a.carry = null; } const it = a.bag[0]; if (!it) return;
-    const g = new THREE.Group(); const m = lootMesh(it.type, it.rarity); m.scale.setScalar(it.type === 'tv' || it.type === 'art' ? 0.55 : 1.2); g.add(m); const b = beam(it.rarity); b.scale.set(0.4, 0.35, 0.4); b.position.y = 0.4; g.add(b);
+    const g = new THREE.Group(); const m = lootMesh(it.type, it.rarity); m.scale.setScalar(it.type === 'tv' || it.type === 'art' ? 0.55 : 1.2); g.add(m); const b = beam(it.rarity); b.scale.setScalar(0.7); g.add(b);
     g.position.y = 2.15; a.ch.root.add(g); a.carry = g;
   }
   bagValue(a) { return a.bag.reduce((s, i) => s + i.valeur, 0); }
@@ -452,7 +452,7 @@ export class Game {
     if (item.node) { m = new THREE.Group(); const c = item.node.clone(true); c.visible = true; const box = new THREE.Box3().setFromObject(c); const ctr = box.getCenter(V()); c.position.sub(V(ctr.x, box.min.y, ctr.z)); const sz = box.getSize(V()); const k = Math.min(1.8, 0.7 / Math.max(sz.x, sz.y, sz.z, 0.05)); c.scale.multiplyScalar(k); c.position.multiplyScalar(k); m.add(c); }
     else { m = lootMesh(item.type, item.rarity); m.scale.setScalar(item.type === 'tv' || item.type === 'art' ? 0.7 : 1.6); }
     m.position.set(0, 0.55, 0); s.mesh.add(m); s.itemMesh = m;
-    const b = beam(item.rarity); b.scale.set(0.6, 0.5, 0.6); b.position.y = 1.5; m.add(b);
+    const b = beam(item.rarity); b.scale.setScalar(0.6); b.position.y = 1.1; m.add(b);
   }
   takeFromSocle(s) { const it = s.item; s.item = null; s.owner = null; if (s.itemMesh) s.mesh.remove(s.itemMesh); s.itemMesh = null; return it; }
   deposit(a) {
