@@ -409,7 +409,7 @@ export class Game {
     if (a === this.player || end.distanceTo(this.player.pos) < 40) this.fx.impact(end, hw.n, kind);
   }
   setUpper(a) { const s = a.ch.actions.Idle_Gun_Shoot; }
-  startReload(a) { const W = this.weapon(a); if (a.reloadT > 0 || W.mag >= WEAPONS[W.id].mag) return; a.burstLeft = 0; a.reloadT = WEAPONS[W.id].reload * (a.perk?.reload || 1); this.overlay(a, 'U_Reload', a.reloadT, { busy: true }); if (!a.bot) this.audio.reload(); }
+  startReload(a) { const W = this.weapon(a); if (a.reloadT > 0 || W.mag >= WEAPONS[W.id].mag) return; a.burstLeft = 0; a.reloadT = WEAPONS[W.id].reload * (a.perk?.reload || 1); a.relAuth = Anim.reload(this, a, a.reloadT); if (!a.relAuth) this.overlay(a, 'U_Reload', a.reloadT, { busy: true }); if (!a.bot) this.audio.reload(); }
 
   // ---------------------------------------------------------------- vitrines
   hitVitrine(v, dmg, by) {
@@ -1001,7 +1001,7 @@ export class Game {
     if (a.wantCrouch && a.onGround && a.slideT <= 0 && a.rollT <= 0) {
       const sp = this.feetSpeed(a);
       if (sp > 4.6) { this.fx.dust(a.pos, 6, 1); a.slideT = civ ? 1.0 : 0.75; a.slideDir = V(a.vel.x, 0, a.vel.z).normalize(); a.vel.addScaledVector(a.slideDir, 1.5); this.audio.play('cloth', a.pos, 0.7); if (!a.bot) this.cam.trauma += 0.1; }
-      else { a.rollT = 0.55; const d = wl > 0.1 ? wish.clone().normalize() : V(Math.sin(a.yaw), 0, Math.cos(a.yaw)); a.vel.x = d.x * (civ ? 8.5 : 7); a.vel.z = d.z * (civ ? 8.5 : 7); a.rollDir = d; this.setAnim(a, a.ch.actions.MX_Roll ? 'MX_Roll' : 'Roll', 0.08, a.ch.actions.MX_Roll ? 1.9 : 1.6); this.audio.play('cloth', a.pos, 0.7); }
+      else { a.rollT = 0.55; const d = wl > 0.1 ? wish.clone().normalize() : V(Math.sin(a.yaw), 0, Math.cos(a.yaw)); a.vel.x = d.x * (civ ? 8.5 : 7); a.vel.z = d.z * (civ ? 8.5 : 7); a.rollDir = d; if (!a.ch.actions.MX_Run) this.setAnim(a, 'Roll', 0.08, 1.6); this.audio.play('cloth', a.pos, 0.7); }
       a.wantCrouch = 0;
     }
     const target = wish.clone().multiplyScalar(top);
@@ -1084,14 +1084,14 @@ export class Game {
     if (!this.over) a.celebrate = undefined; else if (a.alive && a.celebrate === undefined) a.celebrate = this.winner === a.team && MX ? pick(['MX_Dance', 'MX_Dance2', 'MX_Cheer', 'MX_Taunt', 'MX_FistPump']) : null;
     if (a.celebrate && ch.actions[a.celebrate]) { name = a.celebrate; fade = 0.3; }
     else if (a.climb) { name = MX ? 'MX_Vault' : 'Interact'; speed = MX ? 3.5 / Math.max(0.3, a.climb.dur) * 0.55 : 2; fade = 0.08; }
-    else if (a.rollT > 0) { name = ch.actions.MX_Roll ? 'MX_Roll' : 'Roll'; speed = name === 'MX_Roll' ? 1.9 : 1.6; fade = 0.06; }
+    else if (a.rollT > 0 && !ch.actions.MX_Run) { name = 'Roll'; speed = 1.6; fade = 0.08; }
     else if (a.channel) { name = a.channel.anim || 'Interact'; }
     else if (MX && a.slideT > 0) { name = P && ch.actions.MXP_CrouchIdle ? 'MXP_CrouchIdle' : 'MX_CrouchIdle'; fade = 0.1; } // la pose de glissade est écrite dans anim.js, par-dessus l'accroupi
     else if (MX && a.landT > 0 && a.onGround) { name = 'MX_HardLand'; speed = 1.5; fade = 0.05; }
     else if (!a.onGround && MX && a.airT > 0.06) { const J = P && ch.actions.MXP_Jump; name = a.vel.y > 0.5 && a.airT < 0.5 ? (J ? 'MXP_Jump' : 'MX_Jump') : (P && ch.actions.MXP_Fall ? 'MXP_Fall' : 'MX_Fall'); speed = name === 'MX_Jump' ? 1.2 : 1; fade = 0.12; }
     else if (MX && a.stopT > 0) { name = 'MX_Stop'; speed = 1.3; fade = 0.1; }
     else if (!a.onGround && !MX) { name = 'Idle_Gun_Pointing'; }
-    else if (MX) { name = 'LOCO'; if (a.anim === 'MX_Roll' || (a.anim !== 'LOCO' && /CrouchIdle/.test(a.anim))) fade = 0.25; }
+    else if (MX) { name = 'LOCO'; if (a.anim !== 'LOCO' && /CrouchIdle/.test(a.anim)) fade = 0.25; }
     else if (sp > 0.8) {
       const lv = V(a.vel.x, 0, a.vel.z); const f = V(Math.sin(a.yaw), 0, Math.cos(a.yaw)); const fd = lv.dot(f) / sp; const sd = lv.dot(V(Math.cos(a.yaw), 0, -Math.sin(a.yaw))) / sp;
       if (fd > 0.5) { name = aimingNow ? 'Run_Shoot' : 'Run'; speed = clamp(sp / 6, 0.7, 1.6); }
@@ -1122,7 +1122,7 @@ export class Game {
     // couches écrites à la main (src/anim.js) : pieds, poids, inertie, souffle ; complètes près de la caméra, pieds seuls au loin
     const rigPost = Anim.layers(this, a, dt, !far && !a.lodHidden && (a === this.player || a.pos.distanceToSquared(this.camera.position) < 1600));
     // le buste oriente l'arme vers le point visé (réticule pour le joueur, cible pour les bots)
-    const busy = a.climb || a.rollT > 0 || a.slideT > 0 || a.landT > 0 || a.stopT > 0 || a.celebrate || a.channel || a.inCar || !a.alive || a.overs?.some((o) => o.busy && o.t < o.dur - 0.12);
+    const busy = a.climb || (a.rollT > 0 && !MX) || a.slideT > 0 || a.landT > 0 || a.stopT > 0 || a.celebrate || a.channel || a.inCar || !a.alive || (a.reloadT > 0 && a.relAuth) || a.overs?.some((o) => o.busy && o.t < o.dur - 0.12);
     const pointing = MX ? (name === 'LOCO' && (aimingNow || sp < 2.8 || a.locoRunF < 0.5)) || name === 'MX_CrouchIdle' || (/MXP?_(Jump|Fall)/.test(name) && aimingNow) : name === 'Idle_Gun_Pointing' || name === 'Run_Shoot' || (/^Run_(Left|Right|Back)$/.test(name) && aimingNow);
     // correction seulement quand l'animation tient l'arme pointée (sinon le buste se cambrerait pour relever une arme baissée)
     const wantW = busy || !pointing ? 0 : 1;
@@ -1137,7 +1137,7 @@ export class Game {
   locomotion(a, dt, sp, aiming) {
     const A = a.ch.actions, L = a.loco || (a.loco = { w: 0, phase: 0, acts: new Set() });
     L.w = a.anim === 'LOCO' ? Math.min(1, L.w + dt / (a.locoFade || 0.15)) : Math.max(0, L.w - dt / (a.locoFade || 0.15));
-    const want = {}; const crouch = (a.crouchK || 0) > 0.5;
+    const want = {}; const crouch = (a.crouchK || 0) > 0.5 && !(a.rollT > 0); // esquive : plus de saut périlleux (le perso passait tête en bas), une ruée basse sur les allures de course, bassin descendu et buste plongé (pose dans anim.js)
     let fd = 1, sd = 0; if (sp > 0.05) { const vx = a.vel.x / sp, vz = a.vel.z / sp; fd = vx * Math.sin(a.yaw) + vz * Math.cos(a.yaw); sd = vx * Math.cos(a.yaw) - vz * Math.sin(a.yaw); }
     const move = clamp((sp - 0.25) / 1.1, 0, 1), run = clamp((sp - 2.6) / 1.3, 0, 1);
     const dirs = [Math.max(0, fd), Math.max(0, -fd), Math.max(0, sd), Math.max(0, -sd)]; const tot = dirs[0] + dirs[1] + dirs[2] + dirs[3] || 1;
@@ -1512,7 +1512,7 @@ export class Game {
     const bobY = Math.abs(Math.sin(C.bob)) * 0.055 * bobA * k * (1 + a.momentum * 0.6), bobX = Math.cos(C.bob) * 0.035 * bobA * k;
     // inclinaison : glissade, roulade, vitesse latérale
     const lateral = a.alive ? V(a.vel.x, 0, a.vel.z).dot(V(-Math.cos(C.yaw), 0, Math.sin(C.yaw))) : 0;
-    const targetRoll = (a.slideT > 0 ? 0.1 : 0) + clamp(-lateral * 0.006, -0.05, 0.05) * k * 2 + (a.rollT > 0 ? Math.sin((0.55 - a.rollT) / 0.55 * Math.PI) * 0.25 * k : 0);
+    const targetRoll = (a.slideT > 0 ? 0.1 : 0) + clamp(-lateral * 0.006, -0.05, 0.05) * k * 2 + (a.rollT > 0 ? Math.sin((0.55 - a.rollT) / 0.55 * Math.PI) * 0.07 * k : 0);
     C.roll = lerp(C.roll, targetRoll, 1 - Math.exp(-dt * 8));
     // tremblement (trauma²) + vibration de vitesse (sprint à fond, voiture rapide)
     const speedShake = (a.momentum > 0.8 && sp > 8 ? 0.15 : 0) + (a.inCar ? Math.abs(a.inCar.speed) / a.inCar.max * 0.25 : 0) + (a.inGas || 0) * 0.3;
