@@ -39,13 +39,16 @@ function makeRig(a) {
     const U = B['UpperLeg' + s], L = B['LowerLeg' + s], F = B['Foot' + s];
     R.legs.push({ U, L, F, free: F.parent !== L, l1: L.position.length(), l2: shin, T: V3(), fq: Q(), off: 0, lock: null, step: null, restY: src?.getObjectByName('Foot' + s)?.position.y ?? F.position.y });
   }
+  // bassin : dans les clips Mixamo c'est l'os Hips qui bouge et tourne, alors que les cuisses sont accrochées à Body ;
+  // on garde la pose de repos de Hips pour reporter son mouvement sur Body (sinon les cuisses s'étirent dès que le bassin s'écarte : saut, glissade, roulade, chutes)
+  const h0 = src?.getObjectByName('Hips'); R.hips = B.Hips && B.Hips.parent === B.Body && h0 ? { b: B.Hips, q: h0.quaternion.clone(), qi: h0.quaternion.clone().invert(), p: h0.position.clone() } : null;
   R.rootBone = B.Body.parent; R.flat = R.legs.every((g) => g.free && g.F.parent === R.rootBone) && R.legs.every((g) => g.U.parent === B.Body);
   // os que les couches modifient : remis dans leur pose d'animation avant chaque passage du mixer
   const mod = new Set(R.spine.filter(Boolean)); for (const g of R.legs) { mod.add(g.U); mod.add(g.L); mod.add(g.F); }
-  for (const b of mod) R.saved.push({ b, q: b.quaternion.clone(), p: b.position.clone(), pos: b === B.Body || /^Foot/.test(b.name) });
+  for (const b of mod) R.saved.push({ b, q: b.quaternion.clone(), p: b.position.clone(), pos: b === B.Body || b === B.Hips || /^Foot/.test(b.name) });
   R.lean = { x: S(), z: S() }; R.pelvis = S(); R.twist = S(); R.head = { yaw: S(), pitch: S(), nod: S() }; R.curl = S();
   R.rec = { p: S(), y: S(), z: S() }; R.hit = { x: S(), z: S(), hx: S(), hz: S() };
-  R.pv = V3(); R.acc = V3(); R.yaw0 = a.yaw; R.yawRate = 0; R.effort = 0; R.breath = Math.random() * 6; R.plantW = 0; R.stepSide = 0; R.wasGround = true; R.vy = 0; R.w = 1; R.drop = 0;
+  R.pv = V3(); R.acc = V3(); R.yaw0 = a.yaw; R.yawRate = 0; R.effort = 0; R.breath = Math.random() * 6; R.plantW = 0; R.slide = 0; R.stepSide = 0; R.wasGround = true; R.vy = 0; R.w = 1; R.drop = 0;
   R.ok = true; return R;
 }
 const rig = (a) => a.ch.rig || (a.ch.rig = makeRig(a));
@@ -55,6 +58,19 @@ export function restore(a) { const R = rig(a); for (const s of R.saved) { s.b.qu
 // après le mixer : la pose d'animation de l'image devient la référence
 export function capture(a) { const R = rig(a); for (const s of R.saved) { s.q.copy(s.b.quaternion); if (s.pos) s.p.copy(s.b.position); } }
 
+// reporte le mouvement de Hips sur Body : le bassin emmène les cuisses, qui gardent leur orientation d'animation
+const _hq = Q(), _hv = V3();
+function pelvis(R) {
+  const H = R.hips; if (!H) return; const body = R.spine[0], h = H.b;
+  _hq.copy(h.quaternion).multiply(H.qi); // rotation de Hips par rapport au repos, dans le repère de Body
+  // les clips de saut et de roulade montent le bassin de près d'un mètre : c'est la physique du jeu qui porte le perso, on ne garde que l'abaissement
+  const up = h.position.y - H.p.y; if (up > 0.05) h.position.y = H.p.y + 0.05 + (up - 0.05) * 0.12;
+  _hv.copy(h.position).applyQuaternion(body.quaternion).add(body.position); // position de Hips à conserver
+  body.quaternion.multiply(_hq); _hq.invert();
+  for (const g of R.legs) g.U.quaternion.premultiply(_hq);
+  h.quaternion.copy(H.q); h.position.copy(H.p);
+  body.position.copy(_hv).sub(_w.copy(H.p).applyQuaternion(body.quaternion));
+}
 // cheville d'une jambe dans le repère Root, d'après la pose courante (cinématique directe)
 function ankle(body, g, out, knee) {
   _hip.copy(g.U.position).applyQuaternion(body.quaternion).add(body.position);
@@ -66,7 +82,7 @@ function ankle(body, g, out, knee) {
 }
 // le pied (os libre, enfant de Root) est posé au bout du tibia : sans cela il reste au sol pendant que la jambe court
 export function attachFeet(a) {
-  const R = rig(a); if (!R.ok || !R.flat) return; const body = R.spine[0];
+  const R = rig(a); if (!R.ok || !R.flat) return; const body = R.spine[0]; pelvis(R);
   for (const g of R.legs) g.F.position.copy(ankle(body, g, _v));
 }
 // acteur mort : le clip de chute joue seul, pieds attachés
@@ -121,6 +137,9 @@ export function layers(game, a, dt, near) {
   if (a.onGround && !R.wasGround) { const im = clamp(-R.vy, 0, 16); R.pelvis.v -= im * 0.34; R.curl.v += im * 0.28; R.head.nod.v += im * 0.2; }
   if (!a.onGround && R.wasGround && a.vel.y > 2) { R.pelvis.v += 1.1; R.curl.v -= 0.7; }
   R.wasGround = a.onGround; R.vy = a.vel.y;
+  // glissade : pose écrite à la main par-dessus l'accroupi (voir plus bas) ; entrée vive, relevé plus lent
+  const sliding = a.slideT > 0 && a.onGround;
+  R.slide += ((sliding ? 1 : 0) - R.slide) * (1 - Math.exp(-dt * (sliding ? 16 : 7))); const sw = R.slide < 0.003 ? 0 : ease(R.slide);
   const calm = a.climb || a.rollT > 0 || a.slideT > 0 || a.landT > 0 || a.celebrate || a.swim;
   R.w += ((calm ? 0 : 1) - R.w) * (1 - Math.exp(-dt * 10)); const W = R.w;
   // ---- ressorts (ils vivent même hors champ, pour ne pas sauter quand on se rapproche)
@@ -138,10 +157,16 @@ export function layers(game, a, dt, near) {
   if (!near || !R.flat) { attachFeet(a); return false; }
 
   // ---- 1. cibles des pieds d'après l'animation (avant de bouger le bassin)
+  pelvis(R);
   for (const g of R.legs) { ankle(body, g, g.T); g.fq.copy(g.F.quaternion); }
   // ---- 2. bassin et colonne
   const br = Math.sin(R.breath) * (0.006 + 0.022 * R.effort);
   const hitX = clamp(hz, -0.3, 0.3), hitZ = clamp(-hx, -0.3, 0.3); // encaisser : le buste part à l'opposé du tir
+  if (sw) { // bassin au ras du sol, un peu en retrait ; le dos part en arrière et la colonne se recourbe pour garder l'arme et le regard devant
+    body.position.y += (0.19 - body.position.y) * sw; body.position.z -= 0.12 * sw; body.position.x -= 0.03 * sw;
+    setD(iBody, -1.05 * sw, -0.22 * sw, 0.1 * sw); setD(iAbdomen, 0.22 * sw, 0.1 * sw, -0.05 * sw); setD(iTorso, 0.22 * sw, 0.12 * sw, -0.05 * sw); setD(iChest, 0.16 * sw, 0, 0);
+    spinePass(R);
+  }
   body.position.y += pel * W; body.position.z += (lx * 0.16 - clamp(rz, -1, 1) * 0.012) * W; body.position.x -= lz * 0.16 * W;
   setD(iBody, (lx * 0.55 + curl * 0.25) * W, -tw * 0.55 * W, lz * 0.55 * W);
   setD(iAbdomen, (lx * 0.25 + curl * 0.3 + hitX * 0.4 - br) * W, tw * 0.3 * W, (lz * 0.25 + hitZ * 0.4) * W);
@@ -149,12 +174,14 @@ export function layers(game, a, dt, near) {
   setD(iChest, br * 1.6 * W, tw * 0.35 * W, 0);
   spinePass(R);
   // ---- 3. pieds : adaptation au sol, pieds plantés à l'arrêt, puis IK
-  const k = ch.model.scale.x, rb = R.rootBone.position, ground = a.onGround && !calm && !a.inCar;
+  const k = ch.model.scale.x, rb = R.rootBone.position, ground = a.onGround && (!calm || sliding) && !a.inCar;
   const still = ground && sp < 0.3 && a.anim === 'LOCO' && Math.abs(R.yawRate) < 6;
   R.plantW = clamp(R.plantW + dt * (still ? 6 : -9), 0, 1); if (R.plantW <= 0) for (const g of R.legs) g.lock = g.step = null;
   let low = 0, stepping = R.legs[0].step || R.legs[1].step, worst = null, worstE = 0;
   for (let i = 0; i < 2; i++) {
     const g = R.legs[i], T = g.T;
+    // glissade : jambe gauche tendue devant, talon au sol ; jambe droite repliée dessous, genou ouvert
+    if (sw) { if (i === 0) { T.x += (0.13 - T.x) * sw; T.y += (g.restY + 0.05 - T.y) * sw; T.z += (0.8 - T.z) * sw; } else { T.x += (-0.2 - T.x) * sw; T.y += (g.restY + 0.02 - T.y) * sw; T.z += (0.3 - T.z) * sw; } }
     // position monde du pied animé (xz) et hauteur du sol dessous
     const lx0 = (T.x + rb.x) * k, lz0 = (T.z + rb.z) * k; let wx = a.pos.x + lx0 * cs + lz0 * sn, wz = a.pos.z - lx0 * sn + lz0 * cs, fyaw = 0;
     if (R.plantW > 0) {
@@ -178,7 +205,7 @@ export function layers(game, a, dt, near) {
     if (g.fyaw) g.F.quaternion.premultiply(_q3.setFromAxisAngle(Y, g.fyaw));
   }
   // ---- valeurs gardées pour la couche d'après visée
-  R.post = { hy: hy * W, nod: nod * W, lx: lx * W, lz: lz * W, rp, ry, hhx: clamp(hhz, -0.4, 0.4), hhz: clamp(-hhx, -0.4, 0.4), br: br * W };
+  R.post = { sw, hy: hy * W, nod: nod * W, lx: lx * W, lz: lz * W, rp, ry, hhx: clamp(hhz, -0.4, 0.4), hhz: clamp(-hhx, -0.4, 0.4), br: br * W };
   return true;
 }
 
@@ -186,7 +213,7 @@ export function layers(game, a, dt, near) {
 export function post(a) {
   const R = rig(a), P = R.post; if (!R.ok || !P) return;
   setD(iChest, -P.rp * 0.055, P.ry * 0.035, 0);
-  setD(iNeck, -P.lx * 0.3 + P.nod * 0.4 + P.hhx * 0.4 - P.br * 0.8, P.hy * 0.4, -P.lz * 0.35 + P.hhz * 0.4);
-  setD(iHead, -P.lx * 0.3 + P.nod * 0.6 + P.rp * 0.03 + P.hhx * 0.6, P.hy * 0.6, -P.lz * 0.35 + P.hhz * 0.6);
+  setD(iNeck, P.sw * 0.2 - P.lx * 0.3 + P.nod * 0.4 + P.hhx * 0.4 - P.br * 0.8, P.hy * 0.4, -P.lz * 0.35 + P.hhz * 0.4);
+  setD(iHead, P.sw * 0.15 - P.lx * 0.3 + P.nod * 0.6 + P.rp * 0.03 + P.hhx * 0.6, P.hy * 0.6, -P.lz * 0.35 + P.hhz * 0.6);
   spinePass(R);
 }
