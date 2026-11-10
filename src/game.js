@@ -8,6 +8,7 @@ import { pointInPoly } from './world.js';
 import * as Anim from './anim.js';
 import { rideMethods } from './deuxroues.js';
 import { installThrows, THROWS, solveThrow } from './throws.js';
+import { svg, iconize } from './icons.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
@@ -27,8 +28,8 @@ const $ = (id) => document.getElementById(id);
 const GRAV = 19, EYE = 1.62;
 // séries d'éliminations (sans mourir) : 3, 5, 7
 const STREAKS = {
-  ordre: [{ n: 3, id: 'drone', nom: 'Drone', icon: '🛸', desc: 'lance-le : il survole la zone et repère les Frungz' }, { n: 5, id: 'crs', nom: 'CRS parachutés', icon: '🪂', desc: '4 CRS blindés tombent du ciel là où tu vises' }, { n: 7, id: 'lacry', nom: 'Frappe du ciel', icon: '🚀', desc: 'pluie de missiles lacrymo sur la zone visée' }],
-  civils: [{ n: 3, id: 'petards', nom: 'Bouquet de pétards', icon: '🧨', desc: 'lance-le : il sonne les flics de la zone' }, { n: 5, id: 'emeute', nom: 'Émeute en parapluie', icon: '☂️', desc: '4 émeutiers descendent en parapluie là où tu vises' }, { n: 7, id: 'artifice', nom: 'Bouquet final', icon: '🎆', desc: 'pluie de fusées sur la zone visée' }],
+  ordre: [{ n: 3, id: 'drone', nom: 'Drone', icon: '🛸', ico: 'drone', desc: 'lance-le : il survole la zone et repère les Frungz' }, { n: 5, id: 'crs', nom: 'Renforts CRS', icon: '🪂', ico: 'parachute', desc: '4 CRS blindés largués là où tu vises' }, { n: 7, id: 'lacry', nom: 'Salve lacrymogène', icon: '🚀', ico: 'missile', desc: 'salve de grenades lacrymogènes sur la zone visée' }],
+  civils: [{ n: 3, id: 'petards', nom: 'Pétards', icon: '🧨', ico: 'petards', desc: 'lance-le : il sonne les flics de la zone' }, { n: 5, id: 'emeute', nom: 'Renforts émeutiers', icon: '🪂', ico: 'parachute', desc: '4 émeutiers largués là où tu vises' }, { n: 7, id: 'artifice', nom: "Mortiers d'artifice", icon: '🎆', ico: 'artifice', desc: 'tir de mortiers sur la zone visée' }],
 };
 const STREAK_BY_ID = Object.fromEntries(Object.values(STREAKS).flat().map((r) => [r.id, r]));
 const LOOT_PTS = { commun: 2, rare: 4, epique: 6, legendaire: 10 };
@@ -37,7 +38,7 @@ const V2 = new THREE.Vector2(); const BULLET_V = 380; const BULLET_GEO = new THR
 const contrib = (a) => a.stats.k * 100 + a.stats.a * 50 + a.stats.cap * 150 + a.stats.sac * 10;
 const BOT_NAMES = {
   ordre: ['Brigadier Lemoine', 'Gardien Diallo', 'Major Fontaine', 'Cdt Mercier', 'Agent Benali', 'Lt Garnier', 'Brigadier Roux', 'Agent Petit', 'Cpt Morel', 'Agent Nguyen', 'Agent Faure', 'Brigadier Haddad', 'Agent Lambert', 'Major Caron', 'Agent Leroy', 'Gardien Rey', 'Agent Blanc', 'Lt Masson', 'Agent Perrin', 'Agent Colin'],
-  civils: ['Kéké Turbo', 'Tonton Flingue', 'La Fouine', 'Mamie Nitro', 'P\'tit Loup', 'Le Baron', 'Zizou Cash', 'Gégé Paillettes', 'Miss Pavé', 'Jojo Banane', 'Le Comte de Barbès', 'Rico Tongs', 'Nana Bling', 'Fifi Brindacier', 'Momo Croissant', 'Dédé Disco', 'La Mouette', 'Bébert Laser', 'Coco Rillette', 'Toto Platine'],
+  civils: ['Kéké', 'Le Baron', 'La Fouine', 'Rico', 'P\'tit Loup', 'Sacha', 'Zizou', 'Nassim', 'Miss Pavé', 'Yanis', 'Le Comte', 'Malik', 'Nana', 'Kenza', 'Momo', 'Dédé', 'La Mouette', 'Bébert', 'Teddy', 'Le Gitan'],
 };
 
 // ===================================================================================================================
@@ -266,7 +267,7 @@ export class Game {
   addStreak(a) {
     a.streak++; const r = STREAKS[a.team].find((x) => x.n === a.streak); if (!r) return;
     a.rewards.push(r.id);
-    if (a === this.player) { this.bigText(`${r.icon} ${r.nom.toUpperCase()} !`, `série de ${a.streak} · appuie sur ${this.input.label('streak')} pour lancer`, '#ffcc3d'); this.flash('radial-gradient(ellipse at center, rgba(255,204,61,0) 30%, rgba(255,204,61,.75))'); this.audio.streakReady(); this.input.rumble(1, 0.8, 300); this.cam.trauma = Math.min(1, this.cam.trauma + 0.35); this.streakDirty = 1; }
+    if (a === this.player) { this.bigText(`${svg(r.ico)} ${r.nom.toUpperCase()}`, `série de ${a.streak} · ${this.input.label('streak')} pour l'activer`, '#ffcc3d'); this.flash('radial-gradient(ellipse at center, rgba(255,204,61,0) 45%, rgba(255,204,61,.3))'); this.audio.streakReady(); this.input.rumble(1, 0.8, 300); this.cam.trauma = Math.min(1, this.cam.trauma + 0.35); this.streakDirty = 1; }
     else if (a.bot) a.ai.streakT = rnd(1.5, 5);
   }
   useStreak(a) {
@@ -855,7 +856,7 @@ export class Game {
     if (!prompt) {
       const d = this.drops.find((d) => d.pos.distanceTo(a.pos) < 2);
       if (d) {
-        if (d.weapon) { const W = WEAPONS[d.weapon.id]; prompt = `<b>${I.label('interact')}</b> Prendre <span class="r" style="color:${RARITY[d.weapon.rarity].color}">${W.icon} ${W.name} ${RARITY[d.weapon.rarity].name.toLowerCase()}</span>`; if (I.pressed('interact')) this.pickWeapon(a, d); }
+        if (d.weapon) { const W = WEAPONS[d.weapon.id]; prompt = `<b>${I.label('interact')}</b> Prendre <span class="r" style="color:${RARITY[d.weapon.rarity].color}">${svg(W.ico)} ${W.name} ${RARITY[d.weapon.rarity].name.toLowerCase()}</span>`; if (I.pressed('interact')) this.pickWeapon(a, d); }
         else { prompt = `<b>${I.label('interact')}</b> Ramasser le butin (${d.items.length})`; if (I.pressed('interact')) this.pickDrop(a, d); }
       }
     }
@@ -881,7 +882,7 @@ export class Game {
     if (same >= 0) { const old = a.slots[same]; if (RARITY_ORDER.indexOf(w.rarity) <= RARITY_ORDER.indexOf(old.rarity)) { old.mag = WEAPONS[old.id].mag; if (a === this.player) this.toast('Munitions récupérées', '#ccc'); this.removeDrop(d); return; } a.slots[same] = w; this.equip(a, same); }
     else if (a.slots.length < 4) { a.slots.push(w); this.equip(a, a.slots.length - 1); }
     else { const old = a.slots[a.cur]; a.slots[a.cur] = w; this.equip(a, a.cur); this.removeDrop(d); this.dropPile(a.pos.clone().add(V(0.5, 0, 0)), [], { id: old.id, rarity: old.rarity }); return; }
-    if (a === this.player) { this.toast(`${WEAPONS[w.id].icon} ${WEAPONS[w.id].name} ${RARITY[w.rarity].name}`, RARITY[w.rarity].color); this.audio.rarity(w.rarity); }
+    if (a === this.player) { this.toast(`${WEAPONS[w.id].name} ${RARITY[w.rarity].name.toLowerCase()}`, RARITY[w.rarity].color); this.audio.rarity(w.rarity); }
     this.removeDrop(d);
   }
   pickDrop(a, d) {
@@ -899,9 +900,9 @@ export class Game {
     }
   }
   specialDelivery() {
-    const z = this.zoneState[1]; const items = [this.makeItem('frungz', 'legendaire')]; items[0].valeur = 9000;
+    const z = this.zoneState.find((q) => q.id === 'C') || this.zoneState[1]; const items = [this.makeItem('frungz', 'legendaire')]; items[0].valeur = 9000;
     this.dropPile(V(z.center[0] + rnd(-2, 2), 0, z.center[1] + rnd(-2, 2)), items);
-    this.announce("LE FRUNGZ D'OR", 'vient d\'apparaître à la Fontaine (B)', RARITY.legendaire.color, 3); this.audio.capture(true);
+    this.announce("LE FRUNGZ D'OR", `vient d'apparaître : ${z.name || 'zone'} (${z.id})`, RARITY.legendaire.color, 3); this.audio.capture(true);
     for (const b of this.actors) if (b.bot && b.alive && Math.random() < 0.5) { b.ai.task = { kind: 'drop' }; b.ai.path = null; }
   }
   alertTeam(team, msg) { if (team === this.save.team) this.toast(msg, '#ff4a4a'); for (const b of this.actors) if (b.bot && b.alive && b.team === team && Math.random() < 0.6) { b.ai.task = { kind: 'defend' }; b.ai.path = null; } }
@@ -1238,7 +1239,7 @@ export class Game {
     }
     if (r < wLoot + wRaid) { const s = pick(enemySocle); return this.botGo(b, { kind: 'raid', socle: s }, s.pos); }
     // zones : priorité aux zones non tenues, proches
-    const zs = this.zoneState.map((z) => ({ z, w: (z.owner === b.team ? 0.25 : 1) * (1 / (1 + Math.hypot(z.center[0] - b.pos.x, z.center[1] - b.pos.z) / 40)) * (z.id === 'B' ? 1.3 : 1) }));
+    const zs = this.zoneState.filter((z) => !z.souterraine).map((z) => ({ z, w: (z.owner === b.team ? 0.25 : 1) * (1 / (1 + Math.hypot(z.center[0] - b.pos.x, z.center[1] - b.pos.z) / 40)) * (z.id === 'B' ? 1.3 : 1) }));
     let s = zs.reduce((a, x) => a + x.w, 0) * Math.random(); let z = zs[0].z; for (const x of zs) { s -= x.w; if (s <= 0) { z = x.z; break; } }
     const [px, pz] = this.world.randomFree(z.center[0], z.center[1], z.radius * 0.7);
     this.botGo(b, { kind: 'zone', zone: z }, V(px, 0, pz));
@@ -1294,11 +1295,13 @@ export class Game {
   }
 
   // ---------------------------------------------------------------- Domination
+  // dans la zone : rayon au sol ET bon étage (la zone H est sous la C, la G sur le Tertre)
+  inZone(a, z) { return Math.hypot(a.pos.x - z.center[0], a.pos.z - z.center[1]) < z.radius && Math.abs(a.pos.y - (z.y ?? 0.17)) < 3; }
   updateZones(dt) {
     this.zoneTick = (this.zoneTick || 0) + dt;
     for (const z of this.zoneState) {
       const n = { ordre: 0, civils: 0 };
-      for (const a of this.actors) if (a.alive && !a.inCar && Math.hypot(a.pos.x - z.center[0], a.pos.z - z.center[1]) < z.radius && Math.abs(a.pos.y - (z.y ?? 0.17)) < 3) n[a.team]++;
+      for (const a of this.actors) if (a.alive && !a.inCar && this.inZone(a, z)) n[a.team]++;
       z.contested = n.ordre > 0 && n.civils > 0; z.n = n;
       const only = !z.contested ? (n.ordre ? 'ordre' : n.civils ? 'civils' : null) : null;
       const was = z.threat; z.threat = !!(only && z.owner && only !== z.owner) || (z.contested && !!z.owner);
@@ -1314,11 +1317,11 @@ export class Game {
     if (this.zoneTick >= 1) { this.zoneTick -= 1; for (const z of this.zoneState) if (z.owner) this.score[z.owner] += 1; }
   }
   captureZone(z, team) {
-    const prev = z.owner; z.owner = team; z.p = 1; this.fx.ring(V(z.center[0], this.world.groundY(z.center[0], z.center[1]), z.center[1]), TEAMS[team].color);
+    const prev = z.owner; z.owner = team; z.p = 1; this.fx.ring(V(z.center[0], this.world.groundY(z.center[0], z.center[1], (z.y ?? 0.17) + 0.5), z.center[1]), TEAMS[team].color);
     const mine = team === this.save.team; this.audio.capture(mine);
     this.announce(mine ? `${z.id} CAPTURÉE` : prev === this.save.team ? `${z.id} PERDUE` : `L'ENNEMI PREND ${z.id}`, mine ? 'Nous tenons la zone' : prev === this.save.team ? 'Reprenez-la !' : `${z.name || ''}`, mine ? '#5ad1ff' : '#ff5a4a', 1.8);
-    for (const a of this.actors) if (a.alive && !a.gone && a.team === team && Math.hypot(a.pos.x - z.center[0], a.pos.z - z.center[1]) < z.radius) a.stats.cap++;
-    const p = this.player; if (p.alive && p.team === team && Math.hypot(p.pos.x - z.center[0], p.pos.z - z.center[1]) < z.radius) { this.stats.captures++; this.earn(150, `Capture de ${z.id}`); }
+    for (const a of this.actors) if (a.alive && !a.gone && a.team === team && this.inZone(a, z)) a.stats.cap++;
+    const p = this.player; if (p.alive && p.team === team && this.inZone(p, z)) { this.stats.captures++; this.earn(150, `Capture de ${z.id}`); }
   }
   endMatch() {
     this.over = true; const w = this.score.ordre > this.score.civils ? 'ordre' : this.score.civils > this.score.ordre ? 'civils' : null; this.winner = w;
@@ -1530,6 +1533,7 @@ export class Game {
 
   // ---------------------------------------------------------------- interface
   hudInit() {
+    const mi = document.querySelector('#mats .ico-b'); if (mi) mi.innerHTML = svg('barricade');
     $('zones').innerHTML = this.zoneState.map((z) => `<div class="zone" id="z${z.id}"><div class="fill"></div><span>${z.id}</span></div>`).join('');
     $('zmarks').innerHTML = this.zoneState.map((z) => `<div class="zm" id="zm${z.id}"><b>${z.id}</b><small></small></div>`).join('');
   }
@@ -1537,15 +1541,17 @@ export class Game {
   updateZoneHud() {
     const me = this.player, cam = this.camera, v = V(), W = innerWidth, H = innerHeight; let inside = null;
     for (const z of this.zoneState) {
-      const el = $('zm' + z.id); if (!el) continue; const gy = this.world.groundY(z.center[0], z.center[1]);
-      v.set(z.center[0], gy + 3.2, z.center[1]); const dist = Math.hypot(me.pos.x - z.center[0], me.pos.z - z.center[1]);
-      if (me.alive && dist < z.radius) inside = z;
+      const el = $('zm' + z.id); if (!el) continue; const zy = z.y ?? 0.17, gy = this.world.groundY(z.center[0], z.center[1], zy + 0.5);
+      v.set(z.center[0], gy + (z.souterraine ? 2.2 : 3.2), z.center[1]); const dy = gy - me.pos.y, dist = Math.hypot(me.pos.x - z.center[0], me.pos.z - z.center[1], dy * 0.5);
+      if (me.alive && this.inZone(me, z)) inside = z;
       v.project(cam); let x = (v.x * 0.5 + 0.5) * W, y = (-v.y * 0.5 + 0.5) * H; const behind = v.z > 1;
-      if (behind) { x = W - x; y = H - 40; } x = Math.max(30, Math.min(W - 30, x)); y = Math.max(110, Math.min(H - 60, y));
+      if (behind) { x = W - x < W / 2 ? 30 : W - 30; y = H * 0.5; } x = Math.max(30, Math.min(W - 30, x)); y = Math.max(110, Math.min(H - 60, y));
+      // zone à un autre étage, juste au-dessus ou en dessous d'une autre : on décale le repère pour qu'ils ne se chevauchent pas
+      if (z.souterraine && dy < -3) y = Math.min(H - 60, y + 46);
       const rel = !z.owner ? 'neutre' : z.owner === me.team ? 'allie' : 'ennemi';
       el.className = `zm ${rel}${z.threat || (z.contested) ? ' alerte' : ''}${z.cap && z.cap !== z.owner && z.p > 0 ? ' prise' : ''}${inside === z || $('minimap').classList.contains('big') ? ' cache' : ''}`;
       el.style.transform = `translate(${x.toFixed(0)}px, ${y.toFixed(0)}px)`; el.style.setProperty('--p', ((z.owner && z.cap === z.owner ? 1 : z.p) * 360).toFixed(0) + 'deg'); el.style.setProperty('--pc', z.cap ? (z.cap === me.team ? 'var(--me)' : 'var(--foe)') : 'transparent');
-      el.lastChild.textContent = dist > 8 ? Math.round(dist) + ' m' : '';
+      el.lastChild.textContent = (dist > 8 ? Math.round(dist) + ' m' : '') + (dy < -3 ? ' ▼' : dy > 3 ? ' ▲' : '');
     }
     const box = $('capbox');
     if (inside) { const z = inside, mine = z.owner === me.team, n = z.n || { ordre: 0, civils: 0 }, foe = me.team === 'ordre' ? 'civils' : 'ordre';
@@ -1555,12 +1561,12 @@ export class Game {
       box.innerHTML = `<div class="ring"><b>${z.id}</b></div><div class="txt"><strong>${st}</strong><small>${z.name || ''} · ${n[me.team]} allié${n[me.team] > 1 ? 's' : ''} · ${n[foe]} ennemi${n[foe] > 1 ? 's' : ''}</small></div>`;
     } else box.className = '';
   }
-  toast(txt, color = '#fff') { const el = document.createElement('div'); el.textContent = txt; el.style.setProperty('--c', color); $('toasts').appendChild(el); setTimeout(() => el.remove(), 3200); while ($('toasts').children.length > 5) $('toasts').firstChild.remove(); }
-  announce(big, small, color = '#fff', dur = 2) { const el = $('center'); el.innerHTML = `${big}<small>${small || ''}</small>`; el.style.color = color; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); clearTimeout(this._annT); this._annT = setTimeout(() => el.classList.remove('on'), dur * 1000); }
+  toast(txt, color = '#fff') { const el = document.createElement('div'); el.innerHTML = iconize(String(txt).replace(/</g, '&lt;')); el.style.setProperty('--c', color); $('toasts').appendChild(el); setTimeout(() => el.remove(), 3200); while ($('toasts').children.length > 4) $('toasts').firstChild.remove(); }
+  announce(big, small, color = '#fff', dur = 2) { const el = $('center'); el.innerHTML = `${iconize(big)}<small>${iconize(small || '')}</small>`; el.style.color = color; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); clearTimeout(this._annT); this._annT = setTimeout(() => el.classList.remove('on'), dur * 1000); }
   killFeed(by, t, opts) {
     const el = document.createElement('div'); const c = (x) => (x?.team === 'ordre' ? 'o' : 'c');
-    const how = opts.gas ? '💨' : opts.weapon ? WEAPONS[opts.weapon]?.icon || '✖' : by ? '🚗' : '☠';
-    el.innerHTML = by ? `<span class="${c(by)}">${by.name}</span> ${how}${opts.head ? '🎯' : ''} <span class="${c(t)}">${t.name}</span>` : `☠ <span class="${c(t)}">${t.name}</span>`;
+    const how = svg(opts.gas ? 'gas' : opts.weapon ? WEAPONS[opts.weapon]?.ico || 'skull' : by ? 'car' : 'skull');
+    el.innerHTML = by ? `<span class="${c(by)}">${by.name}</span> ${how}${opts.head ? svg('target', 'hs') : ''} <span class="${c(t)}">${t.name}</span>` : `${svg('skull')} <span class="${c(t)}">${t.name}</span>`;
     if (by === this.player || t === this.player) el.className = 'me'; $('feed').prepend(el); setTimeout(() => el.remove(), 5000); while ($('feed').children.length > 6) $('feed').lastChild.remove();
   }
   // ---------- boussole et repérage des tirs (façon Fortnite) ----------
@@ -1593,23 +1599,23 @@ export class Game {
     if (ring && ring._h !== html) { ring.innerHTML = html; ring._h = html; }
     if (this.pings && this.pings.length && this.time - this.pings[0].t > 2) this.pings = this.pings.filter((p) => this.time - p.t <= 2);
   }
-  // grosses lettres qui rebondissent (DOUBLÉ, TRIPLÉ, séries prêtes…)
+  // grand titre au centre (multi-éliminations, série prête, atout lancé)
   bigText(big, small, color = '#fff') {
-    const el = $('multik'); if (!el) return; const letters = [...big].map((c, i) => `<span style="animation-delay:${(i * 0.035).toFixed(3)}s">${c === ' ' ? '&nbsp;' : c}</span>`).join('');
-    el.innerHTML = `${letters}<small>${small || ''}</small>`; el.style.color = color; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+    const el = $('multik'); if (!el) return;
+    el.innerHTML = `<span>${iconize(big)}</span><small>${iconize(small || '')}</small>`; el.style.color = color; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
   }
   flash(bg) { const f = $('flash'); if (!f) return; f.style.background = bg; f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); }
   multiKill(opts) {
-    const M = this.mk || (this.mk = { n: 0, t: -9 }); M.n = this.time - M.t < 4.5 ? M.n + 1 : 1; M.t = this.time;
+    const M = this.mk || (this.mk = { n: 0, t: -9 }); M.n = this.time - M.t < 4.5 ? M.n + 1 : 1; if (M.n === 1) M.t0 = this.time; M.t = this.time;
     const sb = $('streakbar')?.querySelector('.count'); if (sb) { sb.classList.remove('bump'); void sb.offsetWidth; sb.classList.add('bump'); }
     if (M.n < 2) { this.flash('radial-gradient(ellipse at center, rgba(255,60,40,0) 55%, rgba(255,60,40,.35))'); return; }
-    const names = ['DOUBLÉ !', 'TRIPLÉ !', 'QUADRUPLÉ !', 'CARNAGE !!', 'FRUNGZTASTIQUE !!!'];
-    const cols = ['#fff', '#9ff59f', '#57b6ff', '#ff7ad9', '#ffcc3d'];
-    this.bigText(names[Math.min(M.n - 2, 4)], `${M.n} éliminations d'affilée`, cols[Math.min(M.n - 2, 4)]);
-    this.audio.multi(M.n); if (M.n >= 3) this.audio.boing();
-    this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,0) 35%, ${cols[Math.min(M.n - 2, 4)]}99)`);
+    const names = ['DOUBLE ÉLIMINATION', 'TRIPLE ÉLIMINATION', 'QUADRUPLE ÉLIMINATION', 'CARNAGE', 'INARRÊTABLE'];
+    const cols = ['#ffffff', '#ffffff', '#ffe08a', '#ffcc3d', '#ffcc3d']; const k = Math.min(M.n - 2, 4);
+    this.bigText(names[k], `${M.n} éliminations en ${(this.time - (M.t0 ?? M.t)).toFixed(1).replace('.', ',')} s`, cols[k]);
+    this.audio.multi(M.n);
+    this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,0) 45%, rgba(255,204,61,${(0.12 + k * 0.05).toFixed(2)}))`);
     $('hud').classList.remove('shake'); void $('hud').offsetWidth; $('hud').classList.add('shake'); this.cam.trauma = Math.min(1, this.cam.trauma + 0.2 * M.n);
-    this.earn(25 * M.n, names[Math.min(M.n - 2, 4)].replace(/ !+/, ''));
+    this.earn(25 * M.n, names[k].charAt(0) + names[k].slice(1).toLowerCase());
   }
   // barre des séries : progression vers chaque bonus, bonus prêt mis en avant avec la touche à presser
   drawStreakbar() {
@@ -1617,10 +1623,10 @@ export class Game {
     const key = `${a.streak}|${a.rewards.join(',')}|${this.input.st.usingPad}|${this.streakUsed || ''}`; if (key === this._sbKey) return; this._sbKey = key;
     let prev = 0; const cards = L.map((r) => { const ready = a.rewards.includes(r.id); const seg = r.n - prev, got = Math.max(0, Math.min(seg, a.streak - prev)); prev = r.n;
       const next = !ready && a.streak < r.n && L.find((x) => x.n > a.streak) === r;
-      return `<div class="sk${ready ? ' ready' : next ? ' next' : ''}${this.streakUsed === r.id ? ' used' : ''}">${ready ? `<span class="key">${this.input.label('streak')} ACTIVER</span>` : ''}<div class="ic">${r.icon}</div><div class="nm">${r.nom}</div><div class="pips">${Array.from({ length: seg }, (_, i) => `<i class="${i < got || ready ? 'f' : ''}"></i>`).join('')}</div></div>`; });
+      return `<div class="sk${ready ? ' ready' : next ? ' next' : ''}${this.streakUsed === r.id ? ' used' : ''}">${ready ? `<span class="key">${this.input.label('streak')} ACTIVER</span>` : ''}<div class="ic">${svg(r.ico)}</div><div class="nm">${r.nom}</div><div class="pips">${Array.from({ length: seg }, (_, i) => `<i class="${i < got || ready ? 'f' : ''}"></i>`).join('')}</div></div>`; });
     el.innerHTML = `<div class="count">${a.streak}<small>SÉRIE</small></div>` + cards.join(''); this.streakUsed = null;
   }
-  medal(big, small, gold) { const el = $('medal'); if (!el) return; el.innerHTML = `<b>${gold ? '🎯' : '💀'} ${big}</b><small>${small}</small>`; el.className = gold ? 'gold' : ''; void el.offsetWidth; el.classList.add('on'); clearTimeout(this._medT); this._medT = setTimeout(() => el.classList.remove('on'), 1600); }
+  medal(big, small, gold) { const el = $('medal'); if (!el) return; el.innerHTML = `<b>${svg(gold ? 'target' : 'skull')} ${big}</b><small>${small}</small>`; el.className = gold ? 'gold' : ''; void el.offsetWidth; el.classList.add('on'); clearTimeout(this._medT); this._medT = setTimeout(() => el.classList.remove('on'), 1600); }
   flashBody(t) { t.ch.model.traverse((o) => { if (o.isSkinnedMesh && o.name === 'corps') { o.material.emissive.set('#ffffff'); o.material.emissiveIntensity = 0.55; } }); t.flashT = 0.07; }
   hitmark(kill, head) { const h = $('hitmark'); h.className = ''; void h.offsetWidth; h.className = 'on' + (kill ? ' kill' : '') + (head ? ' head' : ''); }
   hurtDir(from) {
@@ -1630,12 +1636,12 @@ export class Game {
   toggleInv() {
     const el = $('inv'); const show = el.classList.contains('hidden'); el.classList.toggle('hidden', !show); if (!show) return;
     const a = this.player, card = (c, t, ...sm) => `<div class="card" style="--c:${c}"><b>${t}</b>${sm.map((x) => `<small>${x}</small>`).join('')}</div>`;
-    const weapons = a.slots.map((w, i) => { const W = WEAPONS[w.id]; return card(RARITY[w.rarity].color, `${W.icon} ${W.name}${i === a.cur ? ' ✓' : ''}`, `<span style="color:${RARITY[w.rarity].color}">${RARITY[w.rarity].name}</span> · chargeur ${w.mag}/${W.mag}`, `Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.rps} coups/s`); });
-    const gear = [card('#888', `${a.team === 'ordre' ? '💨 Lacrymo' : '🎆 Fumigène'} × ${a.nades}`, this.input.label('grenade')), card('#c98a4a', `🧱 Barricades ${a.walls ?? 3}/3`, a.walls < 3 ? `prochaine dans ${Math.ceil(a.wallT || 0)} s` : 'prêtes'), card('#57b6ff', `🦺 Gilet ${Math.round(a.armor)}`, `santé ${Math.ceil(a.hp)}`)];
+    const weapons = a.slots.map((w, i) => { const W = WEAPONS[w.id]; return card(RARITY[w.rarity].color, `${svg(W.ico)} ${W.name}${i === a.cur ? ' ' + svg('check') : ''}`, `<span style="color:${RARITY[w.rarity].color}">${RARITY[w.rarity].name}</span> · chargeur ${w.mag}/${W.mag}`, `Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.rps} coups/s`); });
+    const gear = [card('#888', `${svg(a.team === 'ordre' ? 'gas' : 'smoke')} ${a.team === 'ordre' ? 'Lacrymo' : 'Fumigène'} × ${a.nades} · ${svg('frag')} Grenade × ${a.frags ?? 0}`, `maintenir ${this.input.label('grenade')} pour viser`), card('#c98a4a', `${svg('barricade')} Barricades ${a.walls ?? 3}/3`, a.walls < 3 ? `prochaine dans ${Math.ceil(a.wallT || 0)} s` : 'prêtes'), card('#57b6ff', `${svg('vest')} Gilet ${Math.round(a.armor)}`, `santé ${Math.ceil(a.hp)}`)];
     const carried = a.bag.length ? a.bag.map((i) => card(RARITY[i.rarity].color, `${i.icon} ${i.nom}`, `<span style="color:${RARITY[i.rarity].color}">${RARITY[i.rarity].name}</span>${i.stolen ? ' · volé' : ''}`, `${fmt(i.valeur)} € · receleur ${fmt(this.recelPrice(i) * (a.team === 'ordre' ? 0.6 : 1))} €`)) : [card('#555', 'Les mains vides', 'Casse une vitrine de luxe et rapporte un objet')];
     const socs = this.socles[a.team], held = socs.filter((x) => x.item), inc = held.reduce((t, x) => t + x.item.valeur * 0.006, 0);
     const base = held.length ? held.map((x) => card(RARITY[x.item.rarity].color, `${x.item.icon} ${x.item.nom}`, `${fmt(x.item.valeur)} €${x.owner === a ? ' · à toi' : x.owner ? ' · ' + x.owner.name : ''}`)) : [card('#555', 'Rien d\'exposé', 'Dépose ton objet à la base : il rapporte chaque seconde')];
-    const st = STREAKS[a.team].map((r) => card(a.rewards.includes(r.id) ? '#ffcc3d' : a.streak >= r.n ? '#9ff59f' : '#555', `${r.icon} ${r.nom} · ${r.n} élim.`, r.desc + (a.rewards.includes(r.id) ? ` · <b>prêt (${this.input.label('streak')})</b>` : '')));
+    const st = STREAKS[a.team].map((r) => card(a.rewards.includes(r.id) ? '#ffcc3d' : a.streak >= r.n ? '#9ff59f' : '#555', `${svg(r.ico)} ${r.nom} · ${r.n} élim.`, r.desc + (a.rewards.includes(r.id) ? ` · <b>prêt (${this.input.label('streak')})</b>` : '')));
     const sec = (t, arr) => `<h3 class="invh">${t}</h3><div class="invrow">${arr.join('')}</div>`;
     $('invList').innerHTML = sec('Armes', weapons) + sec('Équipement', gear) + sec('Objet porté', carried) + sec(`Planque · ${held.length}/${socs.length} · +${inc.toFixed(1)} €/s`, base) + sec(`Séries · actuelle ${a.streak}`, st);
   }
@@ -1653,7 +1659,7 @@ export class Game {
     $('bagkg').textContent = a.bag.length ? `${a.bag[0].nom} · ${fmt(a.bag[0].valeur)} €` : 'les mains vides';
     $('bagitems').innerHTML = a.bag.map((i) => `<span style="--c:${RARITY[i.rarity].color}" title="${i.nom}">${i.icon}</span>`).join('');
     $('hpbar').style.width = Math.max(0, a.hp) + '%'; $('hpn').textContent = Math.max(0, Math.ceil(a.hp)); $('armorbar').style.width = Math.min(100, a.armor) + '%';
-    $('weapons').innerHTML = a.slots.map((s, i) => `<div class="${i === a.cur ? 'on' : ''}" style="--c:${RARITY[s.rarity].color}"><em>${WEAPONS[s.id].icon}</em>${WEAPONS[s.id].name}</div>`).join('') + `<div style="--c:#888"><em>${a.team === 'ordre' ? '💨' : '🎆'}</em>${a.nades} · 💣${a.frags ?? 0} · ${I.label('grenade')}</div>`;
+    $('weapons').innerHTML = a.slots.map((s, i) => `<div class="${i === a.cur ? 'on' : ''}" style="--c:${RARITY[s.rarity].color}"><em>${svg(WEAPONS[s.id].ico)}</em>${WEAPONS[s.id].name}</div>`).join('') + `<div class="thr" style="--c:#888"><em>${svg(a.team === 'ordre' ? 'gas' : 'smoke')}<small>${a.nades}</small>${svg('frag')}<small>${a.frags ?? 0}</small></em>${I.label('grenade')} lancer</div>`;
     const W = this.weapon(a); if (W) { $('mag').textContent = a.reloadT > 0 ? '…' : W.mag; $('reserve').textContent = `/ ${WEAPONS[W.id].mag}`; $('wname').textContent = `${WEAPONS[W.id].name.toUpperCase()} · ${RARITY[W.rarity].name.toUpperCase()}`; $('wname').style.color = RARITY[W.rarity].color; }
     const pr = $('prompt'); if (this.ui.prompt && a.alive) { pr.innerHTML = this.ui.prompt; pr.classList.add('on'); } else pr.classList.remove('on');
     const ch = $('channel'); if (a.channel) { ch.classList.add('on'); ch.querySelector('i').style.width = (a.channel.t / a.channel.dur * 100) + '%'; ch.querySelector('span').textContent = a.channel.label; } else ch.classList.remove('on');
@@ -1662,9 +1668,16 @@ export class Game {
     const D = W ? WEAPONS[W.id] : null; const sp = this.feetSpeed(a);
     const gap = D ? 4 + D.spread * 260 * (sp > 2 ? 1.6 : 1) * (this.aiming ? (this.cam.fps ? 0.1 : 0.18) : 1) * (a.onGround ? 1 : 1.8) + (this.ui.crossKick || 0) * 8 : 6; this.ui.crossKick = 0;
     $('cross').style.setProperty('--g', gap.toFixed(1) + 'px'); $('cross').style.display = (this.cam.fps && this.aiming && D?.scope) || a.inCar ? 'none' : '';
-    $('keys').innerHTML = I.st.usingPad
-      ? `<kbd>R2</kbd> tir · <kbd>L2</kbd> viser · <kbd>✕</kbd> saut/escalade · <kbd>○</kbd> roulade/glissade · <kbd>□</kbd> agir/voler · <kbd>△</kbd> arme · <kbd>L1</kbd> accroupi · <kbd>R1</kbd> ${a.team === 'ordre' ? 'lacrymo' : 'fumigène'} · <kbd>⬇</kbd> barricade · <kbd>L3</kbd> sprint · <kbd>R3</kbd> vue`
-      : `<kbd>E</kbd> agir · <kbd>F</kbd> voler une voiture · <kbd>Q</kbd> barricade · <kbd>G</kbd> ${a.team === 'ordre' ? 'lacrymo' : 'fumigène'} · <kbd>C</kbd> accroupi · <kbd>Ctrl</kbd> roulade/glissade · <kbd>V</kbd> vue FPS/TPS · <kbd>Tab</kbd> sac`;
+    // aide en bas de l'écran : selon le contexte (à pied, en véhicule, en visée) et le périphérique
+    const kk = `${I.st.usingPad ? 1 : 0}|${a.inCar ? (a.inCar.kind || 'car') : ''}|${this.aiming && D?.scope ? 's' : ''}|${a.team}`;
+    if (kk !== this._keysK) { this._keysK = kk; const P = I.st.usingPad, k = (x) => `<kbd>${x}</kbd>`;
+      $('keys').innerHTML = a.inCar
+        ? (P ? `${k('R2')} accélérer · ${k('L2')} freiner · ${k('✕')} ${a.inCar.kind === 'skate' ? 'ollie' : 'frein à main'} · ${k('□')} descendre${a.inCar.kind === 'skate' ? '' : ` · ${k('↓')} klaxon`}`
+          : `${k('Z')}${k('S')} avancer / freiner · ${k('Espace')} ${a.inCar.kind === 'skate' ? 'ollie' : 'frein à main'} · ${k('F')} descendre${a.inCar.kind === 'skate' ? '' : ` · ${k('H')} klaxon`}`)
+        : this.aiming && D?.scope
+          ? (P ? `${k('R3')} zoom ×4 / ×8 · ${k('L3')} retenir son souffle · ${k('R2')} tirer` : `${k('Molette')} zoom ×4 / ×8 · ${k('Maj')} retenir son souffle · ${k('Clic')} tirer`)
+          : (P ? `${k('□')} agir · ${k('R1')} maintenir : lancer · ${k('→')} série · ${k('↓')} barricade · ${k('L1')} accroupi · ${k('○')} roulade · ${k('R3')} vue · ${k('SHARE')} sac`
+            : `${k('E')} agir · ${k('F')} véhicule · ${k('G')} maintenir : lancer · ${k('X')} série · ${k('Q')} barricade · ${k('C')} accroupi · ${k('Ctrl')} roulade · ${k('V')} vue · ${k('Tab')} sac`); }
   }
   // classement provisoire : gros compteur, rang, 3 au-dessus / 3 en dessous, contribution
   drawRank() {
@@ -1673,11 +1686,11 @@ export class Game {
     const i = all.indexOf(a), from = Math.max(0, Math.min(i - 3, all.length - 7)), rows = all.slice(from, from + 7);
     const esc = (t) => String(t).replace(/[<&]/g, '');
     const next = STREAKS[a.team].find((r) => r.n > a.streak);
-    const ready = a.rewards.length ? `<span class="rdy">${STREAK_BY_ID[a.rewards[a.rewards.length - 1]].icon} ${STREAK_BY_ID[a.rewards[a.rewards.length - 1]].nom} · ${this.input.label('streak')}</span>` : '';
-    el.innerHTML = `<div class="top"><div class="kills">💀 ${a.stats.k}<small>ÉLIM.</small></div><div class="pos">#${i + 1}<small>SUR ${all.length}</small></div></div>`
+    const ready = a.rewards.length ? `<span class="rdy">${svg(STREAK_BY_ID[a.rewards[a.rewards.length - 1]].ico)} ${STREAK_BY_ID[a.rewards[a.rewards.length - 1]].nom} · ${this.input.label('streak')}</span>` : '';
+    el.innerHTML = `<div class="top"><div class="kills">${svg('skull')} ${a.stats.k}<small>ÉLIM.</small></div><div class="pos">#${i + 1}<small>SUR ${all.length}</small></div></div>`
       + `<div class="sub"><span>Assist. <b>${a.stats.a}</b></span><span>Captures <b>${a.stats.cap}</b></span><span>Saccage <b>${a.stats.sac}</b></span></div>`
       + `<table>${rows.map((x, j) => `<tr class="${x.team === 'ordre' ? 'o' : 'c'}${x === a ? ' me' : ''}"><td class="n">${from + j + 1}</td><td class="nm">${esc(x.name)}</td><td class="k">${x.stats.k}</td><td class="p">${fmt(contrib(x))}</td></tr>`).join('')}</table>`
-      + `<div class="streak">Série <b>${a.streak}</b>${next ? ` · ${next.icon} ${next.nom} à ${next.n}` : ''} ${ready}</div>`;
+      + `<div class="streak">Série <b>${a.streak}</b>${next ? ` · ${svg(next.ico)} ${next.nom} à ${next.n}` : ''} ${ready}</div>`;
   }
   minimapInit() {
     const W = this.world, B = W.bounds; const c = document.createElement('canvas'); const S = 4; c.width = (B.x1 - B.x0) * S; c.height = (B.z1 - B.z0) * S;

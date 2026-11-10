@@ -5,6 +5,7 @@
 // avec un marquage au sol que tout le monde voit.
 import * as THREE from 'three';
 import { TEAMS } from './data.js';
+import { svg } from './icons.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const G = 19; // même gravité que le jeu
@@ -12,15 +13,15 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (l) => l[(Math.random() * l.length) | 0];
 
 export const THROWS = {
-  gas: { nom: 'Lacrymo', icon: '💨', fuse: 1.6, r: 5, col: '#e8e2b0' },
-  smoke: { nom: 'Fumigène', icon: '🎆', fuse: 1.6, r: 5, col: '#ff4fa0' },
-  frag: { nom: 'Grenade', icon: '💣', fuse: 2.0, r: 6, col: '#ff7a2f' },
-  petards: { spell: 1, nom: 'Bouquet de pétards', icon: '🧨', r: 9, col: '#ffd23d' },
-  emeute: { spell: 1, nom: 'Émeute en parapluie', icon: '☂️', r: 5, col: '#34c759' },
-  artifice: { spell: 1, nom: 'Bouquet final', icon: '🎆', r: 12, col: '#ff4fa0' },
-  drone: { spell: 1, nom: 'Drone', icon: '🛸', r: 40, col: '#5ab4ff', ringR: 8 },
-  crs: { spell: 1, nom: 'CRS parachutés', icon: '🪂', r: 5, col: '#3d8bff' },
-  lacry: { spell: 1, nom: 'Frappe du ciel', icon: '🚀', r: 12, col: '#ff3d3d' },
+  gas: { nom: 'Lacrymo', icon: '💨', ico: 'gas', fuse: 1.6, r: 5, col: '#e8e2b0' },
+  smoke: { nom: 'Fumigène', icon: '🌫️', ico: 'smoke', fuse: 1.6, r: 5, col: '#ff4fa0' },
+  frag: { nom: 'Grenade', icon: '💣', ico: 'frag', fuse: 2.0, r: 6, col: '#ff7a2f' },
+  petards: { spell: 1, nom: 'Pétards', icon: '🧨', ico: 'petards', r: 9, col: '#ffd23d' },
+  emeute: { spell: 1, nom: 'Renforts émeutiers', icon: '🪂', ico: 'parachute', r: 5, col: '#34c759' },
+  artifice: { spell: 1, nom: "Mortiers d'artifice", icon: '🎆', ico: 'artifice', r: 12, col: '#ff4fa0' },
+  drone: { spell: 1, nom: 'Drone', icon: '🛸', ico: 'drone', r: 40, col: '#5ab4ff', ringR: 8 },
+  crs: { spell: 1, nom: 'Renforts CRS', icon: '🪂', ico: 'parachute', r: 5, col: '#3d8bff' },
+  lacry: { spell: 1, nom: 'Salve lacrymogène', icon: '🚀', ico: 'missile', r: 12, col: '#ff3d3d' },
 };
 
 // ------------------------------------------------------------------ maillages
@@ -55,12 +56,12 @@ function rocketMesh(kind) {
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; }); return g;
 }
 function chute(team) {
+  // même parachute pour les deux camps, aux couleurs du camp (fini le parapluie : ton sérieux)
   const g = new THREE.Group(); const civ = team === 'civils';
-  const cols = civ ? ['#ff4fa0', '#ffd23d', '#5ad1ff', '#9ff59f', '#ff7a2f'] : ['#3d8bff', '#ffffff'];
-  const n = civ ? 8 : 10; const R = civ ? 1.0 : 2.4, H = civ ? 0.5 : 1.0;
+  const cols = civ ? ['#2f8f4e', '#1d2a22'] : ['#3d8bff', '#e9eef5'];
+  const n = 10, R = 2.4, H = 1.0;
   for (let i = 0; i < n; i++) { const geo = new THREE.SphereGeometry(R, 2, 3, (i / n) * Math.PI * 2, (Math.PI * 2) / n, 0, Math.PI / 2); const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: cols[i % cols.length], side: THREE.DoubleSide, flatShading: true, roughness: 0.8 })); m.scale.y = H / R; g.add(m); }
-  if (civ) g.add(cyl(0.02, 0.02, 1.5, 4, mat('#222'), -0.75)); // manche du parapluie
-  else for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2; const l = cyl(0.006, 0.006, 2.4, 3, mat('#ddd')); l.position.set(Math.cos(a) * 1.1, -1.1, Math.sin(a) * 1.1); l.rotation.z = Math.cos(a) * 0.42; l.rotation.x = -Math.sin(a) * 0.42; g.add(l); }
+  for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2; const l = cyl(0.006, 0.006, 2.4, 3, mat('#ddd')); l.position.set(Math.cos(a) * 1.1, -1.1, Math.sin(a) * 1.1); l.rotation.z = Math.cos(a) * 0.42; l.rotation.x = -Math.sin(a) * 0.42; g.add(l); }
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; }); return g;
 }
 
@@ -152,7 +153,7 @@ export function installThrows(Game) {
     // force : molette / croix haut-bas
     if (I.st.wheel) this.thrPower = Math.min(1, Math.max(0, this.thrPower + (I.st.wheel < 0 ? 0.08 : -0.08)));
     if (I.padHit?.(12)) this.thrPower = Math.min(1, this.thrPower + 0.1); if (I.padHit?.(13)) this.thrPower = Math.max(0, this.thrPower - 0.1);
-        // changer de projectile (R / ⬅)
+        // changer de projectile (R / ←)
     if (!S.spell && I.pressed('reload')) { const ks = this.throwKinds(a); const i = ks.indexOf(S.kind); if (ks.length > 1) { S.kind = ks[(i + 1) % ks.length]; this.thrLast = S.kind; this.audio.click?.(); } }
     // annuler (clic droit / L2)
     if (I.pressed('aim') || (I.st.triggerL > 0.5 && S.t > 0.15 && !S._lWas)) { this.thr = null; this.arcHide(); this.drawThrowHud(); return; } S._lWas = I.st.triggerL > 0.5;
@@ -169,7 +170,7 @@ export function installThrows(Game) {
     const bars = Array.from({ length: 10 }, (_, i) => `<i class="${i < Math.round(this.thrPower * 10) ? 'on' : ''}"></i>`).join('');
     const key = `${T.icon}${S.kind}${n}${Math.round(this.thrPower * 10)}`; if (el.dataset.k === key) return; el.dataset.k = key;
     el.style.setProperty('--c', T.col);
-    el.innerHTML = `<b>${T.icon} ${T.nom}${T.spell ? '' : ' × ' + n}</b><div class="pw"><span>Force</span>${bars}</div><small>${I.st.usingPad ? '⬆⬇' : 'molette'} force · viser plus haut = plus court et en cloche${S.spell ? ` · <kbd>${I.label('fire')}</kbd> lancer` : ` · lâche <kbd>${I.label('grenade')}</kbd> pour lancer · <kbd>${I.label('reload')}</kbd> changer`} · <kbd>${I.label('aim')}</kbd> annuler</small>`;
+    el.innerHTML = `<b>${svg(T.ico)} ${T.nom}${T.spell ? '' : ' × ' + n}</b><div class="pw"><span>Force</span>${bars}</div><small>${I.st.usingPad ? '↑↓' : 'molette'} force · viser plus haut = plus court et en cloche${S.spell ? ` · <kbd>${I.label('fire')}</kbd> lancer` : ` · lâche <kbd>${I.label('grenade')}</kbd> pour lancer · <kbd>${I.label('reload')}</kbd> changer`} · <kbd>${I.label('aim')}</kbd> annuler</small>`;
     el.classList.add('on');
   };
 
@@ -184,9 +185,9 @@ export function installThrows(Game) {
     this.audio.play('cloth', p, 0.8);
     const me = a === this.player, mine = a.team === this.player.team;
     if (T.spell) {
-      if (me) { this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,.3), ${T.col})`); this.audio.streakGo(); this.cam.trauma = Math.min(1, this.cam.trauma + 0.5); this.input.rumble(1, 1, 300); this.bigText(`${T.icon} ${T.nom.toUpperCase()}`, 'lancé !', T.col); this.streakUsed = kind; }
+      if (me) { this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,.3), ${T.col})`); this.audio.streakGo(); this.cam.trauma = Math.min(1, this.cam.trauma + 0.5); this.input.rumble(1, 1, 300); this.bigText(`${svg(T.ico)} ${T.nom.toUpperCase()}`, 'lancé !', T.col); this.streakUsed = kind; }
       else if (mine) this.toast(`${T.icon} ${a.name} lance : ${T.nom}`, TEAMS[a.team].color);
-    } else if (me) this.toast(`${T.icon} ${T.nom} lancée`, '#ddd');
+    } else if (me) this.toast(`${T.icon} ${T.nom} ${kind === 'smoke' ? 'lancé' : 'lancée'}`, '#ddd');
   };
   P.updateThrown = function (dt) {
     if (!this.thr && document.getElementById('throwhud')?.classList.contains('on')) { this.arcHide(); this.drawThrowHud(); }
@@ -238,15 +239,15 @@ export function installThrows(Game) {
   P.landSpell = function (kind, p, owner) {
     const T = THROWS[kind], team = owner.team, foe = (t) => t.alive && !t.inCar && t.team !== team;
     if (kind === 'petards') {
-      this.mark(p, T.r, T.col, 3, { team, big: '🧨 PÉTARDS !', small: 'les Frungz te sonnent' });
+      this.mark(p, T.r, T.col, 3, { team, big: '🧨 PÉTARDS', small: 'les Frungz te sonnent' });
       for (let i = 0; i < 26; i++) this.strikes.push({ t: this.time + i * 0.09 + rnd(0, 0.05), kind: 'petard2', pos: p.clone().add(V(rnd(-T.r, T.r) * 0.8, 0.2, rnd(-T.r, T.r) * 0.8)), owner });
       for (const t of this.actors) if (foe(t) && t.pos.distanceTo(p) < T.r) { t.stunT = 3.5; if (t.ai) { t.ai.target = null; t.ai.react = 1; } this.damage(t, 12, owner.alive ? owner : null, { blast: true }); if (t === this.player) { this.cam.trauma = 1; this.input.rumble(1, 1, 500); } }
     } else if (kind === 'emeute' || kind === 'crs') {
       this.mark(p, 4, T.col, 4); this.reinforce(owner, 4, p, true);
-      if (this.player.team !== team && this.player.pos.distanceTo(p) < 60) this.toast(kind === 'crs' ? '🪂 Des CRS tombent du ciel !' : '☂️ Des émeutiers débarquent en parapluie !', '#ff4a4a');
+      if (this.player.team !== team && this.player.pos.distanceTo(p) < 60) this.toast(kind === 'crs' ? '🪂 Des CRS tombent du ciel !' : '🪂 Des renforts émeutiers sont largués !', '#ff4a4a');
     } else if (kind === 'artifice' || kind === 'lacry') {
       const fw = kind === 'artifice', n = fw ? 16 : 8;
-      this.mark(p, T.r, T.col, 4.5, { team, big: fw ? '🎆 BOUQUET FINAL' : '🚀 FRAPPE DU CIEL', small: 'sors de la zone !' });
+      this.mark(p, T.r, T.col, 4.5, { team, big: fw ? '🎆 MORTIERS' : '🚀 SALVE LACRYMOGÈNE', small: 'sors de la zone !' });
       // tous viennent du même coin du ciel, en pluie
       const from = V(rnd(-1, 1), 0, rnd(-1, 1)).normalize().multiplyScalar(fw ? 30 : 45);
       for (let i = 0; i < n; i++) { const tgt = p.clone().add(V(rnd(-1, 1) * T.r * 0.85, 0, rnd(-1, 1) * T.r * 0.85)); tgt.y = this.world.groundY(tgt.x, tgt.z, p.y + 2);
@@ -256,7 +257,7 @@ export function installThrows(Game) {
       const m = droneMesh(); m.position.copy(p).add(V(0, 0.3, 0)); this.root.add(m);
       (this.drones ||= []).push({ m, p: p.clone(), t: 0, life: 25, owner, team });
       this.mark(p, T.ringR, T.col, 2);
-      if (this.player.team !== team) this.toast('🛸 Un drone de la Brigade survole le coin : tu es repéré !', '#ff4a4a');
+      if (this.player.team !== team) this.toast('🛸 Un drone de la Brigade survole le secteur : tu es repéré', '#ff4a4a');
     }
   };
   P.updateRockets = function (dt) {
@@ -283,16 +284,16 @@ export function installThrows(Game) {
       if ((d.rt = (d.rt || 0) - dt) <= 0) { d.rt = 0.5; for (const t of this.actors) if (t.alive && t.team !== d.team && t.pos.distanceTo(d.p) < THROWS.drone.r) t.spotted = this.time; if (this.player.pos.distanceTo(d.m.position) < 40) this.audio.buzz(d.m.position, 0.5); }
       if (d.t > d.life) { d.m.position.y += dt * 20; if (d.t > d.life + 1.5) { this.root.remove(d.m); L.splice(i, 1); } } }
   };
-  // renforts qui descendent en parachute (Brigade) ou en parapluie (Frungz)
+  // renforts largués en parachute (les deux camps)
   P.updateChutes = function (dt) {
     for (const a of this.actors) { const c = a.chute; if (!c) continue;
       if (!a.alive) { this.root.remove(c.m); a.chute = null; continue; }
       c.y -= c.vy * dt; const gy = this.world.groundY(a.pos.x, a.pos.z, c.y);
       if (c.y <= gy + 0.05) { this.root.remove(c.m); a.chute = null; a.pos.y = gy; this.fx.ring(a.pos, TEAMS[a.team].color); this.fx.dust?.(a.pos, 8); continue; }
       a.pos.y = c.y; a.vel.set(0, 0, 0); a.onGround = false; c.sway += dt;
-      c.m.position.set(a.pos.x, c.y + (a.team === 'civils' ? 2.3 : 3.6), a.pos.z); c.m.rotation.z = Math.sin(c.sway * 2) * 0.15; c.m.rotation.x = Math.cos(c.sway * 1.6) * 0.1; }
+      c.m.position.set(a.pos.x, c.y + 3.6, a.pos.z); c.m.rotation.z = Math.sin(c.sway * 2) * 0.15; c.m.rotation.x = Math.cos(c.sway * 1.6) * 0.1; }
   };
   P.startChute = function (t, p) {
-    const m = chute(t.team); this.root.add(m); t.chute = { y: p.y + rnd(28, 40), vy: t.team === 'civils' ? rnd(5, 6.5) : 7, m, sway: rnd(0, 6) }; t.pos.y = t.chute.y;
+    const m = chute(t.team); this.root.add(m); t.chute = { y: p.y + rnd(28, 40), vy: 7, m, sway: rnd(0, 6) }; t.pos.y = t.chute.y;
   };
 }

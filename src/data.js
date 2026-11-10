@@ -3,7 +3,7 @@ export const TEAMS = {
   ordre: { name: 'LA BRIGADE', short: 'Brigade', color: '#3d8bff', base: 'Commissariat', skins: ['Swat', 'Suit', 'Adventurer', 'Worker'] },
   civils: { name: 'LES FRUNGZ', short: 'Frungz', color: '#34c759', base: 'Planque', skins: ['Beach', 'King', 'Punk', 'Farmer', 'Casual_Hoodie', 'Casual_2', 'Spacesuit'] },
 };
-export const SKIN_NAMES = { Swat: 'CRS', Suit: 'BAC en civil', Adventurer: 'Gendarme rando', Worker: 'Agent de voirie', Beach: 'Touriste en tongs', King: 'Roi du quartier', Punk: 'Punk à chien', Farmer: 'Fermier égaré', Casual_Hoodie: 'Le Sweat', Casual_2: 'Le Voisin', Spacesuit: 'Cosmonaute' };
+export const SKIN_NAMES = { Swat: 'CRS', Suit: 'BAC en civil', Adventurer: 'Gendarme mobile', Worker: 'Agent de voirie', Beach: 'Le Touriste', King: 'Le Caïd', Punk: 'Le Punk', Farmer: 'Le Paysan', Casual_Hoodie: 'Le Sweat', Casual_2: 'Le Voisin', Spacesuit: 'Le Combinard' };
 
 export const RARITY = {
   commun: { name: 'Commun', color: '#b9c0c9', mult: 1, w: 60 },
@@ -19,12 +19,12 @@ export function rollRarity(boost = 0) {
 
 // armes : dégâts, cadence (coups/s), dispersion (rad), chargeur, rechargement (s), portée, plombs, recul, son, modèle OBJ
 export const WEAPONS = {
-  pistol: { name: 'Pistolet', icon: '🔫', model: 'Pistol_1', dmg: 22, rps: 4.5, spread: 0.012, mag: 12, reload: 1.1, range: 70, pellets: 1, kick: 0.012, sound: 'pistol', auto: false, price: 0, hand: 'pistol' },
-  smg: { name: 'Mitraillette', icon: '💨', model: 'SubmachineGun_1', dmg: 15, rps: 12, spread: 0.03, mag: 32, reload: 1.6, range: 55, pellets: 1, kick: 0.009, sound: 'smg', auto: true, price: 1500 },
-  shotgun: { name: 'Fusil à pompe', icon: '💥', model: 'Shotgun_1', dmg: 13, rps: 1.2, spread: 0.075, mag: 6, reload: 2.2, range: 30, pellets: 9, kick: 0.05, sound: 'shotgun', auto: false, price: 2500 },
-  rifle: { name: "Fusil d'assaut", icon: '🎯', model: 'AssaultRifle_1', dmg: 24, rps: 8.5, spread: 0.016, mag: 30, reload: 1.9, range: 110, pellets: 1, kick: 0.013, sound: 'rifle', auto: true, price: 4000 },
-  sniper: { name: 'Fusil de précision', icon: '🔭', model: 'SniperRifle_1', dmg: 95, rps: 0.9, spread: 0.002, mag: 5, reload: 2.6, range: 220, pellets: 1, kick: 0.07, sound: 'sniper', auto: false, price: 6500, scope: true },
-  revolver: { name: 'Le Frungz', icon: '👑', model: 'Revolver_1', dmg: 58, rps: 2, spread: 0.006, mag: 6, reload: 1.8, range: 90, pellets: 1, kick: 0.04, sound: 'revolver', auto: false, price: 9000, hand: 'pistol' },
+  pistol: { name: 'Pistolet', icon: '🔫', ico: 'pistol', model: 'Pistol_1', dmg: 22, rps: 4.5, spread: 0.012, mag: 12, reload: 1.1, range: 70, pellets: 1, kick: 0.012, sound: 'pistol', auto: false, price: 0, hand: 'pistol' },
+  smg: { name: 'Mitraillette', icon: '🔫', ico: 'smg', model: 'SubmachineGun_1', dmg: 15, rps: 12, spread: 0.03, mag: 32, reload: 1.6, range: 55, pellets: 1, kick: 0.009, sound: 'smg', auto: true, price: 1500 },
+  shotgun: { name: 'Fusil à pompe', icon: '🔫', ico: 'shotgun', model: 'Shotgun_1', dmg: 13, rps: 1.2, spread: 0.075, mag: 6, reload: 2.2, range: 30, pellets: 9, kick: 0.05, sound: 'shotgun', auto: false, price: 2500 },
+  rifle: { name: "Fusil d'assaut", icon: '🔫', ico: 'rifle', model: 'AssaultRifle_1', dmg: 24, rps: 8.5, spread: 0.016, mag: 30, reload: 1.9, range: 110, pellets: 1, kick: 0.013, sound: 'rifle', auto: true, price: 4000 },
+  sniper: { name: 'Fusil de précision', icon: '🔭', ico: 'sniper', model: 'SniperRifle_1', dmg: 95, rps: 0.9, spread: 0.002, mag: 5, reload: 2.6, range: 220, pellets: 1, kick: 0.07, sound: 'sniper', auto: false, price: 6500, scope: true },
+  revolver: { name: 'Le Frungz', icon: '👑', ico: 'revolver', model: 'Revolver_1', dmg: 58, rps: 2, spread: 0.006, mag: 6, reload: 1.8, range: 90, pellets: 1, kick: 0.04, sound: 'revolver', auto: false, price: 9000, hand: 'pistol' },
 };
 
 // butin des boutiques : type → icône, nom, valeur de base (€), poids (kg)
@@ -62,8 +62,8 @@ export const SHOP_NAMES = {
 
 // améliorations permanentes (banque)
 export const UPGRADES = {
-  sac: { name: 'Bras solides', desc: 'Moins ralenti quand tu portes un objet', icon: '🎒', max: 4, price: (l) => 800 * (l + 1) },
-  gilet: { name: 'Gilet renforcé', desc: '+25 armure au départ par niveau', icon: '🦺', max: 4, price: (l) => 1000 * (l + 1) },
-  socles: { name: 'Socles de planque', desc: '+2 emplacements d\'exposition', icon: '🏛️', max: 3, price: (l) => 1500 * (l + 1) },
-  mats: { name: 'Caisse à outils', desc: 'Barricades : −3 s de recharge par niveau', icon: '🧰', max: 3, price: (l) => 600 * (l + 1) },
+  sac: { name: 'Bras solides', desc: 'Moins ralenti quand tu portes un objet', icon: '🎒', ico: 'bag', max: 4, price: (l) => 800 * (l + 1) },
+  gilet: { name: 'Gilet renforcé', desc: '+25 armure au départ par niveau', icon: '🦺', ico: 'vest', max: 4, price: (l) => 1000 * (l + 1) },
+  socles: { name: 'Socles de planque', desc: '+2 emplacements d\'exposition', icon: '🏛️', ico: 'base', max: 3, price: (l) => 1500 * (l + 1) },
+  mats: { name: 'Caisse à outils', desc: 'Barricades : −3 s de recharge par niveau', icon: '🧰', ico: 'barricade', max: 3, price: (l) => 600 * (l + 1) },
 };

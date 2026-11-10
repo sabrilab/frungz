@@ -10,7 +10,7 @@ const PADMAP = {
   jump: [0], crouch: [1], interact: [2], next: [3], duck: [4], grenade: [5], build: [13], aim: [6], fire: [7], inv: [8], pause: [9],
   sprint: [10], view: [11], shop: [12], horn: [13], w1: [], map: [17], streak: [15], car: [2], reload: [14],
 };
-export const PS = { jump: '✕', crouch: '○', duck: 'L1', interact: '□', next: '△', grenade: 'R1', build: '⬇', aim: 'L2', fire: 'R2', sprint: 'L3', view: 'R3', shop: '⬆', reload: '⬅', car: '□', inv: 'SHARE', pause: 'OPTIONS', map: 'PAVÉ', horn: '⬇', streak: '➡' };
+export const PS = { jump: '✕', crouch: '○', duck: 'L1', interact: '□', next: '△', grenade: 'R1', build: '↓', aim: 'L2', fire: 'R2', sprint: 'L3', view: 'R3', shop: '↑', reload: '←', car: '□', inv: 'SHARE', pause: 'OPTIONS', map: 'PAVÉ', horn: '↓', streak: '→' };
 export const KB = { jump: 'Espace', crouch: 'Ctrl', duck: 'C', interact: 'E', next: '1-4', grenade: 'G', build: 'Q', aim: 'Clic droit', fire: 'Clic', sprint: 'Maj', view: 'V', shop: 'B', reload: 'R', car: 'F', inv: 'Tab', pause: 'Échap', map: 'M', horn: 'H', streak: 'X' };
 
 export function createInput(dom) {
