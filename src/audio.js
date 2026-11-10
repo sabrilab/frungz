@@ -2,7 +2,7 @@
 const SAMPLES = { coins: 2, hitBody: 4, voxPain: 5, voxDie: 3, voxGrunt: 3, voxHey: 2, voxWar: 2, stepStone: 6, punch: 4, debris: 2, slam: 4, uiSelect: 2, uiTick: 1, crowdFar: 1, town: 1, thud: 3, land: 3, cloth: 6 };
 
 export function createAudio() {
-  let ctx = null, master, sfx, amb, comp, noiseBuf, verb;
+  let ctx = null, master, sfx, amb, comp, noiseBuf, verb, muf;
   const bufs = {}; const last = {};
   const listener = { x: 0, y: 0, z: 0, yaw: 0 };
   let hooked = false, lastT = -1, frozen = 0;
@@ -54,7 +54,9 @@ export function createAudio() {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     ctx.onstatechange = () => setTimeout(wake, 300);
     if (!hooked) { hooked = true; document.addEventListener('visibilitychange', wake); for (const ev of ['pointerdown', 'keydown', 'touchstart']) addEventListener(ev, wake, true); setInterval(() => { wake(); watchdog(); }, 1500); }
-    comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6; comp.connect(ctx.destination); tap = ctx.createAnalyser(); tap.fftSize = 2048; tapBuf = new Float32Array(2048); comp.connect(tap);
+    comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6;
+    // filtre « oreilles » : transparent d'habitude, il étouffe tout après une explosion proche ou quand la santé est critique
+    muf = ctx.createBiquadFilter(); muf.type = 'lowpass'; muf.frequency.value = 20000; muf.Q.value = 0.5; comp.connect(muf); muf.connect(ctx.destination); tap = ctx.createAnalyser(); tap.fftSize = 2048; tapBuf = new Float32Array(2048); comp.connect(tap);
     master = ctx.createGain(); master.gain.value = 0.8; master.connect(comp);
     sfx = ctx.createGain(); sfx.connect(master);
     // réverbération de rue (réponse impulsionnelle générée : réflexions des façades)
@@ -134,8 +136,28 @@ export function createAudio() {
     for (let i = 0, k = active.length > 16 ? 4 : 10; i < k; i++) tone(out, t + Math.random() * 0.6, 0.08 + Math.random() * 0.15, 2500 + Math.random() * 5000, 2000 + Math.random() * 3000, 0.08 + Math.random() * 0.1, 'triangle');
     play('debris', pos, 0.6);
   }
-  function hitmark(head) { if (!ctx) return; const out = spatial(null, 0.35), t = ctx.currentTime; tone(out, t, 0.06, head ? 2600 : 1700, head ? 2400 : 1500, 0.5, 'triangle'); if (head) tone(out, t + 0.05, 0.12, 3400, 3200, 0.35, 'triangle'); }
-  function kill() { if (!ctx) return; const out = spatial(null, 0.5), t = ctx.currentTime; tone(out, t, 0.08, 880, 880, 0.4, 'square'); tone(out, t + 0.08, 0.18, 1320, 1320, 0.35, 'square'); }
+  // --- retours de combat (sons secs et courts, joués « dans la tête » du joueur, sans position)
+  // touche : petit claquement sec (clic + impact mat) ; à la tête : tintement métallique en plus ; sur un gilet : choc plus sourd
+  function hitmark(head, armor) { if (!ctx) return; const out = spatial(null, 0.4), t = ctx.currentTime;
+    noise(out, t, 0.03, 'bandpass', armor ? 1400 : 2600, armor ? 900 : 1800, 2.5, 0.8); tone(out, t, 0.05, armor ? 420 : 210, armor ? 260 : 90, 0.45, armor ? 'square' : 'sine');
+    if (!armor) tone(out, t, 0.035, 1900, 1600, 0.22, 'triangle');
+    if (head) { tone(out, t + 0.012, 0.22, 3150, 3080, 0.2, 'triangle'); tone(out, t + 0.012, 0.16, 4720, 4650, 0.08, 'sine'); } }
+  // élimination confirmée : coup grave + double clic net, sans mélodie (ton sérieux)
+  function kill() { if (!ctx) return; const out = spatial(null, 0.55), t = ctx.currentTime;
+    tone(out, t, 0.3, 120, 38, 0.8, 'sine'); noise(out, t, 0.12, 'lowpass', 2200, 300, 0.7, 0.5);
+    noise(out, t + 0.05, 0.025, 'highpass', 3500, 2800, 0.8, 0.5); noise(out, t + 0.11, 0.03, 'highpass', 3000, 2400, 0.8, 0.4); tone(out, t + 0.11, 0.09, 1250, 1180, 0.1, 'triangle'); }
+  // coup reçu : impact sourd dans le corps (ou plaque du gilet qui encaisse) + un bruitage d'impact
+  function hurt(k = 0.5, armor = false) { if (!ctx) return; const out = spatial(null, 0.4 + k * 0.5), t = ctx.currentTime;
+    tone(out, t, 0.18 + k * 0.1, armor ? 160 : 95, armor ? 70 : 35, 0.9, 'sine'); noise(out, t, 0.09, 'lowpass', armor ? 3200 : 1500, 200, 0.8, 0.7);
+    if (armor) noise(out, t, 0.04, 'bandpass', 2400, 1600, 3, 0.5); play('hitBody', null, 0.35 + k * 0.3, [0.85, 1], 0.06); }
+  // gilet qui cède : craquement de céramique + éclats
+  function armorBreak(self) { if (!ctx) return; const out = spatial(null, self ? 0.6 : 0.35), t = ctx.currentTime;
+    noise(out, t, 0.18, 'highpass', 4200, 1800, 0.6, 0.8); tone(out, t, 0.25, 700, 160, 0.3, 'triangle');
+    for (let i = 0; i < 4; i++) tone(out, t + 0.02 + Math.random() * 0.12, 0.05, 2600 + Math.random() * 2500, 2000, 0.07, 'triangle'); }
+  // sifflement d'oreilles après une explosion proche
+  function ring(r = 1) { if (!ctx) return; const out = spatial(null, 0.12 * r), t = ctx.currentTime; tone(out, t, 1.2 + r * 1.6, 3520, 3460, 0.7, 'sine'); tone(out, t, 0.8 + r, 5100, 5050, 0.18, 'sine'); }
+  // 0 = normal, 1 = très étouffé
+  function muffle(m) { if (!ctx || !muf) return; m = Math.max(0, Math.min(1, +m || 0)); const f = 20000 * Math.pow(600 / 20000, m); muf.frequency.setTargetAtTime(f, ctx.currentTime, m > 0.3 ? 0.04 : 0.25); }
   function cash(big) { play('coins', null, big ? 1 : 0.6, [1, 1.1], 0.02); if (big && ctx) { const out = spatial(null, 0.4), t = ctx.currentTime; [0, 0.07, 0.14].forEach((d, i) => tone(out, t + d, 0.15, 1046 * [1, 1.26, 1.5][i], 1046 * [1, 1.26, 1.5][i], 0.3, 'triangle')); } }
   function rarity(r) { if (!ctx) return; const out = spatial(null, 0.5), t = ctx.currentTime; const n = { commun: 1, rare: 2, epique: 3, legendaire: 5 }[r] || 1; for (let i = 0; i < n; i++) tone(out, t + i * 0.07, 0.25, 660 * Math.pow(1.19, i), 660 * Math.pow(1.19, i), 0.25, 'triangle'); }
   function capture(good) { if (!ctx) return; const out = spatial(null, 0.6), t = ctx.currentTime; const s = good ? [523, 659, 784, 1046] : [392, 330, 262]; s.forEach((f, i) => tone(out, t + i * 0.11, 0.3, f, f, 0.3, 'sawtooth')); }
@@ -193,10 +215,10 @@ export function createAudio() {
   function jet(pos) { if (!ctx) return; const out = spatial(pos, 1.6, 120); if (!out) return; const t = ctx.currentTime; noise(out, t, 3.2, 'bandpass', 600, 3800, 0.8, 0.9); noise(out, t + 1.2, 2.5, 'lowpass', 2500, 120, 0.7, 1.1); tone(out, t + 1, 2.2, 180, 60, 0.4, 'sawtooth'); }
   function cannon(pos, big) { if (!ctx) return; const out = spatial(pos, big ? 1.4 : 0.8, big ? 60 : 30); if (!out) return; const t = ctx.currentTime; tone(out, t, big ? 0.9 : 0.25, big ? 70 : 140, 30, big ? 1.1 : 0.6); noise(out, t, big ? 1.1 : 0.2, 'lowpass', big ? 1400 : 2600, 80, 0.7, big ? 1 : 0.6); }
   function buzz(pos, dur = 1) { if (!ctx) return; const out = spatial(pos, 0.5, 12); if (!out) return; const t = ctx.currentTime; tone(out, t, dur, 190, 170, 0.2, 'sawtooth'); }
-  const api = { whistle, crack, firework, buzz, rotor, jet, cannon, init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state, journal: journal.slice() }), _ctx: () => ctx };
+  const api = { hurt, armorBreak, ring, muffle, whistle, crack, firework, buzz, rotor, jet, cannon, init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state, journal: journal.slice() }), _ctx: () => ctx };
   // chaque bruitage : noté dans les derniers sons joués, et une erreur audio (valeur non finie refusée par le navigateur)
   // ne remonte plus dans le code du jeu, où elle interrompait l'action en cours
-  for (const k of Object.keys(Object.getOwnPropertyDescriptors(api))) { const d = Object.getOwnPropertyDescriptor(api, k); if (typeof d.value !== 'function' || k === 'init' || k === 'debug' || k === '_ctx') continue; const f = d.value, quiet = k === 'engine' || k === 'roll';
+  for (const k of Object.keys(Object.getOwnPropertyDescriptors(api))) { const d = Object.getOwnPropertyDescriptor(api, k); if (typeof d.value !== 'function' || k === 'init' || k === 'debug' || k === '_ctx') continue; const f = d.value, quiet = k === 'engine' || k === 'roll' || k === 'muffle';
     api[k] = (...a) => { if (!quiet) { recent.push(k === 'play' || k === 'gun' ? k + ':' + a[0] : k); if (recent.length > 8) recent.shift(); } try { return f(...a); } catch (e) { if (errs++ < 20) note('erreur ' + k + ' : ' + e.message); } }; }
   return api;
 }

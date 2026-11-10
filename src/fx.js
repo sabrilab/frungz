@@ -260,8 +260,8 @@ export function createFX(scene, camera) {
     const el = document.createElement('div'); el.textContent = txt;
     el.style.cssText = `position:absolute;left:0;top:0;font:${big ? 26 : 18}px Bungee,Inter,sans-serif;color:${color};text-shadow:0 2px 0 #000,0 0 6px rgba(0,0,0,.6);white-space:nowrap;will-change:transform`;
     layer.appendChild(el); const p = pos.clone(); const dx = (Math.random() - 0.5) * 0.6;
-    const it = { el, t: 0, life: 0.9, upd: (it, k) => { v3.copy(p); v3.y += k * 1.2; v3.x += dx * k; v3.project(camera); if (v3.z > 1) { el.style.display = 'none'; return; } el.style.display = ''; const x = (v3.x * 0.5 + 0.5) * innerWidth, y = (-v3.y * 0.5 + 0.5) * innerHeight; el.style.opacity = k < 0.7 ? 1 : (1 - k) / 0.3; el.style.transform = `translate(${x.toFixed(0)}px,${y.toFixed(0)}px) translate(-50%,-50%) scale(${k < 0.1 ? 1 + (0.1 - k) * 6 : 1})`; }, end: () => { const i = nums.indexOf(it); if (i >= 0) nums.splice(i, 1); } };
-    items.push(it); nums.push(it);
+    const it = { el, t: 0, life: 0.9, upd: (it, k) => { v3.copy(p); v3.y += k * 1.2; v3.x += dx * k; v3.project(camera); if (v3.z > 1) { el.style.display = 'none'; return; } el.style.display = ''; const x = (v3.x * 0.5 + 0.5) * innerWidth, y = (-v3.y * 0.5 + 0.5) * innerHeight; el.style.opacity = k < 0.7 ? 1 : (1 - k) / 0.3; el.style.transform = `translate(${x.toFixed(0)}px,${y.toFixed(0)}px) translate(-50%,-50%) scale(${k < 0.1 ? 1 + (0.1 - k) * 6 : 1})`; }, end: () => { it.done = true; const i = nums.indexOf(it); if (i >= 0) nums.splice(i, 1); } };
+    items.push(it); nums.push(it); return it;
   }
 
   // nuages persistants (lacrymo : blanc-jaune, fumigène : coloré)

@@ -5,13 +5,13 @@ const { chromium } = require('playwright'); const fs = require('fs');
   const p = await b.newPage({ viewport: { width: W, height: H } });
   p.on('pageerror', (e) => console.log('[err]', e.message, e.stack?.split('\n').slice(0, 3).join(' | ')));
   await p.goto(url); await p.waitForFunction('window.__loaded', null, { timeout: 600000 }); await p.evaluate(() => window.__start());
-  await p.evaluate((scen) => { const g = window.__game, THREE = window.__THREE; for (let i = 0; i < 5; i++) g.update(0.033); g.paused = true;
+  await p.evaluate(([scen, zoom, weapon, death]) => { window.__zoom = zoom; window.__death = death; if (weapon) { const g = window.__game; g.player.slots[g.player.cur] = { id: weapon, rarity: 'commun', mag: 30 }; g.equip(g.player, g.player.cur, true); } const g = window.__game, THREE = window.__THREE; for (let i = 0; i < 5; i++) g.update(0.033); g.paused = true;
     const pl = g.player; const cv = g.renderer.domElement; document.querySelectorAll('body *').forEach((e) => { if (e !== cv && !e.contains(cv)) e.style.display = 'none'; });
     const cands = [...g.zoneState.map((z) => [z.center[0], z.center[1]]), ...Object.values(g.world.spawns).flat().slice(0, 60).map((s) => [s.x, s.z])];
     let c = null, best = -1; for (const [x, zz] of cands) { const o = new THREE.Vector3(x, g.world.groundY(x, zz) + 1, zz); let m = 30; for (let k = 0; k < 16; k++) { const d = new THREE.Vector3(Math.sin(k * Math.PI / 8), 0, Math.cos(k * Math.PI / 8)); const h = g.world.ray(o, d, 30); m = Math.min(m, h ? h.t : 30); } if (m > best) { best = m; c = new THREE.Vector3(x, o.y - 1, zz); } }
     for (const a of g.actors) if (a !== pl) { a.ch.root.visible = false; a.alive = false; a.gone = true; }
     pl.pos.copy(c); pl.vel.set(0, 0, 0); pl.yaw = 0; pl.onGround = true; pl.hp = 100; g.vgun && (g.vgun.visible = false);
-    window.__S = { c, t: 0, scen }; }, scen);
+    window.__S = { c, t: 0, scen }; }, [scen, !!process.env.ZOOM, process.env.WEAPON || '', process.env.DEATH || '']);
   const shots = [];
   for (let i = 0; i < n; i++) {
     await p.evaluate(([dtTot, view]) => { const g = window.__game, THREE = window.__THREE, a = g.player, S = window.__S; const dt = 1 / 60;
@@ -28,12 +28,14 @@ const { chromium } = require('playwright'); const fs = require('fs');
         if (sc === 'roll') { a.wish.set(0, 0, 1); if (t > 0.3 && t < 0.33) a.wantCrouch = 0.1; }
         if (sc === 'fire') { g.aiming = true; if (t > 0.3) { a.slots[a.cur].mag = 30; g.fire(a, a.pos.clone().add(new THREE.Vector3(0, 1.5, 0)), new THREE.Vector3(Math.sin(a.yaw), 0, Math.cos(a.yaw))); } }
         if (sc === 'hit') { if (Math.abs(t - 0.3) < dt / 2) g.damage(a, 20, null, { dir: new THREE.Vector3(1, 0, 0) }); }
+        if (/^die/.test(sc)) { if (a.alive) { if (sc !== 'die') { a.wish.set(0, 0, 1); a.wantSprint = true; } if (sc === 'diejump' && t > 0.3 && t < 0.33) a.wantJump = 0.1; if (sc === 'dieslide' && t > 0.4 && t < 0.43) a.wantCrouch = 0.1;
+          if (t > (sc === 'diejump' ? 0.5 : sc === 'dieslide' ? 0.6 : 0.45)) { g.kill(a, null, {}); a.respawnT = 99; if (window.__death) g.setAnim(a, window.__death, 0.1, 1); } } }
         if (sc === 'aimup') { g.aiming = true; a.pitch = Math.sin(t * 2) * 0.7; g.aimPt = null; }
         if (sc === 'spin') { a.yaw += dt * (t < 0.6 ? 0 : t < 1.0 ? 4 : 0); }
         g.updateActor(a, dt); S.hook?.(a, dt); }
       const c = a.pos, f = new THREE.Vector3(Math.sin(a.yaw), 0, Math.cos(a.yaw)), r = new THREE.Vector3(f.z, 0, -f.x);
-      const dir = view === 'front' ? f.clone() : view === '34' ? f.clone().add(r).normalize() : view === 'back' ? f.clone().negate() : r;
-      g.camera.fov = 30; g.camera.updateProjectionMatrix(); g.camera.position.copy(c).addScaledVector(dir, 5.2); g.camera.position.y += 1.1; g.camera.lookAt(c.x, c.y + 0.9, c.z);
+      const dir = view === 'front' ? f.clone() : view === '34' ? f.clone().add(r).normalize() : view === 'back' ? f.clone().negate() : view === 'left' ? r.clone().negate().addScaledVector(f, 0.5).normalize() : r;
+      const Z = window.__zoom; g.camera.fov = 30; g.camera.updateProjectionMatrix(); g.camera.position.copy(c).addScaledVector(dir, Z ? 2.1 : 5.2); g.camera.position.y += Z ? 1.5 : 1.1; g.camera.lookAt(c.x, c.y + (Z ? 1.3 : 0.9), c.z); // ZOOM=1 : gros plan sur le buste et l'arme
       (window.__post || g.renderer).render(g.scene, g.camera); }, [+STEP, view]);
     shots.push((await p.screenshot()).toString('base64'));
   }
