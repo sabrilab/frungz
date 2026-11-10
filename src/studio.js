@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { chars, makeCharacter, loadMx, loadGuns, attachGun, teamMarkings } from './assets.js';
+import { holdPose } from './hold.js';
 import { loadSkinBases, registerSkin, SLOTS, PIECES, EXTRAS, HAIRS, SKIN_TONES, BUILTIN_SKINS, userSkins, saveUserSkins, piece } from './skins.js';
 
 const $ = (id) => document.getElementById(id);
@@ -123,7 +124,7 @@ $('copy').addEventListener('click', async () => { if (!cur) return; try { await 
 
 // ---------------------------------------------------------------- démarrage
 const clock = new THREE.Clock();
-function frame() { requestAnimationFrame(frame); const dt = Math.min(0.05, clock.getDelta()); controls.update(); if (ch) ch.mixer.update(dt); renderer.render(scene, camera); }
+function frame() { requestAnimationFrame(frame); const dt = Math.min(0.05, clock.getDelta()); controls.update(); if (ch) { ch.mixer.update(dt); if (guns && weapon) holdPose(ch, weapon); } renderer.render(scene, camera); }
 (async () => {
   try {
     const [, mx] = await Promise.all([loadSkinBases(), loadMx()]); clips = mx;

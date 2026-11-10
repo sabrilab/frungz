@@ -2,6 +2,7 @@
 // lacrymogènes et fumigènes, barricades, interface.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { shoulderGun } from './hold.js';
 import { makeCharacter, attachGun, gunInstance, chars, tintTeam, teamMarkings } from './assets.js';
 import { TEAMS, WEAPONS, CLASSES, classOf, kitOf, SECONDARIES, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COMMERCE_TYPES, SHOP_NAMES, SKIN_NAMES } from './data.js';
 import { shopCase, lootMesh, beam, socle, baseSign, receleur, grenadeMesh, headMarker, textTex } from './props.js';
@@ -1206,6 +1207,9 @@ export class Game {
     const ck = a.slideT > 0 || a.rollT > 0 || a.climb ? 0 : (a.crouchK || 0);
     ch.model.position.y = lerp(ch.model.position.y, (a.slideT > 0 ? (ch.actions.MX_Slide ? 0 : ch.actions.MX_Idle ? 0.05 : 0.35) : 0) - (ch.actions.MX_CrouchIdle ? 0 : ck * 0.42) + (-chars[a.skin].minY * chars[a.skin].k), 1 - Math.exp(-dt * 14));
     if (ck > 0.02 && !far && !ch.actions.MX_CrouchIdle) this.crouchPose(a, ck);
+    // armes longues : crosse ramenée dans le creux de l'épaule, tête dégagée (src/hold.js), avant les couches qui posent la main gauche
+    { const wid = this.weapon(a)?.id, on = wid && ch.gun && a.alive && !far && !a.lodHidden && !a.climb && !a.inCar && !a.swim && !a.thr && !a.celebrate && !a.channel && (a === this.player || a.pos.distanceToSquared(this.camera.position) < 1600);
+      a.holdW = lerp(a.holdW || 0, on ? 1 : 0, 1 - Math.exp(-dt * 10)); if (on && a.holdW > 0.02) shoulderGun(ch, wid, a.holdW); }
     // couches écrites à la main (src/anim.js) : pieds, poids, inertie, souffle ; complètes près de la caméra, pieds seuls au loin
     const rigPost = Anim.layers(this, a, dt, !far && !a.lodHidden && (a === this.player || a.pos.distanceToSquared(this.camera.position) < 1600));
     // le buste oriente l'arme vers le point visé (réticule pour le joueur, cible pour les bots)

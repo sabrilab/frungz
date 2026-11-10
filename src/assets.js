@@ -171,6 +171,8 @@ export async function loadGuns(onEach) {
     const holder = new THREE.Group(); obj.position.copy(grip).multiplyScalar(-1); holder.add(obj); holder.scale.setScalar(k);
     // bouche du canon (pour la flamme et les traçantes)
     const muzzle = new THREE.Object3D(); muzzle.position.set(box.max.x - grip.x, (box.max.y + box.min.y) * 0.5 + 0.1 - grip.y, 0); holder.add(muzzle); holder.userData.muzzle = muzzle;
+    /* cotes de l'arme dans son propre repère (unités du modèle, poignée à l'origine) : arrière de la crosse, bouche, dessus, dessous */
+    holder.userData.dim = { rear: box.min.x - grip.x, front: box.max.x - grip.x, top: box.max.y - grip.y, bot: box.min.y - grip.y, unit: k };
     guns[id] = holder;
     } catch (e) { console.warn('arme', id, W.model, e); }
     onEach?.();
