@@ -5,14 +5,23 @@ export function createAudio() {
   let ctx = null, master, sfx, amb, comp, noiseBuf, verb;
   const bufs = {}; const last = {};
   const listener = { x: 0, y: 0, z: 0, yaw: 0 };
+  let hooked = false, lastT = -1, frozen = 0;
+  // le navigateur suspend parfois le son (onglet caché, veille, casque débranché, Safari « interrupted ») : on le relance dès que possible
+  const wake = () => { if (ctx && ctx.state !== 'running' && document.visibilityState === 'visible') ctx.resume().catch(() => {}); };
+  // chien de garde : contexte fermé, ou « running » mais horloge figée (sortie audio changée / perdue) → on reconstruit tout
+  function watchdog() {
+    if (!ctx || document.visibilityState !== 'visible') { frozen = 0; return; }
+    if (ctx.state === 'closed') { rebuild(); return; }
+    if (ctx.state !== 'running') { frozen = 0; lastT = -1; return; }
+    if (ctx.currentTime === lastT) { if (++frozen >= 2) rebuild(); } else frozen = 0;
+    lastT = ctx.currentTime;
+  }
+  function rebuild() { const old = ctx; ctx = null; frozen = 0; lastT = -1; eng = null; for (const k in loops) delete loops[k]; active.length = 0; try { old.onstatechange = null; if (old.state !== 'closed') old.close().catch(() => {}); } catch {} init(); }
   function init() {
     if (ctx) { if (ctx.state !== 'running') ctx.resume().catch(() => {}); return; }
     ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // le navigateur suspend parfois le son (onglet caché, veille, casque débranché, Safari « interrupted ») : on le relance dès que possible
-    const wake = () => { if (ctx.state !== 'running' && document.visibilityState === 'visible') ctx.resume().catch(() => {}); };
-    ctx.onstatechange = () => setTimeout(wake, 300); document.addEventListener('visibilitychange', wake);
-    for (const ev of ['pointerdown', 'keydown', 'touchstart']) addEventListener(ev, wake, true);
-    setInterval(wake, 2000);
+    ctx.onstatechange = () => setTimeout(wake, 300);
+    if (!hooked) { hooked = true; document.addEventListener('visibilitychange', wake); for (const ev of ['pointerdown', 'keydown', 'touchstart']) addEventListener(ev, wake, true); setInterval(() => { wake(); watchdog(); }, 1500); }
     comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6; comp.connect(ctx.destination);
     master = ctx.createGain(); master.gain.value = 0.8; master.connect(comp);
     sfx = ctx.createGain(); sfx.connect(master);
@@ -22,22 +31,31 @@ export function createAudio() {
     verb = ctx.createConvolver(); verb.buffer = ir; const vg = ctx.createGain(); vg.gain.value = 0.22; const vlp = ctx.createBiquadFilter(); vlp.type = 'lowpass'; vlp.frequency.value = 4500;
     sfx.connect(vlp); vlp.connect(verb); verb.connect(vg); vg.connect(master); amb = ctx.createGain(); amb.gain.value = 0.35; amb.connect(master);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    for (const [n, k] of Object.entries(SAMPLES)) for (let i = 1; i <= k; i++) fetch(`assets/sfx/${n}-${i}.mp3`).then((r) => r.ok ? r.arrayBuffer() : null).then((a) => a && ctx.decodeAudioData(a)).then((b) => { if (b) (bufs[n] ||= []).push(b); }).catch(() => {});
-    setTimeout(() => { loop('town', 0.5); loop('crowdFar', 0.35); }, 1500);
+    // les sons déjà décodés (AudioBuffer) resservent tels quels si le contexte est reconstruit
+    if (!Object.keys(bufs).length) { const c = ctx; for (const [n, k] of Object.entries(SAMPLES)) for (let i = 1; i <= k; i++) fetch(`assets/sfx/${n}-${i}.mp3`).then((r) => r.ok ? r.arrayBuffer() : null).then((a) => a && c.decodeAudioData(a)).then((b) => { if (b) { (bufs[n] ||= []).push(b); ambience(); } }).catch(() => {}); }
+    ambience();
   }
+  // ambiance de rue : lancée dès que ses sons sont décodés (avant : une seule tentative à 1,5 s, ratée si le réseau était lent → plus jamais d'ambiance)
+  function ambience() { loop('town', 0.5); loop('crowdFar', 0.35); }
   // panoramique + atténuation
-  let voices = 0;
+  // budget de voix : en 50 contre 50, des centaines de bruitages par seconde. Avant, chaque appel (même inaudible, même loin)
+  // occupait une place pendant 1,5 s : au cœur d'un combat le compteur saturait et TOUS les sons placés (tirs proches,
+  // impacts, cris, pas) disparaissaient d'un coup. Maintenant seuls les sons réellement joués comptent, et quand c'est
+  // chargé on garde les plus forts (les proches) et on lâche les lointains.
+  const active = []; let dropped = 0;
   function spatial(pos, vol = 1, ref = 6) {
-    if (voices > 56 && pos) return null; voices++; setTimeout(() => voices--, 1500);
+    const now = ctx.currentTime; while (active.length && active[0] <= now) active.shift();
     const g = ctx.createGain(); let out = g;
     if (pos) {
       const dx = pos.x - listener.x, dz = pos.z - listener.z, d = Math.hypot(dx, dz, (pos.y || 0) - listener.y);
-      const att = ref / (ref + Math.max(0, d - 1)); g.gain.value = vol * att;
-      if (att < 0.02) return null;
-      const p = ctx.createStereoPanner(); const ang = Math.atan2(dx, -dz) + listener.yaw; p.pan.value = Math.max(-1, Math.min(1, Math.sin(ang) * Math.min(1, d / 3)));
+      const att = ref / (ref + Math.max(0, d - 1)); if (!isFinite(att) || att < 0.02) return null;
+      const n = active.length, loud = vol * att;
+      if ((n > 40 && loud < 0.12) || (n > 64 && loud < 0.4) || n > 96) { dropped++; return null; }
+      g.gain.value = loud; active.push(now + 1.5);
+      const p = ctx.createStereoPanner(); const ang = Math.atan2(dx, -dz) + listener.yaw; p.pan.value = Math.max(-1, Math.min(1, Math.sin(ang) * Math.min(1, d / 3))) || 0;
       g.connect(p); p.connect(sfx); out = g;
       if (d > 25) { const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = Math.max(900, 9000 - d * 90); lp.connect(g); return lp; }
-    } else { g.gain.value = vol; g.connect(sfx); }
+    } else { g.gain.value = vol; g.connect(sfx); active.push(now + 1.5); }
     return out;
   }
   function play(name, pos = null, vol = 1, rate = [0.94, 1.06], gap = 0.03) {
@@ -112,5 +130,5 @@ export function createAudio() {
   function heart(v) { if (!ctx) return; const out = spatial(null, 0.25 * v), t = ctx.currentTime; tone(out, t, 0.12, 70, 45, 0.9, 'sine'); tone(out, t + 0.16, 0.1, 62, 40, 0.6, 'sine'); }
   function breath(inhale) { if (!ctx) return; const out = spatial(null, 0.2), t = ctx.currentTime; noise(out, t, inhale ? 0.5 : 0.8, 'bandpass', inhale ? 700 : 500, inhale ? 1100 : 300, 1.2, 0.5); }
   function whiz(pos) { if (!ctx) return; const out = spatial(pos, 0.6, 4); if (!out) return; const t = ctx.currentTime; noise(out, t, 0.18, 'bandpass', 4000, 1500, 6, 0.6); }
-  return { init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; } };
+  return { init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state }) };
 }
