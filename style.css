@@ -335,12 +335,12 @@ body.scoped #cross, body.scoped #streakbar { visibility: hidden; }
 /* canonnière : vue du ciel, réticule et compte à rebours */
 #gunship { position: absolute; inset: 0; pointer-events: none; display: none; color: #e9ffe9; font: 800 13px Inter; letter-spacing: .12em; text-shadow: 0 1px 2px #000; background: radial-gradient(ellipse at center, rgba(40,70,40,0) 45%, rgba(10,25,10,.55)); }
 #gunship.on { display: block; }
-#hud.gs #cross, #hud.gs #weapons, #hud.gs #ammo, #hud.gs #streakbar, #hud.gs #minimap, #hud.gs #help { display: none !important; }
+#hud.gs #cross, #hud.gs #weapons, #hud.gs #ammo, #hud.gs #streakbar, #hud.gs #minimap, #hud.gs #help, #hud.gs #rank, #hud.gs #money, #hud.gs #mats, #hud.gs #carry, #hud.gs #prompt { display: none !important; }
 #gunship .rt { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; transform: translate(-50%, -50%); border: 2px solid rgba(233,255,233,.8); }
 #gunship .rt::before, #gunship .rt::after { content: ''; position: absolute; background: rgba(233,255,233,.9); }
 #gunship .rt::before { left: 50%; top: -40px; bottom: -40px; width: 2px; margin-left: -1px; } #gunship .rt::after { top: 50%; left: -40px; right: -40px; height: 2px; margin-top: -1px; }
-#gunship .rt.big { width: 190px; height: 190px; border-style: dashed; }
-#gunship .tl { position: absolute; left: 24px; top: 90px; line-height: 1.7; } #gunship .tl b { font: 26px Bungee, Inter; letter-spacing: .04em; color: #fff; }
+#gunship .rt.wide { width: 190px; height: 190px; border-style: dashed; }
+#gunship .tl { position: absolute; left: 24px; top: 24px; line-height: 1.7; } #gunship .tl b { font: 26px Bungee, Inter; letter-spacing: .04em; color: #fff; }
 #gunship .wp { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); display: flex; gap: 22px; }
 #gunship .wp span { padding: 4px 10px; border: 2px solid rgba(233,255,233,.5); border-radius: 6px; } #gunship .wp span.off { opacity: .4; } #gunship .wp kbd { font: 900 11px Inter; background: #e9ffe9; color: #111; border-radius: 4px; padding: 0 5px; margin-right: 6px; }
-#gunship .bar { position: absolute; left: 24px; top: 150px; width: 180px; height: 6px; background: rgba(255,255,255,.15); } #gunship .bar i { display: block; height: 100%; background: #e9ffe9; }
+#gunship .bar { position: absolute; left: 24px; top: 84px; width: 180px; height: 6px; background: rgba(255,255,255,.15); } #gunship .bar i { display: block; height: 100%; background: #e9ffe9; }

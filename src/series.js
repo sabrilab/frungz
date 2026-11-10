@@ -215,7 +215,7 @@ export function installSeries(Game) {
   };
   P.drawGunshipHud = function (G) {
     const el = $('gunship'); if (!el) return; const I = this.input; const left = Math.max(0, G.life - G.t);
-    el.innerHTML = `<div class="rt${G.cd105 <= 0 ? ' big' : ''}"></div><div class="tl"><b>${svg('gunship')} ${G.def.nom}</b><br>${left.toFixed(0)} s · ${I.label('streak')} pour quitter</div><div class="bar"><i style="width:${(left / G.life) * 100}%"></i></div>`
+    el.innerHTML = `<div class="rt${G.cd105 <= 0 ? ' wide' : ''}"></div><div class="tl"><b>${svg('gunship')} ${G.def.nom}</b><br>${left.toFixed(0)} s · ${I.label('streak')} pour quitter</div><div class="bar"><i style="width:${(left / G.life) * 100}%"></i></div>`
       + `<div class="wp"><span><kbd>${I.label('fire')}</kbd>25 mm</span><span class="${G.cd105 > 0 ? 'off' : ''}"><kbd>${I.label('aim')}</kbd>105 mm${G.cd105 > 0 ? ' · ' + G.cd105.toFixed(1) + ' s' : ''}</span></div>`;
   };
   // commandes pendant la canonnière : le perso reste planté là où il est (et reste vulnérable)
