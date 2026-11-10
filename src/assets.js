@@ -131,7 +131,7 @@ export async function loadGuns(onEach) {
     // poignée à l'origine (sommets les plus bas), longueur réelle
     const pos = []; obj.traverse((o) => { if (o.isMesh) { const a = o.geometry.attributes.position; for (let i = 0; i < a.count; i++) pos.push([a.getX(i), a.getY(i), a.getZ(i)]); } });
     const box = new THREE.Box3().setFromObject(obj); const len = box.max.x - box.min.x; const k = (W.len || 0.6) / len;
-    pos.sort((a, b) => a[1] - b[1]); const low = pos.slice(0, 30); const gx = low.reduce((s, v) => s + v[0], 0) / low.length;
+    pos.sort((a, b) => a[1] - b[1]); const win = W.grip != null ? pos.filter((v) => Math.abs((v[0] - box.min.x) / len - W.grip) < 0.08) : pos; const low = (win.length >= 30 ? win : pos).slice(0, 30); /* W.grip : position de la poignée (fraction de la longueur depuis la crosse), sinon le chargeur ou le bipied passeraient pour la poignée */ const gx = low.reduce((s, v) => s + v[0], 0) / low.length;
     const grip = new THREE.Vector3(gx, box.min.y * 0.62, 0);
     const holder = new THREE.Group(); obj.position.copy(grip).multiplyScalar(-1); holder.add(obj); holder.scale.setScalar(k);
     // bouche du canon (pour la flamme et les traçantes)

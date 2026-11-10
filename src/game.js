@@ -44,6 +44,8 @@ const BOT_NAMES = {
 };
 
 // ===================================================================================================================
+// classe d'un bot : tirage pondéré (peu de tireurs embusqués, sinon la rue devient un stand de tir)
+function pickClass(team) { const L = Object.values(CLASSES[team]); let x = Math.random() * L.reduce((t, K) => t + (K.bots ?? 1), 0); for (const K of L) { x -= K.bots ?? 1; if (x <= 0) return K.id; } return L[0].id; }
 export class Game {
   constructor(env) {
     Object.assign(this, env); // renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts, onEnd
@@ -151,7 +153,7 @@ export class Game {
   spawnActor(team, skin, bot, name) {
     const ch = makeCharacter(skin); this.root.add(ch.root);
     const a = { team, skin, bot, name, ch, pos: V(), vel: V(), yaw: 0, pitch: 0, hp: 100, armor: 0, alive: false, onGround: true, slots: [], cur: 0, fireT: 0, reloadT: 0, bag: [], bagKg: 0, mats: 30, nades: 2, momentum: 0, slideT: 0, rollT: 0, climb: null, respawnT: 0, lastHit: 0, anim: null, inCar: null, stats: { k: 0, d: 0, a: 0, cap: 0, sac: 0 }, streak: 0, rewards: [], spotted: 0, gasT: 0, channel: null, cash: 0, regenT: 0, id: this.actors.length };
-    a.cls = bot ? pick(Object.keys(CLASSES[team])) : (this.save.cls?.[team] || Object.keys(CLASSES[team])[0]); a.perk = classOf(team, a.cls).perk;
+    a.cls = bot ? pickClass(team) : (this.save.cls?.[team] || Object.keys(CLASSES[team])[0]); a.perk = classOf(team, a.cls).perk;
     a.cap = 20 + (bot ? 8 : (this.save.upgrades.sac || 0) * 8) + (a.perk.kg || 0);
     // tenue : police nationale (bleu marine, brassard orange, POLICE dans le dos) ou civils loufoques
     tintTeam(ch.model, skin, team);
