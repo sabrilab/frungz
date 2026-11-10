@@ -9,6 +9,7 @@ import { createNight } from './night.js';
 import { createCassables } from './cassables.js';
 import { createMetro } from './metro.js';
 import { Game } from './game.js';
+import { createPreview } from './preview.js';
 import { TEAMS, WEAPONS, UPGRADES, SKIN_NAMES } from './data.js';
 
 const $ = (id) => document.getElementById(id);
@@ -124,16 +125,49 @@ $('again').addEventListener('click', () => { $('end').classList.add('hidden'); $
 function openShop() {
   audio.init(); $('shop').classList.remove('hidden'); document.exitPointerLock?.(); if (game) game.paused = true; renderShop();
 }
-function closeShop() { $('shop').classList.add('hidden'); if (game && !game.over) { game.paused = false; renderer.domElement.requestPointerLock?.(); } }
+function closeShop() { $('shop').classList.add('hidden'); pv?.stop(); if (game && !game.over) { game.paused = false; renderer.domElement.requestPointerLock?.(); } }
+let pv = null, pvSel = null;
+function stat(label, v, txt) { return `<div class="st"><span>${label}</span><i><b style="width:${Math.round(Math.max(0.04, Math.min(1, v)) * 100)}%"></b></i><em>${txt}</em></div>`; }
+// fiche de l'objet affiché en grand (modèle 3D qui tourne + caractéristiques)
+function showPv(k, id) {
+  if (!pv) return; pvSel = [k, id];
+  if (k === 'w') {
+    const W = WEAPONS[id], owned = save.unlocked.includes(id) || id === 'pistol';
+    pv.show('w', id);
+    $('pvinfo').innerHTML = `<h3>${W.icon} ${W.name}</h3><p class="pvtag">${owned ? (save.primary === id || id === 'pistol' ? 'Équipée' : 'Dans ta planque') : fmt(W.price) + ' €'}${W.scope ? ' · lunette ×4 / ×8' : ''}${W.auto ? ' · automatique' : ''}</p>`
+      + stat('Dégâts', (W.dmg * W.pellets) / 120, W.dmg + (W.pellets > 1 ? '×' + W.pellets : ''))
+      + stat('Cadence', W.rps / 12, W.rps + ' coups/s')
+      + stat('Précision', 1 - Math.sqrt(W.spread / 0.08), '')
+      + stat('Portée', W.range / 220, W.range + ' m')
+      + stat('Chargeur', W.mag / 32, W.mag + ' balles')
+      + stat('Rechargement', 1 - (W.reload - 1) / 2, W.reload + ' s');
+  } else {
+    const U = UPGRADES[id], l = save.upgrades[id] || 0;
+    pv.show('u', id, id === 'gilet' ? Math.max(1, Math.min(U.max, l + 1)) : 0);
+    const pips = Array.from({ length: U.max }, (_, i) => `<b class="${i < l ? 'on' : ''}"></b>`).join('');
+    const next = id === 'gilet' ? `Armure au départ : ${25 * l} → ${25 * Math.min(U.max, l + 1)}` : U.desc;
+    $('pvinfo').innerHTML = `<h3>${U.icon} ${U.name}</h3><p class="pvtag">${l >= U.max ? 'Niveau maximum' : 'Niveau ' + (l + 1) + ' : ' + fmt(U.price(l)) + ' €'}</p><div class="pips">${pips}</div><p class="pvdesc">${next}</p>${id === 'gilet' ? stat('Protection', (25 * l) / 100, 25 * l + ' / 100') : ''}`;
+  }
+}
 function renderShop() {
   document.querySelectorAll('.bankN').forEach((e) => (e.textContent = fmt(save.bank)));
+  if (!pv) { try { pv = createPreview(); $('pvbox').prepend(pv.canvas); } catch (e) { console.warn('aperçu 3D indisponible', e); $('shopPv').style.display = 'none'; } }
+  const th = (k, id, l) => { const u = pv?.thumb(k, id, l); return u ? `<img class="th" src="${u}" alt="">` : ''; };
   const w = Object.entries(WEAPONS).filter(([id]) => id !== 'pistol').map(([id, W]) => {
     const owned = save.unlocked.includes(id), eq = save.primary === id;
-    return `<div class="card ${owned ? 'owned' : ''}" style="--c:${owned ? '#2f6' : '#777'}"><b>${W.icon} ${W.name}</b><small>Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.rps} coups/s · chargeur ${W.mag}</small><button data-w="${id}" ${!owned && save.bank < W.price ? 'disabled' : ''}>${owned ? (eq ? 'Équipée ✓' : 'Équiper') : fmt(W.price) + ' €'}</button></div>`;
+    return `<div class="card ${owned ? 'owned' : ''}" data-k="w" data-id="${id}" style="--c:${owned ? '#2f6' : '#777'}">${th('w', id, 0)}<b>${W.icon} ${W.name}</b><small>Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.rps} coups/s · chargeur ${W.mag}</small><button data-w="${id}" ${!owned && save.bank < W.price ? 'disabled' : ''}>${owned ? (eq ? 'Équipée ✓' : 'Équiper') : fmt(W.price) + ' €'}</button></div>`;
   });
-  const u = Object.entries(UPGRADES).map(([id, U]) => { const l = save.upgrades[id] || 0; const max = l >= U.max; const p = U.price(l); return `<div class="card" style="--c:#57b6ff"><b>${U.icon} ${U.name} · niv. ${l}/${U.max}</b><small>${U.desc}</small><button data-u="${id}" ${max || save.bank < p ? 'disabled' : ''}>${max ? 'Maximum' : fmt(p) + ' €'}</button></div>`; });
+  const u = Object.entries(UPGRADES).map(([id, U]) => { const l = save.upgrades[id] || 0; const max = l >= U.max; const p = U.price(l); return `<div class="card" data-k="u" data-id="${id}" style="--c:#57b6ff">${th('u', id, id === 'gilet' ? Math.max(1, l) : 0)}<b>${U.icon} ${U.name} · niv. ${l}/${U.max}</b><small>${U.desc}</small><button data-u="${id}" ${max || save.bank < p ? 'disabled' : ''}>${max ? 'Maximum' : fmt(p) + ' €'}</button></div>`; });
   $('shopList').innerHTML = w.join('') + u.join('');
+  const sel = pvSel || ['w', save.primary && save.primary !== 'pistol' ? save.primary : 'rifle'];
+  showPv(sel[0], sel[1]); markSel();
+  pv?.start();
 }
+function markSel() { document.querySelectorAll('#shopList .card').forEach((c) => c.classList.toggle('sel', !!pvSel && c.dataset.k === pvSel[0] && c.dataset.id === pvSel[1])); }
+// survol à la souris ou focus à la manette : l'aperçu suit
+function pvFrom(el) { const c = el?.closest?.('#shopList .card'); if (c && (!pvSel || pvSel[0] !== c.dataset.k || pvSel[1] !== c.dataset.id)) { showPv(c.dataset.k, c.dataset.id); markSel(); } }
+$('shopList').addEventListener('pointerover', (e) => pvFrom(e.target));
+$('shopList').addEventListener('focusin', (e) => pvFrom(e.target));
 $('shopList').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
   if (b.dataset.w) { const id = b.dataset.w; if (!save.unlocked.includes(id)) { save.bank -= WEAPONS[id].price; save.unlocked.push(id); audio.cash(true); } save.primary = id; if (game?.player?.alive) { const a = game.player; const W = { id, rarity: 'rare', mag: WEAPONS[id].mag }; if (a.slots.length > 1) a.slots[1] = W; else a.slots.push(W); game.equip(a, 1); } }
@@ -147,7 +181,7 @@ $('shopList').addEventListener('click', (e) => {
 let padFocus = null, navRep = 0;
 function activeScreen() { for (const id of ['pause', 'shop', 'end', 'menu']) { const el = $(id); if (el && !el.classList.contains('hidden')) return el; } return null; }
 function focusables(scr) { return [...scr.querySelectorAll('button, input, select')].filter((e) => !e.disabled && e.offsetParent !== null); }
-function setPadFocus(el) { padFocus?.classList.remove('padfocus'); padFocus = el; if (el) { el.classList.add('padfocus'); el.scrollIntoView?.({ block: 'nearest' }); } }
+function setPadFocus(el) { padFocus?.classList.remove('padfocus'); padFocus = el; if (el) { el.classList.add('padfocus'); el.scrollIntoView?.({ block: 'nearest' }); if (el.closest?.('#shopList')) pvFrom(el); } }
 function padMenu(dt) {
   if (!input.st.pad) { setPadFocus(null); return; }
   const scr = activeScreen(); if (!scr) { setPadFocus(null); return; }
