@@ -23,7 +23,9 @@ const { chromium } = require('playwright'); const fs = require('fs');
         if (sc === 'startstop') { if (t < 0.9) { a.wish.set(0, 0, 1); a.wantSprint = true; } }
         if (sc === 'turn') { a.wish.set(Math.sin(a.yaw), 0, Math.cos(a.yaw)); a.wantSprint = true; if (t > 0.5) a.yaw += dt * 3.2; }
         if (sc === 'strafe') { a.wish.set(t < 0.7 ? 1 : -1, 0, 0); g.aiming = true; }
-        if (sc === 'jump') { a.wish.set(0, 0, 1); a.wantSprint = true; if (t > 0.5 && t < 0.53) a.wantJump = 0.1; }
+        if (sc === 'jump') { a.wish.set(0, 0, 1); a.wantSprint = true; if (t > 0.3 && t < 0.33) a.wantJump = 0.1; }
+        if (sc === 'slide') { a.wish.set(0, 0, 1); a.wantSprint = true; if (t > 0.4 && t < 0.43) a.wantCrouch = 0.1; }
+        if (sc === 'roll') { a.wish.set(0, 0, 1); if (t > 0.3 && t < 0.33) a.wantCrouch = 0.1; }
         if (sc === 'fire') { g.aiming = true; if (t > 0.3) { a.slots[a.cur].mag = 30; g.fire(a, a.pos.clone().add(new THREE.Vector3(0, 1.5, 0)), new THREE.Vector3(Math.sin(a.yaw), 0, Math.cos(a.yaw))); } }
         if (sc === 'hit') { if (Math.abs(t - 0.3) < dt / 2) g.damage(a, 20, null, { dir: new THREE.Vector3(1, 0, 0) }); }
         if (sc === 'aimup') { g.aiming = true; a.pitch = Math.sin(t * 2) * 0.7; g.aimPt = null; }

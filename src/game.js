@@ -1027,12 +1027,12 @@ export class Game {
     else if (a.climb) { name = MX ? 'MX_Vault' : 'Interact'; speed = MX ? 3.5 / Math.max(0.3, a.climb.dur) * 0.55 : 2; fade = 0.08; }
     else if (a.rollT > 0) { name = ch.actions.MX_Roll ? 'MX_Roll' : 'Roll'; speed = name === 'MX_Roll' ? 1.9 : 1.6; fade = 0.06; }
     else if (a.channel) { name = a.channel.anim || 'Interact'; }
-    else if (MX && a.slideT > 0) { name = ch.actions.MX_Slide ? 'MX_Slide' : 'MX_CrouchIdle'; speed = 1.25; fade = 0.08; }
+    else if (MX && a.slideT > 0) { name = P && ch.actions.MXP_CrouchIdle ? 'MXP_CrouchIdle' : 'MX_CrouchIdle'; fade = 0.1; } // la pose de glissade est écrite dans anim.js, par-dessus l'accroupi
     else if (MX && a.landT > 0 && a.onGround) { name = 'MX_HardLand'; speed = 1.5; fade = 0.05; }
     else if (!a.onGround && MX && a.airT > 0.06) { const J = P && ch.actions.MXP_Jump; name = a.vel.y > 0.5 && a.airT < 0.5 ? (J ? 'MXP_Jump' : 'MX_Jump') : (P && ch.actions.MXP_Fall ? 'MXP_Fall' : 'MX_Fall'); speed = name === 'MX_Jump' ? 1.2 : 1; fade = 0.12; }
     else if (MX && a.stopT > 0) { name = 'MX_Stop'; speed = 1.3; fade = 0.1; }
     else if (!a.onGround && !MX) { name = 'Idle_Gun_Pointing'; }
-    else if (MX) { name = 'LOCO'; }
+    else if (MX) { name = 'LOCO'; if (a.anim === 'MX_Roll' || (a.anim !== 'LOCO' && /CrouchIdle/.test(a.anim))) fade = 0.25; }
     else if (sp > 0.8) {
       const lv = V(a.vel.x, 0, a.vel.z); const f = V(Math.sin(a.yaw), 0, Math.cos(a.yaw)); const fd = lv.dot(f) / sp; const sd = lv.dot(V(Math.cos(a.yaw), 0, -Math.sin(a.yaw))) / sp;
       if (fd > 0.5) { name = aimingNow ? 'Run_Shoot' : 'Run'; speed = clamp(sp / 6, 0.7, 1.6); }
