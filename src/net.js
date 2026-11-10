@@ -118,7 +118,7 @@ export function createNet({ local = false } = {}) { // local : false (Supabase),
     // ---------- début de partie
     // le chef envoie la distribution : chaque perso (dans l'ordre de création) avec son camp, sa tenue, son nom et à qui il appartient
     startMsg(game) {
-      return { roster: game.actors.map((a) => [a.team, a.skin, a.name, a.cls, a === game.player ? id : (a.owner || ''), a.squad ? 1 : 0]), team: game.player.team, n: game.opts.teamSize, night: !!game.save.settings.night, host: id };
+      return { roster: game.actors.map((a) => [a.team, a.skin, a.name, a.cls, a === game.player ? id : (a.owner || ''), a.squad ? 1 : 0]), team: game.player.team, n: game.opts.teamSize, night: !!game.save.settings.night, host: id, map: window.__map || 'paris' };
     },
     attach(game) {
       this.game = game; this.acc = 0; this.hostId = this.host ? id : (this.hostMember()?.id || this.startHost);

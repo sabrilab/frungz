@@ -11,7 +11,7 @@ export const SLOTS = [[0, 0.5], [-1.45, -0.7], [1.45, -0.7], [2.85, -1.9]];
 
 export function createLobby({ scene, camera, world, Q }) {
   // lieu : sur la place, la fontaine et le kiosque derrière l'équipe ; réglable par ?lobby=x,z,yaw pour essayer d'autres décors
-  const L = (Q.get('lobby') || '3.5,-22,3.1416').split(',').map(Number);
+  const L = (Q.get('lobby') || world.gp.lobby?.join(',') || '3.5,-22,3.1416').split(',').map(Number);
   const root = new THREE.Group(); root.name = 'lobby'; root.visible = false; scene.add(root);
   const gy = world.groundY(L[0], L[1], 2);
   root.position.set(L[0], gy, L[1]); root.rotation.y = L[2] || 0;
