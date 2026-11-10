@@ -2,7 +2,7 @@
 <script type="importmap">{"imports":{"three":"/frungz/node_modules/three/build/three.module.js","three/addons/":"/frungz/node_modules/three/examples/jsm/"}}</script>
 <script type="module">
 // Mannequin des skins : corps complet du pack Quaternius « Universal Base Characters » (CC0) + toutes les coiffures, au squelette du jeu.
-// Sortie : un GLB par corps (Base_M, Base_F) avec un maillage par pièce : Skin (corps, couleurs de la texture claire cuites par sommet),
+// Sortie : un GLB par corps (Base_M, Base_F) avec un maillage par pièce : Skin (corps, couleurs de la texture claire cuites par sommet, UV du pack gardées : les vêtements y sont peints),
 // Eye, Brows, et une pièce par coiffure (Hair_*, en niveaux de gris : la couleur est appliquée par le jeu, src/skins.js).
 // base.html?base=Superhero_Male_FullBody&tex=T_Superhero_Male_Ligh.png&hair=Hair_Buzzed,Hair_Beard,...
 import * as THREE from 'three';
@@ -31,7 +31,7 @@ const out = []; const c = new THREE.Color();
 function add(mesh, name, image, gray, fix) {
   const src = mesh.geometry, n = src.attributes.position.count, S = sampler(image);
   const g = new THREE.BufferGeometry();
-  for (const key of ['position', 'normal', 'skinIndex', 'skinWeight']) { const a = src.attributes[key]; const arr = key === 'skinIndex' ? new Uint16Array(n * 4) : new Float32Array(n * a.itemSize); for (let v = 0; v < n; v++) for (let k = 0; k < a.itemSize; k++) arr[v * a.itemSize + k] = a.getComponent(v, k); g.setAttribute(key, new THREE.BufferAttribute(arr, a.itemSize)); }
+  for (const key of ['position', 'normal', 'skinIndex', 'skinWeight', ...(name === 'Skin' && src.attributes.uv ? ['uv'] : [])]) { const a = src.attributes[key]; const arr = key === 'skinIndex' ? new Uint16Array(n * 4) : new Float32Array(n * a.itemSize); for (let v = 0; v < n; v++) for (let k = 0; k < a.itemSize; k++) arr[v * a.itemSize + k] = a.getComponent(v, k); g.setAttribute(key, new THREE.BufferAttribute(arr, a.itemSize)); }
   // os de la pièce → os du squelette principal (par nom)
   const si = g.attributes.skinIndex; for (let v = 0; v < n; v++) for (let k = 0; k < 4; k++) { const b = mesh.skeleton.bones[si.getComponent(v, k)]; si.setComponent(v, k, boneIdx.get(b.name) ?? boneIdx.get('Head')); }
   const col = new Float32Array(n * 3), uv = src.attributes.uv, m = [].concat(mesh.material)[0];
