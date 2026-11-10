@@ -82,7 +82,8 @@ export function tintTeam(model, skin, team) {
       for (const r of g.userData.ranges) if (!NOT_CLOTH.test(r.name)) for (const v of r.verts) {
         c.fromBufferAttribute(col, v); c.getHSL(hsl);
         // on garde le modelé de la tenue : le cuir (bruns) et le métal (clairs, gris) restent tels quels, les tissus colorés prennent la teinte de l'équipe, les tissus clairs sont teintés à moitié
-        const cuir = hsl.h > 0.02 && hsl.h < 0.13 && hsl.s > 0.22 && hsl.l < 0.4, metal = hsl.s < 0.12 && hsl.l > 0.5; if (cuir || metal) continue;
+        const cuir = hsl.h > 0.02 && hsl.h < 0.13 && hsl.s > 0.22 && hsl.l < 0.4, metal = hsl.s < 0.12 && hsl.l > 0.5; if (metal || (cuir && team !== 'ordre')) continue;
+        if (cuir) { c.setHSL(hb.h + 0.02, 0.38, hsl.l * 0.8); col.setXYZ(v, c.r, c.g, c.b); continue; } /* Brigade : le cuir brun devient bleu nuit, toute la tenue se lit comme un uniforme */
         if (hsl.s >= 0.2) c.setHSL(hb.h, Math.max(0.5, hsl.s), hsl.l); else c.lerp(_tc.setHSL(hb.h, 0.6, Math.max(0.12, hsl.l * 0.8)), 0.5);
         col.setXYZ(v, c.r, c.g, c.b);
       }
@@ -115,6 +116,9 @@ export function makeCharacter(name) {
   return { root, model, mixer, actions, bones };
 }
 
+// matières des armes : [couleur, rugosité, métal]. Les couleurs du pack sont presque noires : on les remonte en acier bronzé, polymère mat et bois verni pour que les volumes se lisent
+const GUN_MATS = { Black: ['#262a30', 0.6, 0.1], Black2: ['#1c1f24', 0.65, 0.1], Grey: ['#4a4f57', 0.5, 0.35], Metal: ['#646b75', 0.3, 0.9], DarkMetal: ['#3d424a', 0.36, 0.85], LightMetal: ['#a3abb6', 0.22, 0.95],
+  Wood: ['#8f5d3b', 0.55, 0], DarkWood: ['#6e472f', 0.6, 0], Glass: ['#16304d', 0.08, 0.3], Main: ['#333e49', 0.5, 0.3], MainLight: ['#465563', 0.45, 0.4], MainDark: ['#232b34', 0.55, 0.25], Green: ['#5e6c4b', 0.6, 0.1] };
 export async function loadGuns(onEach) {
   const ids = Object.keys(WEAPONS);
   await Promise.all(ids.map(async (id) => {
@@ -125,7 +129,7 @@ export async function loadGuns(onEach) {
     // matériaux : couleurs de l'MTL en PBR mat, un peu de métal
     obj.traverse((o) => {
       if (!o.isMesh) return; o.castShadow = true;
-      const conv = (m) => new THREE.MeshStandardMaterial({ color: m.color.clone().convertLinearToSRGB().multiplyScalar(1.4).convertSRGBToLinear(), roughness: /metal/i.test(m.name) ? 0.35 : 0.6, metalness: /metal/i.test(m.name) ? 0.6 : 0.1, name: m.name, flatShading: true });
+      const conv = (m) => { const P = GUN_MATS[m.name] || GUN_MATS.Black; return new THREE.MeshStandardMaterial({ color: P[0], roughness: P[1], metalness: P[2], envMapIntensity: P[2] > 0.5 ? 1.6 : 0.9, name: m.name, flatShading: true }); };
       o.material = Array.isArray(o.material) ? o.material.map(conv) : conv(o.material);
     });
     // poignée à l'origine (sommets les plus bas), longueur réelle
@@ -153,4 +157,66 @@ export function attachGun(ch, id) {
   const g = gunInstance(id); ch.model.updateMatrixWorld(true); const ws = new THREE.Vector3(); w.getWorldScale(ws);
   g.scale.multiplyScalar(1 / ws.x); g.rotation.set(...GRIP.rot); g.position.set(GRIP.off[0] / ws.x, GRIP.off[1] / ws.x, GRIP.off[2] / ws.x);
   w.add(g); ch.gun = g; return g;
+}
+
+// ---------------------------------------------------------------- marquages de tenue
+// Marquages Brigade peints sur le vêtement : « POLICE » dans le dos et sur la poitrine, brassard orange au bras gauche.
+// Ce ne sont plus des panneaux posés sur le perso : on reprend les triangles de la tenue eux-mêmes (mêmes os, mêmes poids),
+// avec une image projetée dessus. Le marquage suit donc exactement le tissu, plis et mouvements compris.
+let markTex = null; const markCache = {};
+function markTexture() {
+  if (markTex) return markTex;
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256; const g = c.getContext('2d');
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '92px Bungee, Inter, sans-serif'; g.fillStyle = '#f2f4f7'; g.fillText('POLICE', 256, 66);
+  g.fillStyle = '#f08a12'; g.fillRect(0, 136, 512, 112); g.fillStyle = '#d97706'; g.fillRect(0, 136, 512, 8); g.fillRect(0, 240, 512, 8);
+  g.fillStyle = '#18233f'; g.font = '70px Bungee, Inter, sans-serif'; g.fillText('POLICE', 256, 196);
+  markTex = new THREE.CanvasTexture(c); markTex.colorSpace = THREE.SRGBColorSpace; markTex.generateMipmaps = false; markTex.minFilter = THREE.LinearFilter; markTex.anisotropy = 4; return markTex;
+}
+const RECT_TEXT = [0.01, 1 - 126 / 256, 0.99, 1 - 6 / 256], RECT_BAND = [0, 1 - 248 / 256, 1, 1 - 136 / 256];
+export function teamMarkings(ch, skin) {
+  let mesh = null; ch.model.traverse((o) => { if (o.isSkinnedMesh && o.name === 'corps') mesh = o; }); if (!mesh) return null;
+  if (markCache[skin] === undefined) markCache[skin] = buildMarkings(ch, mesh);
+  const geo = markCache[skin]; if (!geo) return null;
+  const mat = new THREE.MeshStandardMaterial({ map: markTexture(), roughness: 0.85, metalness: 0, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+  mat.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 dRect; attribute float dWrap; varying vec4 vDRect; varying float vDWrap;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvDRect = dRect; vDWrap = dWrap;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vDRect; varying float vDWrap;')
+      .replace('#include <map_fragment>', 'vec2 duv = vMapUv; if (vDWrap > 0.5) duv.x = fract(duv.x); if (duv.x < 0.0 || duv.x > 1.0 || duv.y < 0.0 || duv.y > 1.0) discard;\nvec4 sampledDiffuseColor = texture2D(map, mix(vDRect.xy, vDRect.zw, duv)); if (sampledDiffuseColor.a < 0.05) discard; diffuseColor *= sampledDiffuseColor;');
+  };
+  const dm = new THREE.SkinnedMesh(geo, mat); dm.name = 'marquages'; dm.bind(mesh.skeleton, mesh.bindMatrix); dm.position.copy(mesh.position); dm.quaternion.copy(mesh.quaternion); dm.scale.copy(mesh.scale);
+  dm.frustumCulled = false; dm.castShadow = false; dm.renderOrder = 1; mesh.parent.add(dm); return dm;
+}
+function buildMarkings(ch, mesh) {
+  const src = mesh.geometry, I = src.index, P = src.attributes.position, SI = src.attributes.skinIndex, SW = src.attributes.skinWeight; if (!I || !SI) return null;
+  ch.root.updateMatrixWorld(true); mesh.skeleton.update(); const m = ch.root.matrixWorld.clone().invert().multiply(mesh.matrixWorld);
+  // sommets en pose de repos, dans le repère du perso (mètres, y vers le haut, dos vers -z)
+  const R = new Float32Array(P.count * 3), v = new THREE.Vector3(); let y0 = 1e9, y1 = -1e9;
+  for (let i = 0; i < P.count; i++) { mesh.getVertexPosition(i, v); v.applyMatrix4(m); R[i * 3] = v.x; R[i * 3 + 1] = v.y; R[i * 3 + 2] = v.z; y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y); }
+  const H = y1 - y0, bones = mesh.skeleton.bones, dom = (i) => { let b = 0, w = -1; for (let k = 0; k < 4; k++) { const ww = SW.getComponent(i, k); if (ww > w) { w = ww; b = SI.getComponent(i, k); } } return bones[b].name; };
+  const pos = [], uv = [], si = [], sw = [], rect = [], wrap = [];
+  const push = (i, u, w2, r, wr) => { pos.push(P.getX(i), P.getY(i), P.getZ(i)); uv.push(u, w2); for (let k = 0; k < 4; k++) { si.push(SI.getComponent(i, k)); sw.push(SW.getComponent(i, k)); } rect.push(...r); wrap.push(wr); };
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), n = new THREE.Vector3(), e = new THREE.Vector3();
+  const TORSO = /^(Chest|Torso|Abdomen|Shoulder|Neck)/;
+  // plans : dos (large) et poitrine côté cœur (petit), à hauteur de poitrine
+  const plans = [{ cx: 0, cy: y0 + H * 0.725, w: 0.3, h: 0.3 * 120 / 502, back: true }];
+  // brassard : bande autour du bras gauche, entre l'épaule et le coude
+  const UA = ch.bones.UpperArmL, LA = ch.bones.LowerArmL; let band = null;
+  if (UA && LA) { const inv = ch.root.matrixWorld.clone().invert(), a0 = UA.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv), a1 = LA.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv), d = a1.clone().sub(a0), L = d.length(); d.normalize();
+    const p1 = new THREE.Vector3(0, 0, 1).addScaledVector(d, -d.z).normalize(), p2 = new THREE.Vector3().crossVectors(d, p1); band = { a0, d, L, p1, p2, s0: L * 0.42, h: 0.085 }; }
+  for (let t = 0; t < I.count; t += 3) { const ia = I.getX(t), ib = I.getX(t + 1), ic = I.getX(t + 2);
+    A.fromArray(R, ia * 3); B.fromArray(R, ib * 3); C.fromArray(R, ic * 3); n.copy(B).sub(A).cross(e.copy(C).sub(A)).normalize();
+    const da = dom(ia), db = dom(ib), dc = dom(ic);
+    if (TORSO.test(da) && TORSO.test(db) && TORSO.test(dc)) for (const p of plans) {
+      if (p.back ? n.z > -0.3 : n.z < 0.3) continue; const x0 = Math.min(A.x, B.x, C.x), x1 = Math.max(A.x, B.x, C.x), ya = Math.min(A.y, B.y, C.y), yb = Math.max(A.y, B.y, C.y);
+      if (x1 < p.cx - p.w / 2 || x0 > p.cx + p.w / 2 || yb < p.cy - p.h / 2 || ya > p.cy + p.h / 2) continue;
+      for (const [i, q] of [[ia, A], [ib, B], [ic, C]]) push(i, 0.5 + (p.back ? -1 : 1) * (q.x - p.cx) / p.w, 0.5 + (q.y - p.cy) / p.h, RECT_TEXT, 0); }
+    if (band && (da === 'UpperArmL' || db === 'UpperArmL' || dc === 'UpperArmL') && [da, db, dc].every((x) => /^(UpperArmL|LowerArmL|ShoulderL)/.test(x))) {
+      const sv = [], av = []; for (const q of [A, B, C]) { e.copy(q).sub(band.a0); sv.push(e.dot(band.d)); av.push(Math.atan2(e.dot(band.p2), e.dot(band.p1)) / (2 * Math.PI)); }
+      if (Math.max(...sv) < band.s0 || Math.min(...sv) > band.s0 + band.h) continue;
+      for (let k = 1; k < 3; k++) { while (av[k] - av[0] > 0.5) av[k] -= 1; while (av[k] - av[0] < -0.5) av[k] += 1; } // le triangle ne doit pas être coupé par la couture de l'angle
+      [ia, ib, ic].forEach((i, k) => push(i, 4 - av[k] * 2, 1 - (sv[k] - band.s0) / band.h, RECT_BAND, 1)); } }
+  if (!pos.length) return null;
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4)); geo.setAttribute('dRect', new THREE.Float32BufferAttribute(rect, 4)); geo.setAttribute('dWrap', new THREE.Float32BufferAttribute(wrap, 1));
+  geo.computeVertexNormals(); return geo;
 }
