@@ -1662,9 +1662,10 @@ export class Game {
   }
   // arme en vue subjective, accrochée à la caméra
   viewGun() {
-    if (this.vgun) this.camera.remove(this.vgun);
+    /* la caméra survit d'une partie à l'autre : on retire tout ce qu'une partie précédente y a laissé (arme et bras en vue subjective), sinon l'ancienne arme se superpose à la nouvelle */
+    for (const c of [...this.camera.children]) if (c.userData.viewModel) this.camera.remove(c);
     const W = this.weapon(this.player); if (!W) return; const g = gunInstance(W.id); g.rotation.y = Math.PI / 2; g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 5; } });
-    this.vgun = new THREE.Group(); this.vgun.add(g); this.vgun.userData.muzzle = g.userData.muzzle; this.camera.add(this.vgun);
+    this.vgun = new THREE.Group(); this.vgun.userData.viewModel = true; this.vgun.add(g); this.vgun.userData.muzzle = g.userData.muzzle; this.camera.add(this.vgun);
     // encombrement de l'arme dans le repère de la vue (canon vers -z, poignée à l'origine)
     g.updateMatrixWorld(true); const bb = new THREE.Box3(); g.traverse((o) => { if (o.isMesh) { o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld.clone().premultiply(this.vgun.matrixWorld.clone().invert()))); } });
     this.vgunTop = bb.max.y; this.vgunLen = bb.max.z - bb.min.z; this.vgunBB = bb; this.vgunPistol = WEAPONS[W.id].hand === 'pistol';
@@ -1695,7 +1696,7 @@ export class Game {
       hands[S] = { f: f.applyQuaternion(iq), n: n.applyQuaternion(iq), len, fing }; }
     // pose de départ des bras : en joue (fusil ou pistolet)
     const P = this.vgunPistol && ch.actions.MXP_Idle; const act = P ? ch.actions.MXP_Idle : ch.actions.MX_Idle; act.play(); ch.mixer.setTime(0.3); ch.mixer.update(0);
-    const grp = new THREE.Group(); grp.add(ch.root); ch.root.rotation.y = Math.PI; this.camera.add(grp); grp.updateMatrixWorld(true);
+    const grp = new THREE.Group(); grp.userData.viewModel = true; grp.add(ch.root); ch.root.rotation.y = Math.PI; this.camera.add(grp); grp.updateMatrixWorld(true);
     const cam = this.camera, toCam = (o) => cam.worldToLocal(wpos(o)); const sh = toCam(B.UpperArmR).add(toCam(B.UpperArmL)).multiplyScalar(0.5);
     // doigts refermés : on repart des doigts tendus, chaque phalange plie vers la paume (index droit plus ouvert, posé près de la détente) ; les pouces sont posés à chaque image
     for (const S of ['R', 'L']) { const H = hands[S], W = B['Wrist' + S]; for (const o of H.fing) o.b.quaternion.copy(o.q0); W.updateMatrixWorld(true);
@@ -1738,7 +1739,7 @@ export class Game {
     const down = V(0, -1, 0).applyQuaternion(vq), right = V(1, 0, 0).applyQuaternion(vq);
     for (const [S, tp, tq, pole, td] of [['R', rp, rq, down.clone().addScaledVector(right, 0.5), dir(-0.22, -0.05, -0.97)], ['L', lp, lq, down.clone().addScaledVector(right, -0.6), A.pistol ? dir(0.1, 0.15, -1) : dir(0.12, 0.12, -0.98)]]) {
       // bras allongé au besoin (la main garde sa taille) : l'arme est tenue loin devant, l'épaule reste hors champ
-      const U = B['UpperArm' + S], W = B['Wrist' + S], H = A.hands[S], s = clamp(U.getWorldPosition(V()).distanceTo(tp) / (H.arm * 0.94), 1, 1.8); U.scale.setScalar(s); W.scale.setScalar(1 / s); U.updateMatrixWorld(true);
+      const U = B['UpperArm' + S], W = B['Wrist' + S], H = A.hands[S], sp0 = U.getWorldPosition(V()), need = sp0.distanceTo(tp) / (H.arm * 0.94), s = clamp(need, 1, 1.35); U.scale.setScalar(s); W.scale.setScalar(1 / s); U.updateMatrixWorld(true);
       this.armIK(U, B['LowerArm' + S], W, tp, tq, pole);
       // pouce couché le long de l'arme
       const t = H.thumb, tip = B['Thumb3' + S]; if (t && tip) { t.b.quaternion.copy(t.q0); t.b.updateMatrixWorld(true); const d = tip.getWorldPosition(V()).sub(t.b.getWorldPosition(V())).normalize();
