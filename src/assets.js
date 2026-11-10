@@ -1,7 +1,7 @@
 // Personnages (Quaternius Modular Character Outfits – Fantasy + Universal Base Characters, assemblés par tools/build-chars) et armes (Quaternius Ultimate Gun, OBJ).
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { loader, loadGLB } from './world.js';
@@ -121,6 +121,31 @@ export function makeCharacter(name) {
 // matières des armes : [couleur, rugosité, métal]. Les couleurs du pack sont presque noires : on les remonte en acier bronzé, polymère mat et bois verni pour que les volumes se lisent
 const GUN_MATS = { Black: ['#262a30', 0.6, 0.1], Black2: ['#1c1f24', 0.65, 0.1], Grey: ['#4a4f57', 0.5, 0.35], Metal: ['#646b75', 0.3, 0.9], DarkMetal: ['#3d424a', 0.36, 0.85], LightMetal: ['#a3abb6', 0.22, 0.95],
   Wood: ['#8f5d3b', 0.55, 0], DarkWood: ['#6e472f', 0.6, 0], Glass: ['#16304d', 0.08, 0.3], Main: ['#333e49', 0.5, 0.3], MainLight: ['#465563', 0.45, 0.4], MainDark: ['#232b34', 0.55, 0.25], Green: ['#5e6c4b', 0.6, 0.1] };
+// Matière d'une pièce d'arme. Le grain est calculé dans le shader à partir de la position sur l'arme (les modèles n'ont pas d'UV) :
+// acier brossé dans le sens du canon, bois veiné, polymère finement grainé. « unit » convertit les unités du modèle en mètres.
+const GUN_GRAIN = `
+float gHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float gNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(gHash(i), gHash(i + vec3(1,0,0)), f.x), mix(gHash(i + vec3(0,1,0)), gHash(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(gHash(i + vec3(0,0,1)), gHash(i + vec3(1,0,1)), f.x), mix(gHash(i + vec3(0,1,1)), gHash(i + vec3(1,1,1)), f.x), f.y), f.z); }`;
+const gunMatCache = {};
+function gunMaterial(name, unit) {
+  const key = name + '|' + unit.toFixed(5); if (gunMatCache[key]) return gunMatCache[key];
+  const P = GUN_MATS[name] || GUN_MATS.Black, kind = /Metal/.test(name) ? 1 : /Wood/.test(name) ? 2 : /Glass/.test(name) ? 3 : 0;
+  const m = new THREE.MeshStandardMaterial({ color: P[0], roughness: P[1], metalness: P[2], envMapIntensity: P[2] > 0.5 ? 1.7 : 1.0, name });
+  if (kind !== 3) { m.onBeforeCompile = (sh) => { sh.uniforms.gUnit = { value: unit };
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGunP; uniform float gUnit;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvGunP = position * gUnit;');
+    const body = kind === 1
+      ? 'float gs = gNoise(vec3(vGunP.x * 14.0, vGunP.y * 900.0, vGunP.z * 900.0)); float gb = gNoise(vGunP * 38.0); float gG = (gs - 0.5) * 0.16 + (gb - 0.5) * 0.12; float gR = (gs - 0.5) * 0.22 + (gb - 0.5) * 0.18;'
+      : kind === 2
+        ? 'float gw = gNoise(vec3(vGunP.x * 9.0, vGunP.y * 70.0, vGunP.z * 70.0)); float gv = sin((vGunP.y + vGunP.z * 0.6) * 520.0 + gw * 9.0) * 0.5 + 0.5; float gG = (gv - 0.5) * 0.34 + (gw - 0.5) * 0.2; float gR = (0.5 - gv) * 0.25;'
+        : 'float gp = gNoise(vGunP * 1400.0); float gb = gNoise(vGunP * 30.0); float gG = (gp - 0.5) * 0.14 + (gb - 0.5) * 0.08; float gR = (gp - 0.5) * 0.2 + (gb - 0.5) * 0.12;';
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGunP;' + GUN_GRAIN)
+      .replace('#include <color_fragment>', '#include <color_fragment>\n' + body + '\ndiffuseColor.rgb *= 1.0 + gG;')
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor + gR, 0.06, 1.0);'); };
+    m.customProgramCacheKey = () => 'gun' + kind; }
+  return (gunMatCache[key] = m);
+}
 export async function loadGuns(onEach) {
   const ids = Object.keys(WEAPONS);
   await Promise.all(ids.map(async (id) => {
@@ -128,10 +153,12 @@ export async function loadGuns(onEach) {
     try {
     const mtl = await new MTLLoader().setPath('assets/guns/').loadAsync(`${W.model}.mtl`); mtl.preload();
     const obj = await new OBJLoader().setMaterials(mtl).setPath('assets/guns/').loadAsync(`${W.model}.obj`);
-    // matériaux : couleurs de l'MTL en PBR mat, un peu de métal
+    // formes adoucies (canons et lunettes ronds, arêtes vives gardées) et matières avec un grain propre à chaque matériau
+    const box0 = new THREE.Box3().setFromObject(obj), unit = (W.len || 0.6) / (box0.max.x - box0.min.x);
     obj.traverse((o) => {
       if (!o.isMesh) return; o.castShadow = true;
-      const conv = (m) => { const P = GUN_MATS[m.name] || GUN_MATS.Black; return new THREE.MeshStandardMaterial({ color: P[0], roughness: P[1], metalness: P[2], envMapIntensity: P[2] > 0.5 ? 1.6 : 0.9, name: m.name, flatShading: true }); };
+      o.geometry = toCreasedNormals(o.geometry, 0.62);
+      const conv = (m) => gunMaterial(m.name, unit);
       o.material = Array.isArray(o.material) ? o.material.map(conv) : conv(o.material);
     });
     // poignée à l'origine (sommets les plus bas), longueur réelle
