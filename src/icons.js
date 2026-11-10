@@ -23,6 +23,9 @@ const P = {
   swarm: '<rect x="3" y="4" width="5" height="3" rx="1"/><rect x="15" y="3" width="5" height="3" rx="1"/><rect x="9" y="14" width="6" height="4" rx="1"/><path d="M1.5 4h8M13.5 3h8M7 14h10M12 18l-2 4M12 18l2 4M5 7l3 5M18 6l-3 6"/>',
   gunship: '<path d="M2 11h20v2H2zM9 8h6l1 3H8zM6 13l-2 5h3l3-5M18 13l2 5h-3l-3-5M11 4h2v4h-2zM7.5 11V9M16.5 11V9"/><circle cx="12" cy="16" r="1.6"/>',
   nuke: '<circle cx="12" cy="12" r="2.2"/><path d="M12 9.8L9 4.5a8 8 0 0 1 6 0zM14 13.2l6 .1a8 8 0 0 1-3 5.2zM10 13.2l-3 5.3a8 8 0 0 1-3-5.2z"/>',
+  truck: '<path d="M2 6h11v10H2zM13 9h4.5l3.5 4v3h-8zM15 9v4h5"/><circle cx="6" cy="17.5" r="2"/><circle cx="17" cy="17.5" r="2"/>',
+  water: '<path d="M2 12h8v6H2zM10 13h2.5l1.5 2v3h-4zM6 12V9h3l4-3"/><path d="M14 5c2 0 3 1 5 1M15 3c2 0 3.5 1 6 1M14.5 8c2 0 3 .8 5 .8"/><circle cx="4.5" cy="19.2" r="1.3"/><circle cx="11.5" cy="19.2" r="1.3"/>',
+  ram: '<path d="M4 7h10v9H4zM14 10h4l3 3v3h-7zM2 6v11M2 6h2M2 17h2"/><circle cx="8" cy="17.5" r="2"/><circle cx="17" cy="17.5" r="2"/>',
   // statut
   skull: '<path d="M12 3a8 8 0 0 0-8 8c0 2.8 1.4 4.6 3 5.6V21h10v-4.4c1.6-1 3-2.8 3-5.6a8 8 0 0 0-8-8zM10 21v-2.5M14 21v-2.5"/><circle cx="9" cy="11.5" r="1.7"/><circle cx="15" cy="11.5" r="1.7"/>',
   target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5"/>',
