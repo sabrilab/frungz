@@ -10,6 +10,7 @@ import * as Anim from './anim.js';
 import { rideMethods } from './deuxroues.js';
 import { installThrows, THROWS, solveThrow } from './throws.js';
 import { svg, iconize } from './icons.js';
+import { createFeedback } from './feedback.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
@@ -56,7 +57,7 @@ export class Game {
     this.root = new THREE.Group(); this.scene.add(this.root);
     this.cam = { yaw: 0, pitch: 0, dist: 3, fps: !!this.save.settings?.fps, trauma: 0, bob: 0, dip: 0, roll: 0, kickP: 0, kickY: 0, fov: 70, shake: V() };
     this.ui = {}; this.nextUi = 0; this.feed = []; this.specialT = 75; this.stats = { kills: 0, deaths: 0, earned: 0, captures: 0, broken: 0, stolen: 0 };
-    this.losQueue = 0; this.drone = { ordre: 0, civils: 0 }; this.strikes = []; this.streakCd = { ordre: 0, civils: 0 };
+    this.fb = createFeedback(this); this.losQueue = 0; this.drone = { ordre: 0, civils: 0 }; this.strikes = []; this.streakCd = { ordre: 0, civils: 0 };
   }
 
   // ---------------------------------------------------------------- mise en place
@@ -191,6 +192,7 @@ export class Game {
     const sp = pick(this.world.spawns[a.team].slice(0, Math.max(20, this.opts.teamSize))); const [x, z] = this.world.randomFree(sp.x, sp.z, this.actors.length > 50 ? 4 : 2.5);
     a.pos.set(x, this.world.groundY(x, z), z); a.vel.set(0, 0, 0); a.yaw = a.team === 'ordre' ? Math.PI / 2 : -Math.PI / 2; a.pitch = 0;
     if (!a.bot && this.save.cls?.[a.team] && this.save.cls[a.team] !== a.cls) { a.cls = this.save.cls[a.team]; a.cap = 20 + (this.save.upgrades.sac || 0) * 8 + (classOf(a.team, a.cls).perk.kg || 0); } const K = classOf(a.team, a.cls);
+    if (a === this.player) this.fb?.reset();
     a.hp = 100; a.armor = Math.min(150, K.armor + (a.bot ? 0 : 25 * (this.save.upgrades.gilet || 0))); a.alive = true; a.bag = []; a.bagKg = 0; a.nades = K.nades; a.frags = K.frags; a.momentum = 0; a.slideT = a.rollT = 0; a.climb = null; a.gasT = 0; a.channel = null;
     if (!a.bot) a.mats = Math.max(a.mats, 30 + 20 * (this.save.upgrades.mats || 0)); else a.mats = 40;
     a.ch.root.visible = true; a.ch.model.rotation.x = 0; a.overs = null; a.landT = a.stopT = 0; this.loadout(a); this.setAnim(a, a.ch.actions.MX_Idle ? 'LOCO' : 'Idle_Gun', 0);
@@ -214,16 +216,13 @@ export class Game {
     if (t.spawnProt > 0) amount *= 0.2;
     if (t.rollT > 0) amount *= 0.5; // roulade : on esquive à moitié
     if (by && by.team === t.team && by !== t) return;
-    let dmg = amount; if (t.armor > 0) { const ab = Math.min(t.armor, dmg * 0.6); t.armor -= ab; dmg -= ab; }
+    let dmg = amount, ab = 0, brk = false; if (t.armor > 0) { ab = Math.min(t.armor, dmg * 0.6); t.armor -= ab; dmg -= ab; brk = t.armor <= 0.5; if (brk) t.armor = 0; }
     t.hp -= dmg; t.lastHit = this.time; t.regenT = 5;
     if (by && by !== t) (t.hitBy ||= new Map()).set(by, this.time);
     if (by?.perk?.spot && by !== t) t.spotMark = this.time + by.perk.spot; // atout repérage : la cible reste marquée pour tout le camp
-    if (by) { t.ai.target = by; t.ai.seeT = 1; if (!t.bot) this.hurtDir(by.pos); if (by.bot === false || t.bot === false) by.spotted = this.time; }
-    if (!t.bot) { this.cam.trauma = Math.min(1, this.cam.trauma + 0.25 + amount / 120); this.input.rumble(0.6, 0.3, 120); }
-    if (by === this.player && t !== this.player) {
-      this.fx.number(V(t.pos.x, t.pos.y + 2 + Math.random() * 0.3, t.pos.z), Math.round(amount), opts.head ? '#ffcf3d' : '#fff', opts.head);
-      this.hitmark(t.hp <= 0, opts.head); this.audio.hitmark(opts.head); t.spotted = this.time; this.flashBody(t);
-    }
+    if (by) { t.ai.target = by; t.ai.seeT = 1; if (by.bot === false || t.bot === false) by.spotted = this.time; }
+    if (t === this.player) this.fb.taken(by, amount, opts, ab, brk);
+    if (by === this.player && t !== this.player) { this.fb.dealt(t, amount, opts, ab, brk, t.hp <= 0); t.spotted = this.time; this.flashBody(t); }
     if (t.hp > 0) { if (Math.random() < 0.3) this.audio.play('voxPain', t.pos, 0.7, [0.95, 1.1], 0.2); if (by && by !== t && t.ch.actions.A_HitF) { const dx = by.pos.x - t.pos.x, dz = by.pos.z - t.pos.z, f = Math.sin(t.yaw) * dx + Math.cos(t.yaw) * dz, sd = Math.cos(t.yaw) * dx - Math.sin(t.yaw) * dz; Anim.flinch(t, f, sd, amount); this.overlay(t, Math.abs(f) > Math.abs(sd) ? (f > 0 ? 'A_HitF' : 'A_HitB') : (sd > 0 ? 'A_HitL' : 'A_HitR'), 0.5, { add: true, w: Math.min(1.4, 0.55 + amount / 35) }); }
       else if (!t.channel && Math.random() < 0.25 && t.ch.actions.HitRecieve) { const h = t.ch.actions.HitRecieve; h.reset().setEffectiveWeight(0.6).fadeIn(0.05).play(); setTimeout(() => h.fadeOut(0.15), 250); } if (t.channel) t.channel = null; return; }
     this.kill(t, by, opts);
@@ -382,6 +381,7 @@ export class Game {
         end = origin.clone().addScaledVector(d, hw.t);
         this.hitWorld(a, hw, d, end, D, mult);
       } else end = origin.clone().addScaledVector(d, D.range);
+      if (a !== this.player && ha?.a !== this.player) this.fb.bullet(origin, d, ha ? ha.t : hw ? hw.t : D.range, a);
       if (p < 3 || a === this.player) this.fx.tracer(muzzle, end);
     }
     // les bots entendent les coups de feu
@@ -792,7 +792,7 @@ export class Game {
     for (const w of this.walls) { w.t += dt; w.mesh.scale.y = Math.min(1, 0.05 + w.t * 6); }
     this.specialT -= dt; if (this.specialT <= 0) { this.specialT = 120; this.specialDelivery(); }
     if (!this.over && (this.time >= this.matchLen || this.score.ordre >= this.scoreLimit || this.score.civils >= this.scoreLimit)) this.endMatch();
-    this.updateCamera(dt);
+    this.updateCamera(dt); this.fb.update(dt);
     for (const a of this.actors) if (a.flashT > 0) { a.flashT -= dt; if (a.flashT <= 0) a.ch.model.traverse((o) => { if (o.isSkinnedMesh && o.name === 'corps') o.material.emissiveIntensity = 0; }); }
     this.drawCompass(dt); this.updateZoneHud();
     this.fx.update(dt);
@@ -1771,11 +1771,7 @@ export class Game {
   }
   medal(big, small, gold) { const el = $('medal'); if (!el) return; el.innerHTML = `<b>${svg(gold ? 'target' : 'skull')} ${big}</b><small>${small}</small>`; el.className = gold ? 'gold' : ''; void el.offsetWidth; el.classList.add('on'); clearTimeout(this._medT); this._medT = setTimeout(() => el.classList.remove('on'), 1600); }
   flashBody(t) { t.ch.model.traverse((o) => { if (o.isSkinnedMesh && o.name === 'corps') { o.material.emissive.set('#ffffff'); o.material.emissiveIntensity = 0.55; } }); t.flashT = 0.07; }
-  hitmark(kill, head) { const h = $('hitmark'); h.className = ''; void h.offsetWidth; h.className = 'on' + (kill ? ' kill' : '') + (head ? ' head' : ''); }
-  hurtDir(from) {
-    const a = this.player; const ang = Math.atan2(from.x - a.pos.x, from.z - a.pos.z) - this.cam.yaw; const i = document.createElement('i'); i.style.transform = `rotate(${-ang * 180 / Math.PI}deg)`;
-    $('dmgdir').appendChild(i); setTimeout(() => i.remove(), 1100);
-  }
+  hitmark(kill, head) { this.fb.marker(kill, head, false, false, 30); }
   toggleInv() {
     const el = $('inv'); const show = el.classList.contains('hidden'); el.classList.toggle('hidden', !show); if (!show) return;
     const a = this.player, card = (c, t, ...sm) => `<div class="card" style="--c:${c}"><b>${t}</b>${sm.map((x) => `<small>${x}</small>`).join('')}</div>`;
