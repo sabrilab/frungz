@@ -1,6 +1,7 @@
 // Frungz : la partie. Acteurs (joueur et bots), parkour, tir, Domination, casse et butin, planques, receleur, voitures,
 // lacrymogènes et fumigènes, barricades, interface.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { makeCharacter, attachGun, gunInstance, chars, tintTeam, backPoint } from './assets.js';
 import { TEAMS, WEAPONS, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COMMERCE_TYPES, SHOP_NAMES, SKIN_NAMES } from './data.js';
 import { shopCase, lootMesh, beam, socle, baseSign, receleur, barricade, BARRICADE, grenadeMesh, policeBadge, brassard, headMarker, textTex } from './props.js';
@@ -116,6 +117,9 @@ export class Game {
         s.items.push({ id: it.id, type: it.type, rarity: it.rarete || 'rare', nom: it.nom, valeur: it.valeur, poids: it.poids ?? L.kg, icon: L.icon, pos: V(...it.pos), node, taken: false });
       }
       s.front = s.vits[0]?.front || V(b.porte.pos[0], b.porte.pos[1], b.porte.pos[2]);
+      // objets exposés (bijoux, sacs, montres…) : petits, un à trois maillages chacun, 15 boutiques → ~300 dessins.
+      // Sans ombre portée (ils sont sous l'éclairage de la boutique) et masqués au-delà de 55 m (on ne les distingue plus).
+      s.itemMeshes = []; for (const it of s.items) it.node?.traverse((o) => { if (o.isMesh) { o.castShadow = false; s.itemMeshes.push(o); } }); s.near = true;
       this.shops.push(s);
     }
   }
@@ -440,7 +444,7 @@ export class Game {
   }
   placeOnSocle(s, item, owner) {
     s.item = item; s.owner = owner; s.acc = 0; let m;
-    if (item.node) { m = new THREE.Group(); const c = item.node.clone(true); c.visible = true; const box = new THREE.Box3().setFromObject(c); const ctr = box.getCenter(V()); c.position.sub(V(ctr.x, box.min.y, ctr.z)); const sz = box.getSize(V()); const k = Math.min(1.8, 0.7 / Math.max(sz.x, sz.y, sz.z, 0.05)); c.scale.multiplyScalar(k); c.position.multiplyScalar(k); m.add(c); }
+    if (item.node) { m = new THREE.Group(); const c = item.node.clone(true); c.traverse((o) => { o.visible = true; }); /* (au loin, les objets des vitrines sont masqués) */ const box = new THREE.Box3().setFromObject(c); const ctr = box.getCenter(V()); c.position.sub(V(ctr.x, box.min.y, ctr.z)); const sz = box.getSize(V()); const k = Math.min(1.8, 0.7 / Math.max(sz.x, sz.y, sz.z, 0.05)); c.scale.multiplyScalar(k); c.position.multiplyScalar(k); m.add(c); }
     else { m = lootMesh(item.type, item.rarity); m.scale.setScalar(item.type === 'tv' || item.type === 'art' ? 0.7 : 1.6); }
     m.position.set(0, 0.55, 0); s.mesh.add(m); s.itemMesh = m;
     const b = beam(item.rarity); b.scale.setScalar(0.6); b.position.y = 1.1; m.add(b);
@@ -577,13 +581,39 @@ export class Game {
     if (xs.length < 20) return def.size; xs.sort((a, b) => a - b); zs.sort((a, b) => a - b); const q = (a, t) => a[Math.floor(t * (a.length - 1))];
     return [Math.min(def.size[0], q(xs, 0.985) - q(xs, 0.015)), def.size[1], Math.min(def.size[2], q(zs, 0.995) - q(zs, 0.005))];
   }
+  // modèle de voiture fusionné une fois par modèle : toutes les pièces (caisse et roues) regroupées par matière
+  staticCar(def) {
+    if (def.stat !== undefined) return def.stat; def.stat = null;
+    try {
+      const root = def.scene; root.updateMatrixWorld(true); const inv = root.matrixWorld.clone().invert(); const by = new Map();
+      root.traverse((o) => { if (!o.isMesh || Array.isArray(o.material) || o.isSkinnedMesh) return; const g = o.geometry.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)); (by.get(o.material) || by.set(o.material, []).get(o.material)).push(g); });
+      const grp = new THREE.Group(); grp.name = 'voiture_fusionnee';
+      for (const [mat, list] of by) {
+        const keys = Object.keys(list[0].attributes).filter((k) => list.every((g) => g.attributes[k] && g.attributes[k].itemSize === list[0].attributes[k].itemSize));
+        for (const g of list) {
+          for (const k of Object.keys(g.attributes)) if (!keys.includes(k)) g.deleteAttribute(k); for (const k of Object.keys(g.morphAttributes)) delete g.morphAttributes[k];
+          // attributs quantifiés ou entrelacés (compression du glb) : remis en flottants simples, sinon la fusion échoue
+          for (const k of keys) { const A = g.attributes[k]; if (A.isInterleavedBufferAttribute || A.normalized || !(A.array instanceof Float32Array)) { const n = A.count, z = A.itemSize, f = new Float32Array(n * z), get = ['getX', 'getY', 'getZ', 'getW']; for (let i = 0; i < n; i++) for (let j = 0; j < z; j++) f[i * z + j] = A[get[j]](i); g.setAttribute(k, new THREE.BufferAttribute(f, z)); } }
+        }
+        const idx = list.some((g) => g.index); const L = idx ? list.map((g) => g.index ? g : g.setIndex([...Array(g.attributes.position.count).keys()])) : list;
+        const m = mergeGeometries(L, false); if (!m) return null; grp.add(new THREE.Mesh(m, mat));
+      }
+      def.stat = grp;
+    } catch (e) { console.warn('fusion voiture', e); }
+    return def.stat;
+  }
+  // version garée (fusionnée) accrochée au véhicule ; la version détaillée reste là, cachée, pour rouler
+  attachStatic(c) {
+    const st = this.staticCar(c.def); c.detail = [...c.obj.children]; c.mv = false; if (!st) return;
+    c.stat = st.clone(); c.stat.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); c.obj.add(c.stat); for (const o of c.detail) o.visible = false;
+  }
   addCar(def, x, z, yaw) {
     const obj = def.scene.clone(true); obj.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     this.root.add(obj);
     const size = def.body || (def.body = this.bodySize(def)); const wheels = ['wheel-front-left', 'wheel-front-right', 'wheel-back-left', 'wheel-back-right'].map((n) => obj.getObjectByName(n) || obj.getObjectByName(n.replace(/-/g, '_')));
     const car = { def, obj, wheels, pos: V(x, this.world.groundY(x, z), z), yaw, speed: 0, steer: 0, hp: def.classe === 'blinde' ? 600 : 320, maxHp: def.classe === 'blinde' ? 600 : 320, driver: null, spawn: [x, z, yaw], dead: 0, W: size[0], L: size[2], H: size[1], max: { sport: 34, blinde: 26, police: 30, civil: 24 }[def.classe] || 26, accel: { sport: 15, blinde: 10, police: 13, civil: 9 }[def.classe] || 11, police: def.classe === 'police' };
     car.col = { type: 'box', x, z, hx: car.W / 2, hz: car.L / 2, h: car.H, yaw, cs: Math.cos(yaw), sn: Math.sin(yaw), y0: car.pos.y, car };
-    this.world.dynamic.push(car.col); this.cars.push(car); this.syncCar(car); return car;
+    this.world.dynamic.push(car.col); this.attachStatic(car); this.cars.push(car); this.syncCar(car); return car;
   }
   // ---------------------------------------------------------------- mobilier cassable et métro
   onCassable(e, by) {
@@ -737,13 +767,17 @@ export class Game {
     this.time += dt; this.input.poll(); this.pathBudget = 4;
     this.lodT = (this.lodT || 0) - dt; if (this.lodT <= 0) { this.lodT = 0.4; this.updateLod(); }
     if (!this.over) { this.updatePlayer(dt); }
+    this.cullActors();
     for (const a of this.actors) if (a.bot) this.updateBot(a, dt);
     for (const a of this.actors) this.updateActor(a, dt);
     for (const c of this.cars) this.updateCar(c, dt);
     this.updateMetro(dt); this.world.cass?.update(dt); this.world.flushNav();
     // 51 voitures : on n'affiche que celles assez proches (et l'ombre seulement de près)
     if ((this.carCullT = (this.carCullT || 0) - dt) <= 0) { this.carCullT = 0.3; const cp = this.camera.position;
-      for (const c of this.cars) { if (c.dead) continue; const d2 = c.obj.position.distanceToSquared(cp); c.obj.visible = d2 < 130 * 130 || !!c.driver; const sh = d2 < 50 * 50; if (c.sh !== sh) { c.sh = sh; c.obj.traverse((o) => { if (o.isMesh) o.castShadow = sh; }); } } }
+      for (const s of this.shops) { const near = s.front.distanceToSquared(cp) < 55 * 55; if (near !== s.near) { s.near = near; for (const m of s.itemMeshes) m.visible = near; } }
+      for (const c of this.cars) { if (c.dead) continue; const d2 = c.obj.position.distanceToSquared(cp); c.obj.visible = d2 < 130 * 130 || !!c.driver;
+        // voiture garée : un seul maillage par matière (≈ 6 dessins) ; détaillée (roues qui tournent) dès qu'elle roule
+        if (c.stat) { const mv = !!c.driver || Math.abs(c.speed) > 0.05; if (c.mv !== mv) { c.mv = mv; c.stat.visible = !mv; for (const o of c.detail) o.visible = mv; } } const sh = d2 < 50 * 50; if (c.sh !== sh) { c.sh = sh; c.obj.traverse((o) => { if (o.isMesh) o.castShadow = sh; }); } } }
     this.updateBullets(dt); this.updatePip(dt); this.updateNades(dt); this.updateThrown(dt); this.updateStreaks(dt); this.cloudEffects(dt); this.updateZones(dt); this.updateShops(dt); this.updateDrops(dt); this.socleIncome(dt);
     for (const w of this.walls) { w.t += dt; w.mesh.scale.y = Math.min(1, 0.05 + w.t * 6); }
     this.specialT -= dt; if (this.specialT <= 0) { this.specialT = 120; this.specialDelivery(); }
@@ -1036,13 +1070,15 @@ export class Game {
     this.setAnim(a, name, fade, speed);
     if (MX) this.locomotion(a, dt, sp, aimingNow);
     // animation simplifiée pour les bots lointains
-    const far = a !== this.player && a.pos.distanceToSquared(this.player.pos) > 3600;
+    // (hors du champ de la caméra aussi : on ne voit ni ses bras ni son buste, inutile de les calculer à chaque image)
+    const far = a !== this.player && (a.offscreen || a.pos.distanceToSquared(this.player.pos) > 3600);
     // on remet le buste dans sa pose d'animation avant le mixer (sinon la correction de visée s'accumule et le buste tourne sur lui-même)
     const spine = ch.bones.Chest || ch.bones.Torso;
     const pb = ch.procBones || (ch.procBones = [spine, ch.bones.Head, ch.bones.Torso, ch.bones.UpperLegL, ch.bones.UpperLegR, ch.bones.LowerLegL, ch.bones.LowerLegR, ch.bones.FootL, ch.bones.FootR].filter((b, i, arr) => b && arr.indexOf(b) === i));
     for (const b of pb) if (b.userData.base) b.quaternion.copy(b.userData.base);
     Anim.restore(a);
-    a.animAcc = (a.animAcc || 0) + dt; let mixed = false; if (!a.lodHidden && (!far || a.animAcc > 0.1)) { ch.mixer.update(a.animAcc); a.animAcc = 0; mixed = true; }
+    a.animAcc = (a.animAcc || 0) + dt; let mixed = false; const mid = !far && a !== this.player && a.pos.distanceToSquared(this.camera.position) > 900; // 30–60 m : une image sur deux suffit
+    if (!a.lodHidden && (far ? a.animAcc > 0.1 : !mid || a.animAcc > 0.03)) { ch.mixer.update(a.animAcc); a.animAcc = 0; mixed = true; }
     for (const b of pb) (b.userData.base ||= new THREE.Quaternion()).copy(b.quaternion);
     Anim.capture(a);
     this.applyOverlays(a, dt, mixed && !far);
@@ -1107,6 +1143,13 @@ export class Game {
     rot(b.Torso, -0.35 * k);
   }
   // LOD des personnages : invisibles très loin (brouillard), sans ombre portée au-delà de 45 m
+  // personnages hors du champ de la caméra (marge de 2 m) : animation allégée
+  cullActors() {
+    const cam = this.camera; cam.updateMatrixWorld(); const F = this._frustum || (this._frustum = new THREE.Frustum()), M = this._fm || (this._fm = new THREE.Matrix4()), S = this._fs || (this._fs = new THREE.Sphere());
+    M.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); F.setFromProjectionMatrix(M);
+    for (const a of this.actors) { if (a === this.player) { a.offscreen = false; continue; } S.center.set(a.pos.x, a.pos.y + 0.9, a.pos.z); S.radius = 2; a.offscreen = !F.intersectsSphere(S); }
+    const K = this.killcam; if (K) { if (K.target) K.target.offscreen = false; if (K.by) K.by.offscreen = false; } // vus dans la bulle
+  }
   updateLod() {
     const cp = this.camera.position;
     for (const a of this.actors) {
@@ -1478,7 +1521,9 @@ export class Game {
     // effets d'écran
     const gas = a.inGas || 0; const pd = this.fx.density(cam.position, ['smoke', 'smoke-dark']);
     // dans la fumée : voile laiteux qui monte avec la densité ; lacrymo : yeux qui piquent (léger flou, larmes) sans masquer l'écran
-    this.renderer.domElement.style.filter = gas > 0.08 ? `blur(${(Math.max(0, gas - 0.3) * 1.6).toFixed(2)}px) saturate(${(1 - gas * 0.3).toFixed(2)}) brightness(${(1 + gas * 0.08).toFixed(2)})` : '';
+    // (avant : flou CSS sur tout le canevas WebGL dans le lacrymo. Très coûteux pour le navigateur, qui recompose tout l'écran
+    // à chaque image, et une cause connue de grands rectangles noirs sur Mac quand la carte graphique sature. Le voile suffit.)
+    if (this.renderer.domElement.style.filter) this.renderer.domElement.style.filter = '';
     $('vignette').style.opacity = a.alive ? Math.max(clamp((60 - a.hp) / 60, 0, 1) * 0.9, gas * 0.45, Math.min(0.7, pd * 0.5)) : 0.8;
     $('vignette').style.background = pd > 0.15 && a.hp > 50 ? 'radial-gradient(ellipse at center, rgba(220,222,225,.55) 0%, rgba(215,217,220,.9))' : gas > 0.15 && a.hp > 50 ? 'radial-gradient(ellipse at center, rgba(255,255,255,0) 45%, rgba(235,232,200,.75))' : '';
     document.body.classList.toggle('scoped', !!scope); if (scope) this.drawScope(C.fov > 11 ? 15 : 7.5);
