@@ -35,14 +35,16 @@ export function detailTexture(S = 512) {
 // (v8) bump = relief du grain (m), joint = appareil de pierre de taille sur les murs clairs, wear = peinture routière usée, mapBump = relief tiré de la texture (pavés, joints), leaf = feuillage (découpe, vent)
 const PRESETS = {
   matte: { amt: 1.0, streak: 1.0, base: 1.0, bump: 0.5, joint: 1, wear: 1 }, satin: { amt: 0.45, streak: 0.5, base: 0.5, bump: 0.12 }, metal: { amt: 0.7, streak: 1.0, base: 0, bump: 0.1 },
-  asphalt: { amt: 0.5, wet: 1, bump: 0.9, mapBump: 0.6 }, cobble: { amt: 0.5, wet: 0.7, bump: 0.4, mapBump: 2.4 },
+  asphalt: { amt: 0.5, ao: 1, wet: 1, bump: 0.9, mapBump: 0.6 }, cobble: { amt: 0.5, ao: 1, wet: 0.7, bump: 0.4, mapBump: 2.4 },
   // (v9) slab = dalles de granit : nuance, poli et légère pente propres à chaque dalle, chewing-gums ; glass = vitres anciennes qui ondulent
-  sidewalk: { amt: 0.45, wet: 0.7, bump: 0.5, mapBump: 1.6, slab: 1 }, curb: { amt: 0.4, wet: 0.2, bump: 0.5, mapBump: 1.2 }, gutter: { amt: 0.5, wet: 1.6, bump: 0.4, mapBump: 2.2 },
-  glass: { amt: 0.2, glass: 1.2 }, glassLit: { amt: 0.2, glass: 1.2 }, ground: { amt: 0.6, bump: 0.6 },
+  sidewalk: { amt: 0.45, ao: 1, wet: 0.7, bump: 0.5, mapBump: 1.6, slab: 1 }, curb: { amt: 0.4, ao: 1, wet: 0.2, bump: 0.5, mapBump: 1.2 }, gutter: { amt: 0.5, ao: 1, wet: 1.6, bump: 0.4, mapBump: 2.2 },
+  glass: { amt: 0.2, glass: 1.2 }, glassLit: { amt: 0.2, glass: 1.2 }, ground: { amt: 0.6, ao: 1, bump: 0.6 },
   carrelage: { amt: 0.35, streak: 0.6, mapBump: 0.8 }, carrelage_voute: { amt: 0.5, streak: 0.8, mapBump: 0.8 }, granito: { amt: 0.4, mapBump: 0.5 }, horizon: null,
   leaf: { amt: 0.9, leaf: 1 },
+  // (v11) water = eau vivante : rides qui se déplacent, reflets du ciel plus francs en vue rasante
+  eau: { amt: 0.15, water: 1 }, eauClaire: { amt: 0.1, water: 0.7 },
 };
-const shared = { uDetail: { value: null }, uWet: { value: 0.4 }, uReal: { value: 1 }, uTime: { value: 0 }, uWind: { value: 1 } };
+const shared = { uAO: { value: null }, uAOBox: { value: new THREE.Vector4(0, 0, 0, 0) }, uAOFlip: { value: 0 }, uDetail: { value: null }, uWet: { value: 0.4 }, uReal: { value: 1 }, uTime: { value: 0 }, uWind: { value: 1 } };
 export const realismUniforms = shared; // uWet (0 = sec, 1 = après la pluie), uReal (0 = coupé), uWind (0 = feuillage immobile) se règlent en direct ; uTime avance tout seul
 
 const _done = new WeakSet();
@@ -54,13 +56,13 @@ export function patchMaterial(m, P) {
     prev?.call(m, sh, r);
     sh.uniforms.uDetail = shared.uDetail; sh.uniforms.uWet = shared.uWet; sh.uniforms.uReal = shared.uReal; sh.uniforms.uTime = shared.uTime; sh.uniforms.uWind = shared.uWind;
     sh.uniforms.uRAmt = { value: P.amt ?? 0.5 }; sh.uniforms.uRStreak = { value: P.streak ?? 0 }; sh.uniforms.uRWet = { value: P.wet ?? 0 }; sh.uniforms.uRBase = { value: P.base ?? 0 };
-    sh.uniforms.uRBump = { value: P.bump ?? 0 }; sh.uniforms.uRJoint = { value: P.joint ?? 0 }; sh.uniforms.uRWear = { value: P.wear ?? 0 }; sh.uniforms.uRMapBump = { value: P.mapBump ?? 0 }; sh.uniforms.uRSlab = { value: P.slab ?? 0 }; sh.uniforms.uRGlass = { value: P.glass ?? 0 };
+    sh.uniforms.uRBump = { value: P.bump ?? 0 }; sh.uniforms.uRJoint = { value: P.joint ?? 0 }; sh.uniforms.uRWear = { value: P.wear ?? 0 }; sh.uniforms.uRMapBump = { value: P.mapBump ?? 0 }; sh.uniforms.uRSlab = { value: P.slab ?? 0 }; sh.uniforms.uRGlass = { value: P.glass ?? 0 }; sh.uniforms.uRWater = { value: P.water ?? 0 }; sh.uniforms.uRAO = { value: P.ao ?? 0 }; sh.uniforms.uAO = shared.uAO; sh.uniforms.uAOBox = shared.uAOBox; sh.uniforms.uAOFlip = shared.uAOFlip;
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRPos; varying vec3 vRNrm; uniform float uTime, uWind, uReal;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
   vRPos = (modelMatrix * vec4(transformed, 1.0)).xyz; vRNrm = normalize(mat3(modelMatrix) * objectNormal);` + (LEAF ? `
   { float rS = uReal * uWind * smoothstep(2.2, 6.5, vRPos.y) * 0.07; float rT = uTime * 1.25 + vRPos.x * 0.37 + vRPos.z * 0.29;
     transformed += inverse(mat3(modelMatrix)) * rS * vec3(sin(rT) + 0.4 * sin(rT * 2.7 + vRPos.y), 0.35 * sin(rT * 1.9 + vRPos.x), cos(rT * 0.83) + 0.4 * sin(rT * 3.1 + vRPos.z)); }` : ''));
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRPos; varying vec3 vRNrm; uniform sampler2D uDetail; uniform float uWet, uReal, uRAmt, uRStreak, uRWet, uRBase, uRBump, uRJoint, uRWear, uRMapBump, uRSlab, uRGlass;\nfloat rHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }')
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRPos; varying vec3 vRNrm; uniform sampler2D uDetail; uniform float uWet, uReal, uRAmt, uRStreak, uRWet, uRBase, uRBump, uRJoint, uRWear, uRMapBump, uRSlab, uRGlass, uRWater, uTime, uRAO, uAOFlip; uniform sampler2D uAO; uniform vec4 uAOBox;\nfloat rHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }')
       .replace('#include <color_fragment>', `#include <color_fragment>
   vec3 rN = abs(vRNrm); float rUp = step(0.6, rN.y); float rDist = length(vViewPosition);
   vec2 rUV = rUp > 0.5 ? vRPos.xz : (rN.x > rN.z ? vRPos.zy : vRPos.xy);
@@ -68,12 +70,15 @@ export function patchMaterial(m, P) {
   float rBlot = texture2D(uDetail, rUV * 0.047 + 0.31).g - 0.5;
   float rH = rGrain * uRBump;` + (LEAF ? `
   { // feuillage : découpe en feuilles près de la caméra, dégradé de teinte, envers plus sombre
-    float rCut = texture2D(uDetail, rUV * 0.83 + vRPos.y * 0.21).b + rGrain * 0.9;
+    float rCut = texture2D(uDetail, rUV * 0.46 + vRPos.y * 0.17).b + rGrain * 0.4;
     float rNear = uReal * (1.0 - smoothstep(22.0, 48.0, rDist));
-    if (rCut < 0.3 * rNear * smoothstep(1.7, 3.2, vRPos.y)) discard;
+    float rEdge = 1.0 - abs(dot(normalize(vRNrm), normalize(cameraPosition - vRPos))); // (v11) la découpe ronge surtout la silhouette : contour déchiqueté, cœur plein
+    if (rCut < 0.62 * rEdge * rEdge * rNear * smoothstep(1.7, 3.2, vRPos.y)) discard;
+    diffuseColor.rgb *= mix(1.0, mix(0.7, 1.1, smoothstep(0.22, 0.6, rCut)), uReal); // creux entre les touffes
+    diffuseColor.rgb *= 1.0 - uReal * 0.22 * (1.0 - rEdge) * smoothstep(0.1, -0.5, normalize(vRNrm).y); // dessous des masses plus sombre
     diffuseColor.rgb *= 1.0 + uReal * (rBlot * 0.55 + rGrain * 0.3 + (rCut - 0.5) * 0.3);
     diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.18, 1.1, 0.62), uReal * smoothstep(0.05, 0.3, rBlot) * 0.5);
-    if (!gl_FrontFacing) diffuseColor.rgb *= 0.66;
+    if (!gl_FrontFacing) diffuseColor.rgb *= 0.8;
   }` : `
   float rStreak = (1.0 - rUp) * (texture2D(uDetail, vec2(rUV.x * 0.8, rUV.y * 0.03)).b - 0.5) * smoothstep(-0.02, 0.3, rBlot);
   float rBase = (1.0 - rUp) * uRBase * (1.0 - smoothstep(0.0, 1.4, vRPos.y)) * step(-0.3, vRPos.y);
@@ -106,10 +111,14 @@ export function patchMaterial(m, P) {
   rH += dot(sampledDiffuseColor.rgb, vec3(0.3333)) * uRMapBump;
   #endif
   diffuseColor.rgb *= 1.0 + rK * (rGrain * 0.13 + rBlot * 0.36) + uReal * uRStreak * min(rStreak, 0.08) * 0.7;
-  diffuseColor.rgb *= 1.0 - uReal * (rBase * (0.16 + rBlot * 0.25) + rWet * 0.42);`))
+  diffuseColor.rgb *= 1.0 - uReal * (rBase * (0.16 + rBlot * 0.25) + rWet * 0.42);
+  if (uRAO > 0.0 && uAOBox.z > 0.0 && rUp > 0.5 && vRPos.y > -1.5) { // (v11) ombre de contact au pied des murs, des arbres et du mobilier
+    vec2 rA = (vRPos.xz - uAOBox.xy) * uAOBox.zw; float rIn = step(0.0, rA.x) * step(rA.x, 1.0) * step(0.0, rA.y) * step(rA.y, 1.0); rA.y = 1.0 - rA.y; // même repère dans la visionneuse et dans le .glb (l'export retourne l'image avec flipY)
+    diffuseColor.rgb *= 1.0 - uReal * uRAO * 0.52 * rIn * texture2D(uAO, rA).r; }`))
       .replace('#include <roughnessmap_fragment>', LEAF ? '#include <roughnessmap_fragment>' : `#include <roughnessmap_fragment>
   roughnessFactor = clamp(roughnessFactor + rK * (rBlot * 0.35 + rGrain * 0.2) + rSlabR, 0.04, 1.0);
-  roughnessFactor = mix(roughnessFactor, 0.05, rWet * uReal);`)
+  roughnessFactor = mix(roughnessFactor, 0.05, rWet * uReal);
+  if (uRWater > 0.0) roughnessFactor = mix(roughnessFactor, 0.06, uReal);`)
       .replace('#include <normal_fragment_maps>', LEAF ? '#include <normal_fragment_maps>' : `#include <normal_fragment_maps>
   { // relief : la normale suit la pente du grain, des joints et de la texture (aucune lecture de texture en plus)
     float rBk = uReal * 0.012 * (1.0 - rWet) * (1.0 - smoothstep(30.0, 80.0, rDist));
@@ -118,10 +127,14 @@ export function patchMaterial(m, P) {
       vec3 rNb = abs(rDet) * normal - rBk * sign(rDet) * (rHx * rR1 + rHy * rR2); float rL = dot(rNb, rNb);
       if (rL > 1e-16 && rL < 1e16) normal = rNb * inversesqrt(rL); }
     if (rTilt.x != 0.0 || rTilt.y != 0.0) normal = normalize(normal + mat3(viewMatrix) * vec3(rTilt.x, 0.0, rTilt.y) * (1.0 - rWet));
+    if (uRWater > 0.0 && rUp > 0.5) { // rides : deux nappes de bruit qui glissent en sens croisés, plus fines près du bord de l'œil
+      vec2 rW1 = texture2D(uDetail, vRPos.xz * 0.11 + uTime * vec2(0.013, 0.021)).rg - 0.5, rW2 = texture2D(uDetail, vRPos.zx * 0.31 - uTime * vec2(0.034, 0.019)).gb - 0.5;
+      vec2 rWv = (rW1 * 1.3 + rW2 * 0.8) * uRWater * uReal * (0.5 + 0.5 / (1.0 + rDist * 0.03));
+      normal = normalize(normal + mat3(viewMatrix) * vec3(rWv.x, 0.0, rWv.y)); }
   }`);
   };
   const key = m.customProgramCacheKey?.bind(m);
-  m.customProgramCacheKey = () => (key ? key() : '') + '|real9' + (LEAF ? 'L' : '');
+  m.customProgramCacheKey = () => (key ? key() : '') + '|real11' + (LEAF ? 'L' : '');
   m.needsUpdate = true;
 }
 
@@ -130,10 +143,12 @@ export function applyRealism(root, opts = {}) {
   shared.uDetail.value = detailTexture();
   if (opts.wet != null) shared.uWet.value = opts.wet;
   const P = { ...PRESETS, ...(opts.presets || {}) }, seen = new Set();
+  // (v11) carte d'ombres de contact livrée dans le .glb : matériau « aoSol_x0_z0_x1_z1 » posé sur un triangle caché
+  root.traverse((o) => { const m = o.isMesh && [].concat(o.material)[0]; if (!m || !/^aoSol_/.test(m.name || '') || !m.map) return; const b = m.name.split('_').slice(1).map(Number); if (b.length < 4 || b.some(isNaN)) return;
+    o.visible = false; m.map.wrapS = m.map.wrapT = THREE.ClampToEdgeWrapping; shared.uAO.value = m.map; shared.uAOBox.value.set(b[0], b[1], 1 / (b[2] - b[0]), 1 / (b[3] - b[1])); shared.uAOFlip.value = m.map.flipY ? 1 : 0; });
   root.traverse((o) => { if (!o.isMesh) return; for (const m of [].concat(o.material)) { if (!m || seen.has(m)) continue; seen.add(m); const p = P[m.name]; if (p) patchMaterial(m, p); } });
   // l'horloge du vent avance toute seule : rien à appeler à chaque image
-  let clock = null; root.traverse((o) => { if (!clock && o.isMesh && [].concat(o.material).some((m) => m && m.name === 'leaf')) clock = o; });
-  if (clock) { const prev = clock.onBeforeRender; clock.onBeforeRender = function (...a) { shared.uTime.value = performance.now() / 1000; prev?.apply(this, a); }; }
+  root.traverse((o) => { if (!o.isMesh || !/^(leaf|eau|eauClaire)$/.test([].concat(o.material)[0]?.name || '')) return; const prev = o.onBeforeRender; o.onBeforeRender = function (...a) { shared.uTime.value = performance.now() / 1000; prev?.apply(this, a); }; });
   return shared;
 }
 

@@ -3,6 +3,7 @@
 // placés chaque image à l'aplomb des têtes (projection écran).
 import * as THREE from 'three';
 import { makeCharacter, attachGun, tintTeam, chars } from './assets.js';
+import { holdPose } from './hold.js';
 import { TEAMS, classOf } from './data.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -11,7 +12,7 @@ export const SLOTS = [[0, 0.5], [-1.45, -0.7], [1.45, -0.7], [2.85, -1.9]];
 
 export function createLobby({ scene, camera, world, Q }) {
   // lieu : sur la place, la fontaine et le kiosque derrière l'équipe ; réglable par ?lobby=x,z,yaw pour essayer d'autres décors
-  const L = (Q.get('lobby') || '3.5,-22,3.1416').split(',').map(Number);
+  const L = (Q.get('lobby') || world.gp.lobby?.join(',') || '3.5,-22,3.1416').split(',').map(Number);
   const root = new THREE.Group(); root.name = 'lobby'; root.visible = false; scene.add(root);
   const gy = world.groundY(L[0], L[1], 2);
   root.position.set(L[0], gy, L[1]); root.rotation.y = L[2] || 0;
@@ -48,7 +49,7 @@ export function createLobby({ scene, camera, world, Q }) {
     if (!m || !chars[m.skin]) return;
     const ch = makeCharacter(m.skin); tintTeam(ch.model, m.skin, m.team);
     ch.model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
-    try { if (m.gun) attachGun(ch, m.gun); } catch (e) { console.warn('arme du salon', e); }
+    try { if (m.gun) { attachGun(ch, m.gun); ch.gunId = m.gun; } } catch (e) { console.warn('arme du salon', e); }
     const idle = ch.actions[m.pistol ? 'MXP_IdleLow' : 'MX_IdleLow'] || ch.actions.MX_Idle || Object.values(ch.actions)[0];
     idle?.play(); ch.idle = idle; ch.mixer.update(Math.random() * 2);
     ch.root.rotation.y = p.turn; p.g.add(ch.root); p.ch = ch;
@@ -84,7 +85,7 @@ export function createLobby({ scene, camera, world, Q }) {
       dragV *= Math.pow(0.02, dt); drag += dragV * dt * 60 * 0.06; drag *= Math.pow(0.35, dt);
       pads.forEach((p, i) => {
         p.beam.material.uniforms.t.value = t + i;
-        if (!p.ch) return; p.ch.mixer.update(dt);
+        if (!p.ch) return; p.ch.mixer.update(dt); if (p.ch.gun && p.ch.gunId && !p.ch.busy) holdPose(p.ch, p.ch.gunId);
         p.ch.root.rotation.y = p.turn + (i === 0 ? drag : 0) + Math.sin(t * 0.4 + i) * 0.03;
         if (i > 0 && !p.ch.busy && (p.idleT -= dt) < 0) { p.idleT = 9 + Math.random() * 12; gesture(p, Math.random() < 0.5 ? 'MX_FistPump' : 'MX_Cheer'); }
       });

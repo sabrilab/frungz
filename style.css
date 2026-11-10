@@ -447,6 +447,9 @@ body.scoped #cross, body.scoped #streakbar { visibility: hidden; }
 .toggle .sun { background: linear-gradient(180deg, #ffe17a, #ffb02a); color: #3a1d00; box-shadow: 0 3px 0 #b06a0c; }
 .toggle.night .sun { background: none; color: var(--dim); box-shadow: none; }
 .toggle.night .moon { background: linear-gradient(180deg, #5b4bd6, #33268f); color: #fff; box-shadow: 0 3px 0 #1d1560; }
+.toggle.maps button { padding: 8px 6px 7px; border: 0; border-radius: 10px; background: none; color: var(--dim); font: inherit; cursor: pointer; transition: background .15s, color .15s; }
+.toggle.maps button.on { background: linear-gradient(180deg, #7fd3ff, #2c8fd6); color: #04263f; box-shadow: 0 3px 0 #155f96; }
+.toggle.maps button:not(.on):hover { color: #fff; }
 .squadline { display: flex; align-items: center; gap: 9px; padding: 8px 8px 8px 14px; border-radius: 13px; background: var(--ink2); box-shadow: inset 0 0 0 2px var(--edge), 0 4px 0 rgba(0,0,0,.4); }
 .squadline b { font: 20px Bungee, Inter; color: var(--team); } .squadline span { font: 700 12px Inter; color: var(--dim); }
 .mini { margin-left: auto; font: 12px Bungee, Inter; padding: 7px 12px 6px; border-radius: 9px; color: #fff; background: var(--team); box-shadow: 0 3px 0 var(--team-d); }

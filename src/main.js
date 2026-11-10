@@ -28,6 +28,22 @@ let save; try { save = { ...DEFAULT, ...JSON.parse(localStorage.getItem(SAVE_KEY
 const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {} };
 if ((save.sv || 1) < 2) { save.sv = 2; save.settings.teamSize = 50; } // passage au 50 contre 50 par défaut
 
+// ---------- cartes ----------
+// deux maps au même format (glb + gameplay.json) : on en charge une seule ; en changer recharge la page
+const MAPS = {
+  paris: { nom: 'Place Frungz', court: 'Paris', desc: 'cœur de Paris', glb: 'assets/map.glb', gp: 'assets/gameplay.json' },
+  banlieue: { nom: 'Les Hauts de Frungz', court: 'Banlieue', desc: 'banlieue parisienne', glb: 'assets/banlieue/map.glb', gp: 'assets/banlieue/gameplay.json' },
+};
+const MAP_ID = MAPS[Q.get('map')] ? Q.get('map') : MAPS[save.settings.map] ? save.settings.map : 'paris';
+const MAP = MAPS[MAP_ID]; window.__map = MAP_ID;
+// change de carte : mémorisée, puis rechargement (en ligne, l'invité garde son salon : ?equipe=)
+function switchMap(id, room) {
+  if (!MAPS[id] || id === MAP_ID) return; save.settings.map = id; persist();
+  const q = new URLSearchParams(location.search); q.delete('map'); if (room) q.set('equipe', room);
+  $('menu')?.classList.remove('ready'); const lt = $('loadtxt'); if (lt) lt.textContent = 'Changement de carte…'; $('loading')?.classList.remove('hidden');
+  location.href = location.pathname + (q.toString() ? '?' + q.toString() : '');
+}
+
 // ---------- qualité graphique ----------
 // préréglages : bas (PC modestes), moyen, haut ; « auto » choisit selon la carte graphique, puis la résolution s'adapte aux images/s
 const QUALITY = {
@@ -108,9 +124,9 @@ let world, mapRoot, carDefs = [], night = null, lobby = null;
 let progress = { map: 0, chars: 0, guns: 0, cars: 0 };
 const showProgress = () => { const p = progress.map * 0.6 + progress.chars / ALL_SKINS.length * 0.25 + progress.guns / Object.keys(WEAPONS).length * 0.05 + progress.cars / CARS.length * 0.1; $('loadbar').style.width = (p * 100).toFixed(0) + '%'; };
 async function loadAll() {
-  const gp = await fetch('assets/gameplay.json').then((r) => r.json());
+  const gp = await fetch(MAP.gp).then((r) => r.json());
   const [{ root, ground, cassables, rame }] = await Promise.all([
-    loadMap('assets/map.glb', (p) => { progress.map = p; showProgress(); }),
+    loadMap(MAP.glb, (p) => { progress.map = p; showProgress(); }),
     Promise.all([loadSkinBases(), loadMx()]).then(([, mx]) => { for (const d of ALL_SKINS) { try { registerSkin(chars, d, mx, 1.8, { tex: 512 }); } catch (e) { console.warn('skin', d.id, e); } progress.chars++; showProgress(); } }),
     loadGuns(() => { progress.guns++; showProgress(); }),
     Promise.all(CARS.map(async ([f, classe, nom]) => { try { const g = await loadGLB(`assets/cars/${f}.glb`); const s = g.scene; const box = new THREE.Box3().setFromObject(s); const sz = s.userData.size || [box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z]; carDefs.push({ scene: s, classe, nom, size: sz }); } catch (e) { console.warn('voiture', f, e); } progress.cars++; showProgress(); })),
@@ -118,7 +134,7 @@ async function loadAll() {
   $('loadtxt').textContent = 'Préparation du quartier…'; await new Promise((r) => setTimeout(r, 30));
   mapRoot = root; scene.add(root);
   // matières réalistes (grain, salissures, coulures, chaussée mouillée par plaques) : sauf en qualité basse
-  if (QN !== 'bas' && !Q.has('noreal')) { try { applyRealism(root, { wet: 0.4 }); window.__real = realismUniforms; } catch (e) { console.warn('réalisme indisponible', e); } }
+  if (QN !== 'bas' && !Q.has('noreal')) { try { applyRealism(root, { wet: 0.4, presets: gp.realisme }); window.__real = realismUniforms; } catch (e) { console.warn('réalisme indisponible', e); } }
   // allègements selon la qualité : pas d'ombre des feuillages en moyenne, pas de décor lointain en basse (caché par le brouillard)
   root.traverse((o) => { if (!o.isMesh) return; const n = o.name || ''; if (QN !== 'haut' && /leaf/.test(n)) o.castShadow = false; if (QN === 'bas' && /decor_lointain/.test(n)) o.visible = false; });
   const tw = performance.now(); world = new World(gp, ground); console.log('monde prêt en', (performance.now() - tw).toFixed(0), 'ms'); window.__world = world; window.__ground = ground;
@@ -143,6 +159,7 @@ function renderMenu() {
   $('clsInfo').innerHTML = `<div class="kitrow"><label>Arme principale</label>${prim.map((id) => chip('p', id)).join('')}</div><div class="kitrow"><label>Arme de poing</label>${sec.map((id) => chip('s', id)).join('')}</div>`
     + `<p><span>${svg('vest')} ${K.armor ? 'Gilet ' + K.armor : 'Sans gilet'}</span><span>${svg('target')} <b>${K.perkName}</b> : ${K.perkDesc}</span></p>`;
   $('nightBtn').classList.toggle('night', !!save.settings.night);
+  $('mapName').textContent = MAP.nom.toUpperCase(); document.querySelectorAll('#mapBtn [data-map]').forEach((b) => b.classList.toggle('on', b.dataset.map === MAP_ID));
   $('bank').textContent = fmt(save.bank); $('lvl').textContent = save.lvl || 1;
   { const l = save.lvl || 1, a = 100 * (l - 1) ** 2, b = 100 * l ** 2; $('xpbar').style.width = Math.max(4, Math.min(100, ((save.xp || 0) - a) / (b - a) * 100)).toFixed(0) + '%'; }
   $('menu').classList.toggle('t-ordre', save.team === 'ordre'); $('invite').classList.toggle('t-ordre', save.team === 'ordre');
@@ -163,6 +180,7 @@ $('skins').addEventListener('click', (e) => { const s = e.target.dataset?.skin; 
 $('play').disabled = true;
 $('play').addEventListener('click', () => start());
 $('openShop').addEventListener('click', () => openShop());
+$('mapBtn').addEventListener('click', (e) => { const b = e.target.closest('[data-map]'); if (!b || b.dataset.map === MAP_ID) return; if (net.guest) { $('inviteNote').textContent = 'En ligne, c\'est le chef qui choisit la carte.'; return; } audio.init(); audio.play('uiSelect'); switchMap(b.dataset.map, net.online ? net.room : null); });
 $('nightBtn').addEventListener('click', () => { save.settings.night = !save.settings.night; persist(); night?.set(save.settings.night); renderMenu(); audio.init(); audio.play('uiTick'); });
 $('closeShop').addEventListener('click', () => closeShop());
 $('again').addEventListener('click', () => { $('end').classList.add('hidden'); $('menu').classList.remove('hidden'); lobby?.show(true); renderMenu(); });
@@ -177,7 +195,7 @@ persist();
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const net = createNet({ local: Q.get('net') === 'local' ? true : /^wss?:\/\//.test(Q.get('net') || '') ? Q.get('net') : false });
 const myGun = () => { const T = save.team, K = classOf(T, save.cls[T]); return kitOf(save, T, K).p; };
-const netMeta = () => ({ pseudo: save.pseudo || 'Joueur', skin: save.skin, team: save.team, cls: classOf(save.team, save.cls[save.team]).id, gun: myGun() });
+const netMeta = () => ({ map: MAP_ID, pseudo: save.pseudo || 'Joueur', skin: save.skin, team: save.team, cls: classOf(save.team, save.cls[save.team]).id, gun: myGun() });
 // amis connectés, sous la forme attendue par le salon 3D (tenue ramenée au camp de l'équipe)
 function onlineFriends() {
   if (!net.online) return []; const T = save.team, skins = TEAMS[T].skins;
@@ -226,6 +244,7 @@ function renderNet() {
 net.on.presence = () => {
   // un invité suit le camp de son chef
   const h = net.hostMember(); if (net.guest && h && h.team && h.team !== save.team && TEAMS[h.team]) { save.team = h.team; persist(); renderMenu(); }
+  if (net.guest && h && MAPS[h.map] && h.map !== MAP_ID) switchMap(h.map, net.room); // l'invité passe sur la carte de son chef
   renderParty();
 };
 net.on.status = () => renderNet();
@@ -437,6 +456,7 @@ function start() {
 // invité : la partie lancée par le chef, avec exactement ses persos
 function startGuest() {
   const m = pendingStart; pendingStart = null; if (!m || !world || !net.guest) return;
+  if (m.map && MAPS[m.map] && m.map !== MAP_ID) { switchMap(m.map, net.room); return; }
   if (!m.roster?.some((r) => r[4] === net.id)) { $('inviteNote').textContent = 'Une partie a commencé sans toi : tu entreras à la prochaine.'; return; }
   if (game) { scene.remove(game.root); world.dynamic.length = 0; game = null; }
   for (const id of ['invite', 'shop', 'end']) $(id).classList.add('hidden'); pause.classList.add('hidden');
