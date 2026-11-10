@@ -404,7 +404,7 @@ export const rideMethods = {
 
   // ---------------------------------------------------------------- pose du pilote
   rideAnimate(a, dt) {
-    const c = a.inCar, ch = a.ch, B = ch.bones, rig = ch.rideRig; const moto = c.kind === 'moto';
+    const c = a.inCar, ch = a.ch, B = ch.bones, rig = ch.rideRig; const moto = c.kind !== 'skate'; // le mini-hélico (helico.js) se pilote assis comme une moto
     // repère du pilote : celui du véhicule (inclinaison comprise) ; sur le skate, de profil, tourné vers l'avant pendant la poussée
     c.obj.updateMatrixWorld(true);
     const pushing = !moto && c.push > 0; c.pushW = lerp(c.pushW || 0, pushing ? 1 : 0, 1 - Math.exp(-dt * 9));
@@ -431,7 +431,8 @@ export const rideMethods = {
       const ph = pushing ? 1 - c.push / 0.62 : 0, dip = pushing ? Math.sin(clamp((ph - 0.15) / 0.7, 0, 1) * Math.PI) * 0.12 : 0;
       target = toW(0, DECK_Y + rig.hipH * 0.86 - crouch - dip - Math.abs(c.steer) * 0.05, pushing ? 0.12 * c.pushW : 0);
     }
-    const dB = target.sub(hipMid); const bw = wpos(B.Body).add(dB); B.Body.parent.updateMatrixWorld(true); B.Body.position.copy(B.Body.parent.worldToLocal(bw)); B.Body.updateMatrixWorld(true);
+    // (les nouveaux persos n'ont plus d'os Body : on déplace alors le bassin, Hips)
+    const BD = B.Body || B.Hips; const dB = target.sub(hipMid); const bw = wpos(BD).add(dB); BD.parent.updateMatrixWorld(true); BD.position.copy(BD.parent.worldToLocal(bw)); BD.updateMatrixWorld(true);
     // 2) buste penché vers l'avant (sportive : position couchée), tête relevée pour regarder la route
     const lean = moto ? c.def.spec.lean + clamp(-c.speed / c.max * 0.05, -0.05, 0) : 0.18 + (c.air ? 0.15 : 0) + c.pushW * 0.15;
     const leanAxis = V(1, 0, 0).transformDirection(ch.root.matrixWorld); // gauche du pilote : le buste bascule vers l'avant

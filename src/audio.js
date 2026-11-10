@@ -171,8 +171,8 @@ export function createAudio() {
     if (!eng) return;
     const t = ctx.currentTime;
     if (!on) { eng.g.gain.setTargetAtTime(0, t, 0.1); return; }
-    const m = kind === 'moto' ? 1.9 : 1; // moto : moteur plus aigu qui monte haut dans les tours
-    eng.o.frequency.setTargetAtTime((38 + rpm * 120) * m, t, 0.05); eng.o2.frequency.setTargetAtTime((19 + rpm * 60) * m, t, 0.05); eng.f.frequency.setTargetAtTime((500 + rpm * 1600) * (kind === 'moto' ? 1.4 : 1), t, 0.05); eng.g.gain.setTargetAtTime((0.09 + rpm * 0.08) * (kind === 'moto' ? 0.8 : 1), t, 0.05);
+    const m = kind === 'moto' ? 1.9 : kind === 'heli' ? 2.9 : 1; // moto : moteur plus aigu qui monte haut dans les tours ; mini-hélico : sifflement des moteurs électriques
+    eng.o.frequency.setTargetAtTime((38 + rpm * 120) * m, t, 0.05); eng.o2.frequency.setTargetAtTime((19 + rpm * 60) * m * (kind === 'heli' ? 0.5 : 1), t, 0.05); eng.f.frequency.setTargetAtTime((500 + rpm * 1600) * (kind === 'moto' ? 1.4 : kind === 'heli' ? 1.2 : 1), t, 0.05); eng.g.gain.setTargetAtTime((0.09 + rpm * 0.08) * (kind === 'moto' ? 0.8 : kind === 'heli' ? 0.65 : 1), t, 0.05);
   }
   // roulement des roues de skate sur les pavés (bruit filtré continu, plus fort et plus aigu avec la vitesse)
   let rol = null;
