@@ -275,7 +275,7 @@ export function installSeries(Game) {
       else if (h.kind === 'g105') { this.boom(p, 8, 170, h.owner, '#ffb347', { foesOnly: true }); this.audio.cannon(p, true); }
       else { // 25 mm : éclats sans lumière ni fumée (6 coups par seconde)
         this.fx.burst(p.clone().add(V(0, 0.3, 0)), 10, { color: '#ffd27a', speed: 7, size: 0.05, life: 0.3, emissive: true }); this.fx.burst(p.clone().add(V(0, 0.4, 0)), 4, { color: '#5a5550', speed: 2, size: 0.3, life: 0.9 });
-        this.audio.cannon(p, false); this.world.cass?.blast(p, 1.5, 100, h.owner);
+        this.audio.cannon(p, false); this.blast(p, 1.5, 100, h.owner);
         for (const t of this.actors) { if (!t.alive || t.team === h.owner.team || (t.inCar && !t.inCar.kind)) continue; const d = t.pos.distanceTo(p); if (d < 3) this.damage(t, 70 * (1 - d / 5), credit(h.owner), { blast: true, ico: 'gunship' }); }
         for (const car of this.cars) if (!car.dead && car.pos.distanceTo(p) < 3) this.hitCar(car, 40, h.owner);
       } }

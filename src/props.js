@@ -121,25 +121,6 @@ export function receleur() {
 // ---------- barricades ----------
 // barricade de 4 m avec deux meurtrières (fentes à hauteur d'épaule pour tirer à travers)
 export const BARRICADE = { w: 4, h: 2.3, holes: [[-1.1, -0.7, 1.22, 1.58], [0.7, 1.1, 1.22, 1.58]] };
-export function barricade(team) {
-  const g = new THREE.Group(), W = BARRICADE.w, H = BARRICADE.h, [h0, h1] = [BARRICADE.holes[0][2], BARRICADE.holes[0][3]];
-  // bandes pleines en bas et en haut, bande du milieu découpée autour des fentes
-  const segs = [[-W / 2, -1.1], [-0.7, 0.7], [1.1, W / 2]];
-  const panel = (mat, d) => { g.add(box(W, h0, d, mat, 0, h0 / 2, 0)); g.add(box(W, H - h1, d, mat, 0, h1 + (H - h1) / 2, 0)); for (const [x0, x1] of segs) g.add(box(x1 - x0, h1 - h0, d, mat, (x0 + x1) / 2, (h0 + h1) / 2, 0)); };
-  if (team === 'ordre') { // boucliers anti-émeute bleu nuit
-    const m = M('#1c2a4a', { m: 0.4, r: 0.4 }); panel(m, 0.12);
-    for (const z of [0.07, -0.07]) { const p = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.4), new THREE.MeshStandardMaterial({ map: textTex('POLICE', { bg: null, fg: '#ffffff', size: 70 }), transparent: true })); p.position.set(0, 0.7, z); if (z < 0) p.rotation.y = Math.PI; g.add(p); }
-    g.add(box(W, 0.08, 0.14, M('#d8d8d8', { m: 0.6 }), 0, H, 0)); g.add(box(W, 0.1, 0.14, M('#c8102e'), 0, 1.0, 0));
-    for (const x of [-1.1, -0.7, 0.7, 1.1]) g.add(box(0.05, h1 - h0 + 0.08, 0.15, M('#d8d8d8', { m: 0.6 }), x, (h0 + h1) / 2, 0));
-    for (const sx of [-1, 1]) g.add(box(0.1, 0.1, 0.8, M('#555'), sx * 1.8, 0.05, -0.2));
-  } else { // palissade de palettes, fentes encadrées
-    const wood = M('#b48a5a'), dark = M('#7a5a3a'); panel(wood, 0.1);
-    for (let i = 1; i < 6; i++) g.add(box(W, 0.03, 0.11, dark, 0, i * 0.4, 0.005));
-    for (const x of [-1.9, -0.9, 0, 0.9, 1.9]) g.add(box(0.12, H, 0.14, dark, x, H / 2, -0.06));
-    const p = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.5), new THREE.MeshStandardMaterial({ map: textTex('FRUNGZ', { bg: null, fg: '#ff4fa0', size: 72 }), transparent: true })); p.position.set(0, 0.7, 0.06); p.rotation.z = 0.06; g.add(p);
-  }
-  return g;
-}
 // grenade (lacrymo : cartouche grise ; fumigène : pot coloré)
 export function grenadeMesh(kind) {
   const g = new THREE.Group(); g.add(cyl(0.05, 0.05, 0.16, 8, M(kind === 'gas' ? '#7d8a6a' : '#ff4fa0'))); g.add(cyl(0.02, 0.02, 0.04, 6, M('#333'), 0, 0.1)); return g;
