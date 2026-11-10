@@ -212,7 +212,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 
 /* kill-cam : image de caméra de surveillance */
 /* kill-cam : bulle incrustée façon caméra de surveillance, le jeu continue derrière */
-#killcam { position: absolute; right: 16px; top: 168px; width: 300px; height: 186px; pointer-events: none; opacity: 0; transform: translateX(40px) rotate(4deg) scale(.7); transition: opacity .15s, transform .35s cubic-bezier(.3,1.8,.5,1);
+#killcam { position: absolute; right: 16px; top: 168px; width: 380px; height: 236px; pointer-events: none; opacity: 0; transform: translateX(40px) rotate(4deg) scale(.7); transition: opacity .15s, transform .35s cubic-bezier(.3,1.8,.5,1);
   font: 700 11px 'Courier New', monospace; color: #e8ffe8; text-shadow: 0 0 4px rgba(0,0,0,.9); border-radius: 14px; box-shadow: 0 0 0 3px rgba(255,255,255,.85), 0 0 0 6px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.6); overflow: hidden; }
 #killcam.on { opacity: 1; transform: none; }
 #killcam.on.gold { box-shadow: 0 0 0 3px var(--gold), 0 0 0 6px rgba(0,0,0,.45), 0 0 24px rgba(255,204,61,.6); }

@@ -41,9 +41,14 @@ export function createFeedback(g) {
     if (brk) g.audio.armorBreak(false);
     // réaction visible de la cible : brume de sang à la tête ou sur un gros coup, nuage sec du gilet qui encaisse
     const p = new THREE.Vector3(t.pos.x, t.pos.y + (opts.head ? 1.68 : 1.15), t.pos.z);
-    if (opts.head || amount > 45 || killed) g.fx.burst(p, opts.head ? 3 : 2, { color: '#6e0d16', opacity: 0.4, size: opts.head ? 0.14 : 0.1, life: 0.55, speed: 0.9 });
+    // à distance, l'impact grossit avec l'éloignement pour rester lisible (sinon invisible au-delà de 20 m)
+    const far = g.camera.position.distanceTo(p);
+    g.fx.burst(p, opts.head || killed ? 3 : 2, { color: '#7a0e18', opacity: 0.45, size: (opts.head ? 0.14 : 0.1) + Math.min(0.35, far * 0.006), life: 0.55, speed: 0.9 + Math.min(1.5, far * 0.02) });
     if (absorbed > 4 && !opts.head) g.fx.burst(p, 1, { color: '#9aa3ad', opacity: 0.3, size: 0.08, life: 0.35, speed: 0.6 });
     g.input.rumble(killed ? 0.5 : 0.15, killed ? 0.3 : 0.1, killed ? 90 : 35);
+    // la vue se resserre un instant sur l'action (plus franchement sur une élimination) ; la cible reste illuminée un peu plus longtemps
+    const z = killed ? 6 : opts.head ? 3 : 1.6; if (z >= (g.cam.zoomP || 0)) { g.cam.zoomP = z; st.zoomHold = killed ? 0.28 : 0.08; }
+    if (t.flashT > 0) t.flashT = killed ? 0.16 : 0.1;
   }
 
   // ---------------------------------------------------------------- quand on se fait toucher
@@ -96,6 +101,8 @@ export function createFeedback(g) {
     const crit = a.alive && a.hp < 35 ? 1 - a.hp / 35 : 0;
     hurt.classList.toggle('crit', crit > 0);
     if (crit > 0) { st.critHb -= dt; if (st.critHb <= 0) { st.critHb = 0.95 - crit * 0.4; g.audio.heart(0.5 + crit * 0.7); } }
+    // resserrement de la vue après une touche : tenu un instant puis relâché en douceur
+    if (C.zoomP) { if (st.zoomHold > 0) st.zoomHold -= dt; else { C.zoomP *= Math.exp(-dt * 4.5); if (C.zoomP < 0.05) C.zoomP = 0; } }
     // réticule rouge un instant après une touche
     if (st.crossT > 0) { st.crossT -= dt; cross.classList.toggle('hit', st.crossT > 0); }
     // sons étouffés (explosion proche, puis santé critique)
