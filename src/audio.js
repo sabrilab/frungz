@@ -106,13 +106,24 @@ export function createAudio() {
   function explode(pos) { if (!ctx) return; const out = spatial(pos, 2, 20); if (!out) return; const t = ctx.currentTime; noise(out, t, 1.4, 'lowpass', 1800, 60, 0.7, 1.2); tone(out, t, 0.8, 90, 25, 1.2); play('debris', pos, 1); }
   // moteur de voiture (une voix continue réglée chaque image)
   let eng = null;
-  function engine(on, rpm = 0, pos = null) {
+  function engine(on, rpm = 0, pos = null, kind = null) {
     if (!ctx) return;
     if (on && !eng) { const o = ctx.createOscillator(); o.type = 'sawtooth'; const o2 = ctx.createOscillator(); o2.type = 'square'; const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700; const g = ctx.createGain(); g.gain.value = 0; o.connect(f); o2.connect(f); f.connect(g); g.connect(sfx); o.start(); o2.start(); eng = { o, o2, f, g }; }
     if (!eng) return;
     const t = ctx.currentTime;
     if (!on) { eng.g.gain.setTargetAtTime(0, t, 0.1); return; }
-    eng.o.frequency.setTargetAtTime(38 + rpm * 120, t, 0.05); eng.o2.frequency.setTargetAtTime(19 + rpm * 60, t, 0.05); eng.f.frequency.setTargetAtTime(500 + rpm * 1600, t, 0.05); eng.g.gain.setTargetAtTime(0.09 + rpm * 0.08, t, 0.05);
+    const m = kind === 'moto' ? 1.9 : 1; // moto : moteur plus aigu qui monte haut dans les tours
+    eng.o.frequency.setTargetAtTime((38 + rpm * 120) * m, t, 0.05); eng.o2.frequency.setTargetAtTime((19 + rpm * 60) * m, t, 0.05); eng.f.frequency.setTargetAtTime((500 + rpm * 1600) * (kind === 'moto' ? 1.4 : 1), t, 0.05); eng.g.gain.setTargetAtTime((0.09 + rpm * 0.08) * (kind === 'moto' ? 0.8 : 1), t, 0.05);
+  }
+  // roulement des roues de skate sur les pavés (bruit filtré continu, plus fort et plus aigu avec la vitesse)
+  let rol = null;
+  function roll(on, v = 0) {
+    if (!ctx) return;
+    if (on && !rol) { const n = ctx.sampleRate * 2, b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0); let last = 0; for (let i = 0; i < n; i++) { last = last * 0.6 + (Math.random() * 2 - 1) * 0.4; d[i] = last * (1 + 0.6 * Math.sin(i / 900)); }
+      const s = ctx.createBufferSource(); s.buffer = b; s.loop = true; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 0.8; const g = ctx.createGain(); g.gain.value = 0; s.connect(f); f.connect(g); g.connect(sfx); s.start(); rol = { f, g }; }
+    if (!rol) return; const t = ctx.currentTime;
+    if (!on) { rol.g.gain.setTargetAtTime(0, t, 0.08); return; }
+    rol.f.frequency.setTargetAtTime(350 + v * 900, t, 0.1); rol.g.gain.setTargetAtTime(0.05 + Math.min(1, v) * 0.14, t, 0.1);
   }
   function horn() { if (!ctx) return; const out = spatial(null, 0.5), t = ctx.currentTime; tone(out, t, 0.45, 392, 392, 0.3, 'square'); tone(out, t, 0.45, 494, 494, 0.25, 'square'); }
   function siren(pos) { if (!ctx) return; const out = spatial(pos, 0.5, 16); if (!out) return; const t = ctx.currentTime; for (let i = 0; i < 3; i++) { tone(out, t + i * 0.7, 0.35, 660, 660, 0.25, 'triangle'); tone(out, t + i * 0.7 + 0.35, 0.35, 880, 880, 0.25, 'triangle'); } }
@@ -130,5 +141,5 @@ export function createAudio() {
   function heart(v) { if (!ctx) return; const out = spatial(null, 0.25 * v), t = ctx.currentTime; tone(out, t, 0.12, 70, 45, 0.9, 'sine'); tone(out, t + 0.16, 0.1, 62, 40, 0.6, 'sine'); }
   function breath(inhale) { if (!ctx) return; const out = spatial(null, 0.2), t = ctx.currentTime; noise(out, t, inhale ? 0.5 : 0.8, 'bandpass', inhale ? 700 : 500, inhale ? 1100 : 300, 1.2, 0.5); }
   function whiz(pos) { if (!ctx) return; const out = spatial(pos, 0.6, 4); if (!out) return; const t = ctx.currentTime; noise(out, t, 0.18, 'bandpass', 4000, 1500, 6, 0.6); }
-  return { init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state }) };
+  return { init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state }) };
 }

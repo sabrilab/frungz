@@ -6,6 +6,7 @@ import { TEAMS, WEAPONS, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COM
 import { shopCase, lootMesh, beam, socle, baseSign, receleur, barricade, BARRICADE, grenadeMesh, policeBadge, brassard, headMarker, textTex } from './props.js';
 import { pointInPoly } from './world.js';
 import * as Anim from './anim.js';
+import { rideMethods } from './deuxroues.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
@@ -54,7 +55,7 @@ export class Game {
 
   // ---------------------------------------------------------------- mise en place
   build() {
-    this.fx.setGround((x, z, y) => this.world.groundY(x, z, y), (p, big) => this.audio.tink(p, big)); this.buildBases(); this.buildShops(); this.buildReceleur(); this.buildCars(); this.buildZones();
+    this.fx.setGround((x, z, y) => this.world.groundY(x, z, y), (p, big) => this.audio.tink(p, big)); this.buildBases(); this.buildShops(); this.buildReceleur(); this.buildCars(); this.buildRides(); this.buildZones();
     // nouvelle manche : mobilier réparé, rame sur la voie
     const W = this.world; if (W.cass) for (const e of W.cass.list) if (e.broken) W.cass.repair(e);
     if (W.metro) W.dynamic.push(...W.metro.cols);
@@ -332,7 +333,7 @@ export class Game {
   rayActors(o, d, far, skip) {
     let best = far, hit = null;
     for (const a of this.actors) {
-      if (!a.alive || a === skip || a.inCar) continue;
+      if (!a.alive || a === skip || (a.inCar && !a.inCar.kind)) continue;
       const fx = o.x - a.pos.x, fz = o.z - a.pos.z, A = d.x * d.x + d.z * d.z; if (A < 1e-8) continue;
       const B = 2 * (fx * d.x + fz * d.z), R = 0.42, C = fx * fx + fz * fz - R * R, D = B * B - 4 * A * C; if (D < 0) continue;
       const sq = Math.sqrt(D); for (const t of [(-B - sq) / (2 * A), (-B + sq) / (2 * A)]) {
@@ -624,11 +625,12 @@ export class Game {
   }
   nearestCar(a, r = 3.2) { let best = null, bd = r; for (const c of this.cars) { if (c.dead || c.driver || c.flipped) continue; const d = c.pos.distanceTo(a.pos); if (d < bd) { bd = d; best = c; } } return best; }
   enterCar(a, c) {
+    if (c.kind) return this.rideEnter(a, c); // moto, skate (deuxroues.js)
     c.driver = a; a.inCar = c; a.ch.root.visible = false; a.vel.set(0, 0, 0);
     if (a === this.player) { this.announce('', c.def.nom || 'Voiture volée', '#fff', 1.5); this.audio.play('slam', c.pos, 0.6); this.cam.carYaw = c.yaw; }
   }
   exitCar(a, dead) {
-    const c = a.inCar; if (!c) return; c.driver = null; a.inCar = null; a.ch.root.visible = true;
+    const c = a.inCar; if (!c) return; if (c.kind) return this.rideExit(a, c, dead); c.driver = null; a.inCar = null; a.ch.root.visible = true;
     const side = V(Math.cos(c.yaw), 0, -Math.sin(c.yaw)); const p = c.pos.clone().addScaledVector(side, c.W / 2 + 0.7);
     a.pos.copy(p); this.world.pushOut(a.pos, 0.35, a.pos.y); a.pos.y = this.world.groundY(a.pos.x, a.pos.z, c.pos.y + 0.5); a.yaw = c.yaw;
     if (a === this.player) { this.audio.engine(false); this.audio.play('slam', c.pos, 0.6); this.cam.yaw = c.yaw; }
@@ -645,6 +647,7 @@ export class Game {
     c.obj.visible = false; const j = this.world.dynamic.indexOf(c.col); if (j >= 0) this.world.dynamic.splice(j, 1);
   }
   updateCar(c, dt) {
+    if (c.kind) return this.updateRide(c, dt);
     if (c.dead) { c.dead -= dt; if (c.dead <= 0) { c.dead = 0; c.sunk = false; c.fallV = 0; [c.pos.x, c.pos.z, c.yaw] = c.spawn; c.pos.y = this.world.groundY(c.pos.x, c.pos.z); c.hp = c.maxHp; c.speed = 0; c.vel = null; c.obj.visible = true; this.world.dynamic.push(c.col); this.syncCar(c); } return; }
     const drv = c.driver;
     if (c.flipped || (!drv && !c.fallV && Math.abs(c.speed) < 0.05 && !(c.vel && c.vel.lengthSq() > 0.01))) { c.speed = 0; return; }
@@ -844,9 +847,9 @@ export class Game {
     }
     const car = this.nearestCar(a, 3.4);
     if (car) {
-      const quick = car.police ? a.team === 'ordre' : false;
-      prompt = `<b>${I.label('car')}</b> ${quick ? 'Prendre la voiture de service' : 'Voler'} <span class="r">${car.def.nom || ''}</span>`;
-      if ((I.pressed('car')) && !a.channel) { if (quick) this.enterCar(a, car); else this.startChannel(a, 'Crochetage…', 0.9, () => car.pos.distanceTo(a.pos) < 4 && !car.driver, () => this.enterCar(a, car)); }
+      const R = car.kind ? this.ridePrompt(a, car) : null; const quick = R ? R.quick : car.police ? a.team === 'ordre' : false;
+      prompt = `<b>${I.label('car')}</b> ${R ? R.text : quick ? 'Prendre la voiture de service' : 'Voler'} <span class="r">${car.kind === 'skate' ? '' : car.def.nom || ''}</span>`;
+      if ((I.pressed('car')) && !a.channel) { if (quick) this.enterCar(a, car); else this.startChannel(a, R?.label || 'Crochetage…', R?.dur || 0.9, () => car.pos.distanceTo(a.pos) < 4 && !car.driver, () => this.enterCar(a, car)); }
     }
     if (!prompt) {
       // objet de boutique à portée (vitrine cassée) ; sinon vitrine intacte à casser à la main
@@ -919,7 +922,7 @@ export class Game {
     a.stunT = Math.max(0, (a.stunT || 0) - dt);
     if (!a.alive) { Anim.dead(a, dt); if (a.bot) { a.respawnT -= dt; if (a.respawnT <= 0) { if (a.temp) { a.gone = true; ch.root.visible = false; return; } this.respawn(a); } } if (a.respawnT < 1.5) ch.root.visible = (a.respawnT * 10 | 0) % 2 === 0; return; }
     this.wallRecharge(a, dt);
-    if (a.inCar) return;
+    if (a.inCar) { if (a.inCar.kind) this.rideAnimate(a, dt); return; }
     a.fireT -= dt; a.wantJump = Math.max(0, (a.wantJump || 0) - dt); a.wantCrouch = Math.max(0, (a.wantCrouch || 0) - dt);
     if (a.reloadT > 0) { a.reloadT -= dt; if (a.reloadT <= 0) { const W = this.weapon(a); W.mag = WEAPONS[W.id].mag; } }
     // régénération après 5 s sans dégâts
@@ -1452,7 +1455,7 @@ export class Game {
       const c = a.inCar; C.carYaw = lerp_angle(C.carYaw ?? c.yaw, c.yaw, 1 - Math.exp(-dt * 3));
       // la caméra regarde où on pointe à la souris, puis revient derrière la voiture
       const look = this.input.st.mx || this.input.st.lookX ? 1 : 0; C.freeT = look ? 1.2 : Math.max(0, (C.freeT || 0) - dt); if (!C.freeT) C.yaw = lerp_angle(C.yaw, C.carYaw, 1 - Math.exp(-dt * 2.5)), C.pitch = lerp(C.pitch, -0.2, 1 - Math.exp(-dt * 2));
-      const piv = c.pos.clone().add(V(0, c.H + 0.6, 0)); const back = 5.5 + Math.abs(c.speed) * 0.06;
+      const piv = c.pos.clone().add(V(0, c.camH ?? c.H + 0.6, 0)); const back = (c.camBack ?? 5.5) + Math.abs(c.speed) * (c.kind ? 0.03 : 0.06);
       const want = piv.clone().addScaledVector(dir, -back); const hit = this.world.ray(piv, want.clone().sub(piv).normalize(), back); if (hit) want.copy(piv).addScaledVector(want.sub(piv).normalize(), Math.max(1, hit.t - 0.3));
       cam.position.copy(want); cam.position.y += bobY; cam.lookAt(piv.clone().addScaledVector(dir, 6)); cam.rotateZ(shR);
     } else if (fps) {
@@ -1471,7 +1474,7 @@ export class Game {
       if (C.snap) { cam.position.copy(want); C.snap = false; } else cam.position.lerp(want, 1 - Math.exp(-dt * 25)); cam.lookAt(cam.position.clone().add(dir)); cam.rotateZ(C.roll * 0.6 + shR);
     }
     { const o = cam.position, d = V(); cam.getWorldDirection(d); const R = scope ? 400 : 120; const h = this.world.ray(o, d, R); const ha = scope ? this.rayActors(o, d, h ? h.t : R, a) : null; const t = ha ? ha.t : h ? Math.max(h.t, 4) : R; this.aimHit = !!(h || ha); this.aimPt = o.clone().addScaledVector(d, t); }
-    a.ch.root.visible = a.alive || a.respawnT > 0 ? (fps ? false : !a.inCar) : false;
+    a.ch.root.visible = a.alive || a.respawnT > 0 ? (fps ? false : !a.inCar || !!a.inCar.kind) : false;
     if (this.vgun) { this.vgun.visible = fps && a.alive && !scope; this.updateViewGun(dt, sp, bobA); }
     this.audio.listener.x = cam.position.x; this.audio.listener.y = cam.position.y; this.audio.listener.z = cam.position.z; this.audio.listener.yaw = -C.yaw + Math.PI;
     this.followShadow(a.pos);
@@ -1714,4 +1717,5 @@ export class Game {
     }
   }
 }
+Object.assign(Game.prototype, rideMethods);
 function lerp_angle(a, b, t) { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a + d * t; }
