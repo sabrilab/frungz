@@ -26,6 +26,7 @@ const P = {
   // statut
   skull: '<path d="M12 3a8 8 0 0 0-8 8c0 2.8 1.4 4.6 3 5.6V21h10v-4.4c1.6-1 3-2.8 3-5.6a8 8 0 0 0-8-8zM10 21v-2.5M14 21v-2.5"/><circle cx="9" cy="11.5" r="1.7"/><circle cx="15" cy="11.5" r="1.7"/>',
   target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5"/>',
+  turret: '<path d="M5 21l4-7M19 21l-4-7M12 14v7M8 14h8M7 8h9a2 2 0 0 1 2 2v2H7zM18 10h4M9 8V6h4v2"/><circle cx="10" cy="10.5" r="0.8"/>',
   barricade: '<path d="M5 6v15M19 6v15M2 9h20v4H2zM2 15h20v3H2zM6 9l4 4M12 9l4 4M18 9l2 2"/>',
   vest: '<path d="M8 3l4 3 4-3 4 3-1 5v9H5v-9L4 6zM12 6v14M8 13h2M14 13h2"/>',
   alert: '<path d="M12 3l10 18H2zM12 10v5M12 18v.01"/>',
