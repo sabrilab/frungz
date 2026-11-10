@@ -1460,7 +1460,9 @@ export class Game {
       eye.addScaledVector(V(-Math.cos(C.yaw), 0, Math.sin(C.yaw)), bobX);
       cam.position.copy(eye); cam.lookAt(eye.clone().add(dir)); cam.rotateZ(C.roll + shR);
     } else {
-      const shoulder = this.aiming ? 0.5 : 0.48, back = this.aiming ? 0.78 : 2.15 - a.momentum * 0.15 + (a.slideT > 0 ? -0.4 : 0);
+      const back = this.aiming ? 0.78 : 2.15 - a.momentum * 0.15 + (a.slideT > 0 ? -0.4 : 0);
+      // composition au nombre d'or : hors visée, le perso se tient sur la verticale des 38,2 % de la largeur
+      const shoulder = this.aiming ? 0.5 : clamp((1 - 2 * 0.382) * back * Math.tan(cam.fov * Math.PI / 360) * cam.aspect, 0.4, 0.85);
       const piv = a.pos.clone().add(V(0, (a.slideT > 0 ? 1.0 : (this.aiming ? 1.62 : 1.58) - (a.crouchK || 0) * 0.5) + C.dip * 0.6, 0));
       const right = V(-Math.cos(C.yaw), 0, Math.sin(C.yaw));
       const sh = piv.clone().addScaledVector(right, shoulder); const hs = this.world.ray(piv, right, shoulder + 0.2); if (hs) sh.copy(piv).addScaledVector(right, Math.max(0, hs.t - 0.25));
@@ -1487,26 +1489,48 @@ export class Game {
   viewGun() {
     if (this.vgun) this.camera.remove(this.vgun);
     const W = this.weapon(this.player); if (!W) return; const g = gunInstance(W.id); g.rotation.y = Math.PI / 2; g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 5; } });
-    this.vgun = new THREE.Group(); this.vgun.add(g); this.vgun.userData.muzzle = g.userData.muzzle; this.camera.add(this.vgun); this.vgunBase = V(0.17, -0.17, -0.36);
-    // hausse de l'arme (haut du modèle) pour aligner l'organe de visée sur le réticule en visée
+    this.vgun = new THREE.Group(); this.vgun.add(g); this.vgun.userData.muzzle = g.userData.muzzle; this.camera.add(this.vgun);
+    // encombrement de l'arme dans le repère de la vue (canon vers -z, poignée à l'origine)
     g.updateMatrixWorld(true); const bb = new THREE.Box3(); g.traverse((o) => { if (o.isMesh) { o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld.clone().premultiply(this.vgun.matrixWorld.clone().invert()))); } });
-    this.vgunTop = bb.max.y; this.vgunLen = bb.max.z - bb.min.z;
-    // bras : manche de la couleur de l'équipe et main, attachés sous l'arme
-    const team = this.player.team, sleeve = new THREE.MeshStandardMaterial({ color: team === 'ordre' ? '#1f3f9a' : '#1d8a37', roughness: 0.85 }), skin = new THREE.MeshStandardMaterial({ color: '#d9a07a', roughness: 0.8 });
-    const arm = (len, mat, r = 0.032) => { const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 4, 8), mat); m.rotation.x = Math.PI / 2; m.position.z = len / 2 + r; m.renderOrder = 5; return m; };
-    const fist = () => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.07), skin); m.renderOrder = 5; return m; };
-    // main droite sur la poignée, avant-bras vers le bas à droite ; main gauche sous la carcasse, bras vers le bas à gauche
-    const rArm = new THREE.Group(); const rf = fist(); rf.position.set(0, -0.035, 0.0); const ra = arm(0.24, sleeve); ra.position.y = -0.045; rArm.add(rf, ra); rArm.rotation.set(0.35, 0.18, 0);
-    const lArm = new THREE.Group(); const lf = fist(); lf.position.set(0.01, -0.03, 0); const la = arm(0.24, sleeve); la.position.y = -0.04; lArm.add(lf, la); lArm.position.set(-0.035, -0.02, -0.05); lArm.rotation.set(0.45, -0.6, 0);
+    this.vgunTop = bb.max.y; this.vgunLen = bb.max.z - bb.min.z; this.vgunBB = bb; this.vgunPistol = WEAPONS[W.id].hand === 'pistol' || W.id === 'revolver';
+    this.vgunBase = V(0.17, -0.17, -0.36); this.vgunLayout = null;
+    // bras : manches de l'équipe, gants, main droite sur la poignée, main gauche sur le garde-main (ou en soutien sous la crosse du pistolet)
+    const team = this.player.team, sleeve = new THREE.MeshStandardMaterial({ color: team === 'ordre' ? '#22346e' : '#2f6b3a', roughness: 0.9 }), glove = new THREE.MeshStandardMaterial({ color: team === 'ordre' ? '#1b1d22' : '#c79172', roughness: 0.75 }), cuff = new THREE.MeshStandardMaterial({ color: team === 'ordre' ? '#15203f' : '#24532d', roughness: 0.9 });
+    const seg = (from, to, r0, r1, mat) => { const d = to.clone().sub(from), L = d.length(); const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, L, 9, 1), mat); m.position.copy(from).addScaledVector(d, 0.5); m.quaternion.setFromUnitVectors(V(0, 1, 0), d.normalize()); m.renderOrder = 5; m.castShadow = false; return m; };
+    const ball = (p, r, mat, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), mat); m.position.copy(p); m.scale.set(sx, sy, sz); m.renderOrder = 5; return m; };
+    const hand = (p, side, under) => { const h = new THREE.Group(); h.add(ball(V(0, 0, 0), 0.034, glove, 0.9, 1.15, 1.35)); // paume
+      const fing = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.028, 0.06), glove); fing.position.set(-side * 0.012, under ? 0.012 : -0.02, -0.02); fing.renderOrder = 5; h.add(fing); // doigts repliés
+      h.add(ball(V(-side * 0.03, 0.02, -0.025), 0.013, glove, 1, 1, 1.8)); h.position.copy(p); return h; };
+    const arm = (handP, elbow, shoulder, side, under) => { const G = new THREE.Group(); const wrist = handP.clone().add(V(side * 0.01, -0.035, 0.05));
+      G.add(hand(handP, side, under), seg(wrist, elbow, 0.03, 0.036, sleeve), ball(elbow, 0.038, sleeve), seg(elbow, shoulder, 0.038, 0.046, sleeve), ball(wrist, 0.033, cuff, 1, 1, 0.7)); return G; };
+    const fz = bb.min.z, rz = bb.max.z, by = bb.min.y;
+    const cx = (bb.min.x + bb.max.x) / 2; const P = this.vgunPistol; // au pistolet, l'arme est près de l'œil : les bras descendent plutôt qu'ils ne reculent
+    const rArm = P ? arm(V(cx + 0.008, -0.045, 0.01), V(0.07, -0.2, 0.09), V(0.12, -0.42, 0.14), 1, false) : arm(V(cx + 0.008, -0.045, 0.01), V(0.11, -0.2, 0.26), V(0.2, -0.32, 0.55), 1, false);
+    const lArm = this.vgunPistol ? arm(V(cx - 0.03, -0.07, 0.0), V(-0.12, -0.21, 0.08), V(-0.2, -0.42, 0.13), -1, true)
+      : arm(V((bb.min.x + bb.max.x) / 2 - 0.012, bb.max.y - 0.075, fz * 0.55), V(-0.2, -0.24, fz * 0.1 + 0.08), V(-0.36, -0.36, 0.5), -1, true);
     this.vgun.add(rArm, lArm); this.vgun.userData.arms = [rArm, lArm];
     if (!this.scene.children.includes(this.camera)) this.scene.add(this.camera);
   }
+  // place l'arme selon le nombre d'or : le bout du canon sur le point d'or bas-droit (61,8 % de la largeur, 61,8 % de la hauteur),
+  // la crosse qui file vers le coin ; l'arme couvre ~23 % de la largeur (fusils) ou ~9 % (pistolets), toujours sous la ligne des 62 %
+  hipLayout() {
+    const cam = this.camera, ty = Math.tan(cam.fov * Math.PI / 360), tx = ty * cam.aspect, PHI = 0.618;
+    const key = cam.fov.toFixed(1) + cam.aspect.toFixed(3); if (this.vgunLayout?.key === key) return this.vgunLayout.v;
+    const L = this.vgunLen || 0.6, fz = this.vgunBB ? -this.vgunBB.min.z : L * 0.7, rz = this.vgunBB ? this.vgunBB.max.z : L * 0.3;
+    const fx = 2 * PHI - 1, fy = -(2 * PHI - 1); // point d'or en coordonnées écran (-1..1)
+    const rear = this.vgunPistol ? fx + (1 - PHI) * PHI * PHI : fx + (1 - PHI) * clamp(0.3 + L * 0.9, 0.7, 1.15); // les armes courtes restent plus loin, à proportion de leur longueur // abscisse visée pour l'arrière de l'arme
+    // arme parallèle à l'axe de vue : x/(prof·tx) donne fx au bout et rear à l'arrière → profondeur de la poignée
+    const k = rear / fx; const d = (fz + k * rz) / (k - 1); // profondeur de la poignée (origine)
+    const X = fx * (d + fz) * tx, Y = fy * (d + fz) * ty - (this.vgunTop || 0.1); // le dessus de l'arme affleure la ligne des 61,8 %
+    const v = V(X, Y, -d); this.vgunLayout = { key, v }; return v;
+  }
   updateViewGun(dt, sp, bobA) {
-    const a = this.player, C = this.cam; const g = this.vgun; const ad = this.aiming ? V(0, -(this.vgunTop || 0.12) - 0.012, -0.24 - Math.min(0.08, (this.vgunLen || 0.3) * 0.12)) : this.vgunBase;
+    const a = this.player, C = this.cam; const g = this.vgun; const ad = this.aiming ? V(0, -(this.vgunTop || 0.12) - 0.012, -0.24 - Math.min(0.08, (this.vgunLen || 0.3) * 0.12)) : this.hipLayout();
     const t = C.bob; const sway = V(Math.cos(t) * 0.012 * bobA, -Math.abs(Math.sin(t)) * 0.015 * bobA, 0);
     const rel = a.reloadT > 0 ? Math.sin(Math.min(1, a.reloadT / WEAPONS[this.weapon(a).id].reload) * Math.PI) : 0;
-    const target = ad.clone().add(sway).add(V(0, -rel * 0.15 - (a.momentum > 0.7 && !this.aiming ? 0.03 : 0), C.kickP * 1.5));
-    g.position.lerp(target, 1 - Math.exp(-dt * 18)); g.rotation.set(C.kickP * 2 + rel * 0.6, (this.input.st.mx || 0) * -0.0006, a.momentum > 0.7 && !this.aiming ? 0.25 : 0);
+    const run = a.momentum > 0.7 && !this.aiming;
+    const target = ad.clone().add(sway).add(V(run ? -0.02 : 0, -rel * 0.15 - (run ? 0.04 : 0), C.kickP * 1.5));
+    g.position.lerp(target, 1 - Math.exp(-dt * 18)); g.rotation.set(C.kickP * 2 + rel * 0.6 + (run ? -0.12 : 0), (this.input.st.mx || 0) * -0.0006 + (run ? 0.35 : 0), run ? 0.2 : 0);
   }
 
   // ---------------------------------------------------------------- interface
