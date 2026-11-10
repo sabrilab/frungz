@@ -19,10 +19,27 @@ const iBody = 0, iAbdomen = 2, iTorso = 3, iChest = 4, iNeck = 5, iHead = 6;
 const KICK = { pistol: 1.5, revolver: 2.6, pistolet_lourd: 2.2, pistolet_auto: 0.8, smg: 0.9, pm: 0.85, compact: 0.8, rifle: 1.15, carabine: 1.05, rafale: 1.1, fusil_lourd: 1.7, shotgun: 3.6, pompe_court: 3.8, semi_auto: 2.8, canon_scie: 4.4, dmr: 2.6, sniper: 4.2, calibre50: 6, mitrailleuse: 1.2 };
 
 // ressort amorti (intégration semi-implicite, stable aux grands pas) : f en Hz, z = amortissement (1 = critique, < 1 = dépasse puis revient)
+// Ressort amorti. Intégré par petits pas (1/120 s au plus) : en un seul pas de 1/30 s ou plus, les ressorts raides
+// (recul f = 6, encaisser, tête) devenaient instables et grossissaient sans fin dès que le jeu passait sous ~35 images/s,
+// jusqu'à une valeur invalide (NaN) qui cassait le squelette, puis les flammes de tir, la lumière, le halo (rectangles noirs) et le son.
 function spring(s, target, f, z, dt) {
-  const w = 2 * Math.PI * f, h = Math.min(dt, 0.05);
-  s.v += (w * w * (target - s.x) - 2 * z * w * s.v) * h; s.x += s.v * h;
+  const w = 2 * Math.PI * f, T = Math.min(dt, 0.1), n = Math.max(1, Math.ceil(T * 120)), h = T / n;
+  for (let i = 0; i < n; i++) { s.v += (w * w * (target - s.x) - 2 * z * w * s.v) * h; s.x += s.v * h; }
+  if (!(Math.abs(s.x) < 1e3 && Math.abs(s.v) < 1e5)) { s.x = 0; s.v = 0; } // garde-fou : jamais d'infini ni de NaN qui se propage
   return s.x;
+}
+// remet à zéro l'état des couches si une valeur invalide s'y est glissée (impulsion NaN, téléportation…)
+function healRig(R) {
+  const fin = (v) => Number.isFinite(v);
+  const springs = [R.lean.x, R.lean.z, R.pelvis, R.twist, R.head.yaw, R.head.pitch, R.head.nod, R.curl, R.rec.p, R.rec.y, R.rec.z, R.hit.x, R.hit.z, R.hit.hx, R.hit.hz];
+  let bad = !fin(R.acc.x + R.acc.z + R.pv.x + R.pv.z + R.yaw0 + R.yawRate + R.effort + R.breath + R.plantW + R.slide + R.roll + R.vy + R.w + R.drop);
+  for (const q of springs) if (!fin(q.x + q.v)) bad = true;
+  for (const g of R.legs) if (!fin(g.off + g.T.x + g.T.y + g.T.z) || (g.lock && !fin(g.lock.x + g.lock.z + g.lock.yaw))) bad = true;
+  if (!bad) return false;
+  for (const q of springs) { q.x = 0; q.v = 0; }
+  R.acc.set(0, 0, 0); R.pv.set(0, 0, 0); R.yaw0 = 0; R.yawRate = 0; R.effort = 0; R.breath = 0; R.plantW = 0; R.slide = 0; R.roll = 0; R.vy = 0; R.w = 1; R.drop = 0;
+  for (const g of R.legs) { g.off = 0; g.T.set(0, 0, 0); g.lock = g.step = null; g.lift = 0; }
+  return true;
 }
 const S = () => ({ x: 0, v: 0 });
 const ease = (t) => t * t * (3 - 2 * t);
@@ -145,6 +162,8 @@ export function flinch(a, f, sd, amount = 20) { const R = rig(a); if (!R.ok) ret
 // couche principale. near : calcul complet (IK, sol, colonne) ; sinon seulement les pieds attachés. Renvoie true si la couche « après visée » doit passer
 export function layers(game, a, dt, near) {
   const R = rig(a); if (!R.ok) return false;
+  if (!Number.isFinite(dt) || !Number.isFinite(a.vel.x + a.vel.y + a.vel.z + a.yaw)) return false;
+  healRig(R);
   const ch = a.ch, body = PB;
   // ---- état : accélération et vitesse de rotation, dans le repère du perso
   const yaw = ch.root.rotation.y, sn = Math.sin(yaw), cs = Math.cos(yaw);
@@ -237,6 +256,13 @@ export function layers(game, a, dt, near) {
 }
 
 // après la visée du buste : recul (le canon monte et revient), tête qui mène le virage, reste à niveau et encaisse avec retard
+// filet de sécurité après les couches : un os invalide reprend sa pose de repos du modèle (au lieu de contaminer l'arme, la caméra, les effets)
+export function sane(a) {
+  const R = rig(a); if (!R.ok) return true; let ok = true; const src = chars[a.skin]?.scene;
+  for (const s of R.saved) { const b = s.b, q = b.quaternion, p = b.position; if (Number.isFinite(q.x + q.y + q.z + q.w + p.x + p.y + p.z)) continue; ok = false;
+    const r = src?.getObjectByName(b.name); if (r) { q.copy(r.quaternion); p.copy(r.position); } else { q.set(0, 0, 0, 1); } s.q.copy(q); s.p.copy(p); }
+  if (!ok) healRig(R); return ok;
+}
 export function post(a) {
   const R = rig(a), P = R.post; if (!R.ok || !P) return;
   setD(iChest, -P.rp * 0.055, P.ry * 0.035, 0);

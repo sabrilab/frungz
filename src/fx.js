@@ -90,6 +90,9 @@ function instPool(geo, mat, N) {
   return m;
 }
 
+// une position invalide (NaN, infini) ne doit jamais entrer dans un effet : elle noircirait l'image (halo) et fausserait le son
+const fin = (p) => !!p && Number.isFinite(p.x + p.y + p.z);
+
 export function createFX(scene, camera) {
   const glowT = softTex(), puffT = puffTex();
   const items = []; // effets à durée de vie (comportement par fonction upd)
@@ -105,6 +108,7 @@ export function createFX(scene, camera) {
   const TR = instPool(tracerGeo, tracerMat, 260); scene.add(TR); const tracers = [];
   const TRC = new THREE.Color('#ffe9a8');
   function tracer(a, b, color) {
+    if (!fin(a) || !fin(b)) return;
     const L = a.distanceTo(b); if (L < 0.5) return;
     if (tracers.length >= 260) tracers.shift();
     const dir = b.clone().sub(a).normalize(); const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
@@ -126,6 +130,7 @@ export function createFX(scene, camera) {
     items.push({ t: 0, life, upd: upd ? (it, k, dt) => upd(o, k, dt) : null, end: () => pool.remove(o) }); return o;
   }
   function muzzle(pos, big = 1) {
+    if (!fin(pos)) return;
     const k = (0.35 + Math.random() * 0.25) * big; sprite(glow, pos, k, FLASH, 1, 0.05);
     // la lumière ne suit que les tirs proches de la caméra (au loin, elle n'éclaire rien de visible)
     if (pos.distanceToSquared(camera.position) < 45 * 45 || flashT <= 0) { flashLight.position.copy(pos); flashLight.position.y += 0.12; /* jamais pile sur une surface */ flashLight.intensity = 14 * big; flashT = 0.05; }
@@ -143,6 +148,7 @@ export function createFX(scene, camera) {
   const parts = { lit: [], glow: [], glass: [] };
   const UP = new THREE.Vector3(0, 1, 0);
   function burst(pos, n, opts = {}) {
+    if (!fin(pos) || !(n > 0)) return;
     const { color = '#ffd27a', speed = 4, size = 0.04, life = 0.5, grav = 9, normal = null, emissive = false, spread = 1 } = opts;
     // fumées légères (échappement, moteur en feu) : des bouffées plutôt que des cubes gris
     if ((opts.opacity ?? 1) < 0.5 || grav < 0) { puffBurst(pos, n, color, size, life, speed, grav, opts.opacity ?? 0.35, normal); return; }
@@ -177,10 +183,12 @@ export function createFX(scene, camera) {
   DEC.frustumCulled = false; DEC.count = 0; scene.add(DEC); let decI = 0;
   const _o = new THREE.Object3D();
   function decal(pos, n) {
+    if (!fin(pos) || !Number.isFinite(n[0] + n[1] + n[2])) return;
     _o.position.set(pos.x + n[0] * 0.01, pos.y + n[1] * 0.01, pos.z + n[2] * 0.01); _o.lookAt(_o.position.x + n[0], _o.position.y + n[1], _o.position.z + n[2]); _o.updateMatrix();
     DEC.setMatrixAt(decI, _o.matrix); decI = (decI + 1) % DN; DEC.count = Math.min(DN, DEC.count + 1); DEC.instanceMatrix.needsUpdate = true;
   }
   function impact(pos, n, kind = 'world') {
+    if (!fin(pos)) return; if (n && !Number.isFinite(n[0] + n[1] + n[2])) n = null;
     const nv = new THREE.Vector3(...(n || [0, 1, 0]));
     if (kind === 'flesh') burst(pos, 6, { color: '#b3132a', speed: 2.5, size: 0.05, life: 0.4, normal: nv });
     else if (kind === 'glass') burst(pos, 8, { color: '#cfe8ff', speed: 3, size: 0.06, life: 0.8, flat: true, normal: nv, opacity: 0.7 });
@@ -188,6 +196,7 @@ export function createFX(scene, camera) {
     else { burst(pos, 4, { color: '#ffd27a', speed: 5, size: 0.02, life: 0.2, emissive: true, long: true, normal: nv }); burst(pos, 4, { color: '#bfb2a0', speed: 1.5, size: 0.04, life: 0.6, normal: nv }); decal(pos, n || [0, 1, 0]); }
   }
   function shatter(center, w, h, normal) { // vitrine qui éclate
+    if (!fin(center)) return;
     const n = new THREE.Vector3(...normal); const N = Math.round(46 * load);
     for (let i = 0; i < N; i++) { const p = center.clone().add(new THREE.Vector3((Math.random() - 0.5) * w * Math.abs(n.z) + (Math.random() - 0.5) * 0.1, (Math.random() - 0.5) * h, (Math.random() - 0.5) * w * Math.abs(n.x))); burst(p, 1, { color: '#d6ecff', speed: 3.5, size: 0.16, life: 1.6, flat: true, normal: n, spread: 0.8, opacity: 0.75 }); }
   }
@@ -201,6 +210,7 @@ export function createFX(scene, camera) {
   const casings = [[], []]; let groundFn = null; let onTink = null;
   function setGround(fn, tink) { groundFn = fn; onTink = tink; }
   function casing(pos, right, big = false) {
+    if (!fin(pos) || !fin(right)) return;
     const L = casings[big ? 1 : 0]; if (L.length >= CN) L.shift();
     const v = right.clone().multiplyScalar(1.8 + Math.random() * 1.2); v.y += 1.6 + Math.random(); v.x += (Math.random() - 0.5) * 0.6; v.z += (Math.random() - 0.5) * 0.6;
     L.push({ p: pos.clone(), r: new THREE.Euler(), v, spin: new THREE.Vector3(Math.random() * 30, Math.random() * 30, Math.random() * 30), gy: groundFn ? groundFn(pos.x, pos.z, pos.y) : 0, bounces: 0, t: 0, big });
@@ -223,6 +233,7 @@ export function createFX(scene, camera) {
   // poussière (atterrissage, glissade, sprint)
   const DUST = new THREE.Color('#cbbfae');
   function dust(pos, n = 6, power = 1) {
+    if (!fin(pos)) return;
     n = Math.max(1, Math.round(n * load));
     for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.28, sp = (0.8 + Math.random() * 1.2) * power; const v = new THREE.Vector3(Math.cos(a) * sp, 0.3 + Math.random() * 0.4, Math.sin(a) * sp);
@@ -244,6 +255,7 @@ export function createFX(scene, camera) {
   const layer = document.createElement('div'); layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:2'; document.body.appendChild(layer);
   const v3 = new THREE.Vector3(); const nums = [];
   function number(pos, txt, color = '#fff', big = false) {
+    if (!fin(pos)) return;
     if (nums.length >= 24) { const o = nums.shift(); o.t = o.life; }
     const el = document.createElement('div'); el.textContent = txt;
     el.style.cssText = `position:absolute;left:0;top:0;font:${big ? 26 : 18}px Bungee,Inter,sans-serif;color:${color};text-shadow:0 2px 0 #000,0 0 6px rgba(0,0,0,.6);white-space:nowrap;will-change:transform`;
@@ -261,6 +273,7 @@ export function createFX(scene, camera) {
   const wind = new THREE.Vector3((Math.random() - 0.5) * 1.2, 0, (Math.random() - 0.5) * 1.2);
   let puffCount = 0;
   function cloud(pos, kind, owner) {
+    if (!fin(pos)) return null;
     const gas = kind === 'gas', dark = kind === 'smoke-dark';
     const base = new THREE.Color(gas ? '#dcdccb' : dark ? '#4a4846' : '#d9dadc');
     const tint = gas ? null : dark ? null : new THREE.Color(['#ffb08a', '#ffc2dd', '#bfe9ff', '#d9ffc2'][(Math.random() * 4) | 0]);
@@ -317,6 +330,7 @@ export function createFX(scene, camera) {
   // explosion
   const BOOM = new THREE.Color('#ff9a3d');
   function explosion(pos) {
+    if (!fin(pos)) return;
     burst(pos, 30, { color: '#ffb347', speed: 9, size: 0.12, life: 0.7, emissive: true });
     burst(pos, 16, { color: '#2b2b2b', speed: 4, size: 0.25, life: 1.6 });
     sprite(glow, pos, 2, BOOM, 1, 0.6, (o, k) => { o.size = 2 + k * 9; o.a = 1 - k; });
@@ -327,6 +341,7 @@ export function createFX(scene, camera) {
   // anneau qui s'élargit (capture, ramassage) : géométrie partagée (avant, une nouvelle géométrie jamais libérée à chaque anneau)
   const ringGeo = new THREE.RingGeometry(0.8, 1, 32).rotateX(-Math.PI / 2);
   function ring(pos, color) {
+    if (!fin(pos)) return;
     const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
     m.position.copy(pos); m.position.y += 0.1; scene.add(m);
     items.push({ t: 0, life: 0.6, upd: (it, k) => { m.scale.setScalar(1 + k * 3); m.material.opacity = 1 - k; }, end: () => { scene.remove(m); m.material.dispose(); } });
