@@ -53,7 +53,7 @@ function streakTiers(team, upto) {
   const big = L.slice(3), out = L.slice(); for (let n = last + 5, j = 0; n <= upto + 15; n += 5, j++) { const b = big[j % big.length]; out.push({ ...b, n, loop: true, tier: L.indexOf(b) }); }
   return out;
 }
-const LEGENDS = ['FRUNGZ IMMORTEL', 'FRUNGZ DIVIN', 'FRUNGZ COSMIQUE', 'FRUNGZ ABSOLU', 'FRUNGZ INFINI', 'FRUNGZ MYTHIQUE', 'FRUNGZ DE LÉGENDE'];
+const LEGENDS = ['FRUNGZ IMMORTEL', 'FRUNGZ TITANESQUE', 'FRUNGZ COSMIQUE', 'FRUNGZ ABSOLU', 'FRUNGZ INFINI', 'FRUNGZ MYTHIQUE', 'FRUNGZ DE LÉGENDE'];
 const LEGEND_COLS = ['#ffcc3d', '#57b6ff', '#ff7ad9', '#ff4a3d', '#c27bff', '#9ff59f'];
 const LOOT_PTS = { commun: 2, rare: 4, epique: 6, legendaire: 10 };
 // contribution à la partie (classement)
