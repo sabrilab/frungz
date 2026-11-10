@@ -1,4 +1,4 @@
-// Réalisme des matières (v8) : module autonome (three seulement), à appeler une fois après le chargement de la map.
+// Réalisme des matières (v9) : module autonome (three seulement), à appeler une fois après le chargement de la map.
 //   import { applyRealism, skyEnvironment } from './realisme.js';
 //   applyRealism(root, { renderer, wet: 0.5 });            // grain, salissures, coulures, sol mouillé
 //   scene.environment = skyEnvironment(renderer, { ... });  // reflets du ciel (remplace RoomEnvironment)
@@ -35,7 +35,10 @@ export function detailTexture(S = 512) {
 // (v8) bump = relief du grain (m), joint = appareil de pierre de taille sur les murs clairs, wear = peinture routière usée, mapBump = relief tiré de la texture (pavés, joints), leaf = feuillage (découpe, vent)
 const PRESETS = {
   matte: { amt: 1.0, streak: 1.0, base: 1.0, bump: 0.5, joint: 1, wear: 1 }, satin: { amt: 0.45, streak: 0.5, base: 0.5, bump: 0.12 }, metal: { amt: 0.7, streak: 1.0, base: 0, bump: 0.1 },
-  asphalt: { amt: 0.5, wet: 1, bump: 0.9, mapBump: 0.6 }, cobble: { amt: 0.5, wet: 0.7, bump: 0.4, mapBump: 2.4 }, sidewalk: { amt: 0.6, wet: 0.6, bump: 0.6, mapBump: 1.2 }, ground: { amt: 0.6, bump: 0.6 },
+  asphalt: { amt: 0.5, wet: 1, bump: 0.9, mapBump: 0.6 }, cobble: { amt: 0.5, wet: 0.7, bump: 0.4, mapBump: 2.4 },
+  // (v9) slab = dalles de granit : nuance, poli et légère pente propres à chaque dalle, chewing-gums ; glass = vitres anciennes qui ondulent
+  sidewalk: { amt: 0.45, wet: 0.7, bump: 0.5, mapBump: 1.6, slab: 1 }, curb: { amt: 0.4, wet: 0.2, bump: 0.5, mapBump: 1.2 }, gutter: { amt: 0.5, wet: 1.6, bump: 0.4, mapBump: 2.2 },
+  glass: { amt: 0.2, glass: 1.2 }, glassLit: { amt: 0.2, glass: 1.2 }, ground: { amt: 0.6, bump: 0.6 },
   carrelage: { amt: 0.35, streak: 0.6, mapBump: 0.8 }, carrelage_voute: { amt: 0.5, streak: 0.8, mapBump: 0.8 }, granito: { amt: 0.4, mapBump: 0.5 }, horizon: null,
   leaf: { amt: 0.9, leaf: 1 },
 };
@@ -51,13 +54,13 @@ export function patchMaterial(m, P) {
     prev?.call(m, sh, r);
     sh.uniforms.uDetail = shared.uDetail; sh.uniforms.uWet = shared.uWet; sh.uniforms.uReal = shared.uReal; sh.uniforms.uTime = shared.uTime; sh.uniforms.uWind = shared.uWind;
     sh.uniforms.uRAmt = { value: P.amt ?? 0.5 }; sh.uniforms.uRStreak = { value: P.streak ?? 0 }; sh.uniforms.uRWet = { value: P.wet ?? 0 }; sh.uniforms.uRBase = { value: P.base ?? 0 };
-    sh.uniforms.uRBump = { value: P.bump ?? 0 }; sh.uniforms.uRJoint = { value: P.joint ?? 0 }; sh.uniforms.uRWear = { value: P.wear ?? 0 }; sh.uniforms.uRMapBump = { value: P.mapBump ?? 0 };
+    sh.uniforms.uRBump = { value: P.bump ?? 0 }; sh.uniforms.uRJoint = { value: P.joint ?? 0 }; sh.uniforms.uRWear = { value: P.wear ?? 0 }; sh.uniforms.uRMapBump = { value: P.mapBump ?? 0 }; sh.uniforms.uRSlab = { value: P.slab ?? 0 }; sh.uniforms.uRGlass = { value: P.glass ?? 0 };
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRPos; varying vec3 vRNrm; uniform float uTime, uWind, uReal;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
   vRPos = (modelMatrix * vec4(transformed, 1.0)).xyz; vRNrm = normalize(mat3(modelMatrix) * objectNormal);` + (LEAF ? `
   { float rS = uReal * uWind * smoothstep(2.2, 6.5, vRPos.y) * 0.07; float rT = uTime * 1.25 + vRPos.x * 0.37 + vRPos.z * 0.29;
     transformed += inverse(mat3(modelMatrix)) * rS * vec3(sin(rT) + 0.4 * sin(rT * 2.7 + vRPos.y), 0.35 * sin(rT * 1.9 + vRPos.x), cos(rT * 0.83) + 0.4 * sin(rT * 3.1 + vRPos.z)); }` : ''));
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRPos; varying vec3 vRNrm; uniform sampler2D uDetail; uniform float uWet, uReal, uRAmt, uRStreak, uRWet, uRBase, uRBump, uRJoint, uRWear, uRMapBump;')
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRPos; varying vec3 vRNrm; uniform sampler2D uDetail; uniform float uWet, uReal, uRAmt, uRStreak, uRWet, uRBase, uRBump, uRJoint, uRWear, uRMapBump, uRSlab, uRGlass;\nfloat rHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }')
       .replace('#include <color_fragment>', `#include <color_fragment>
   vec3 rN = abs(vRNrm); float rUp = step(0.6, rN.y); float rDist = length(vViewPosition);
   vec2 rUV = rUp > 0.5 ? vRPos.xz : (rN.x > rN.z ? vRPos.zy : vRPos.xy);
@@ -76,6 +79,17 @@ export function patchMaterial(m, P) {
   float rBase = (1.0 - rUp) * uRBase * (1.0 - smoothstep(0.0, 1.4, vRPos.y)) * step(-0.3, vRPos.y);
   float rWet = uRWet * uWet * rUp * smoothstep(0.16, 0.34, rBlot + rGrain * 0.12);
   float rK = uReal * uRAmt;
+  float rSlabR = 0.0; vec2 rTilt = vec2(0.0);
+  if (uRSlab > 0.0 && rUp > 0.5) { // dalles de 100 x 50 cm (même calepinage que la texture, 3 m par tuile) : chaque dalle a sa nuance, son poli, sa pente
+    vec2 rSu = vec2(vRPos.x, -vRPos.z) / 3.0; float rRow = floor(rSu.y * 6.0), rCol = floor(rSu.x * 3.0 - (mod(rRow, 2.0) < 0.5 ? 0.5 : 0.0));
+    float rH1 = rHash(vec2(rCol, rRow)), rH2 = rHash(vec2(rRow + 7.3, rCol - 3.1)), rF = uReal * uRSlab * (1.0 - smoothstep(35.0, 90.0, rDist));
+    diffuseColor.rgb *= (1.0 + rF * (rH1 - 0.5) * 0.2) * mix(vec3(1.0), mix(vec3(1.035, 1.0, 0.955), vec3(0.965, 1.0, 1.04), rH2), rF);
+    rSlabR = rF * (rH2 - 0.5) * 0.34; rTilt = rF * (vec2(rH1, rH2) - 0.5) * 0.035;
+    vec2 rGc = vRPos.xz / 0.62, rCe = floor(rGc); float rGh = rHash(rCe + 31.7); // chewing-gums écrasés
+    if (rGh > 0.7 && rDist < 30.0) { vec2 rCc = rCe + 0.2 + 0.6 * vec2(rHash(rCe + 1.3), rHash(rCe + 5.9)); float rD = length(rGc - rCc) * 0.62, rR = 0.013 + 0.014 * rHash(rCe + 9.1);
+      float rSp = (1.0 - smoothstep(rR, rR + 0.006 + rDist * 0.0012, rD)) * rF; diffuseColor.rgb = mix(diffuseColor.rgb, vec3(rGh > 0.93 ? 0.55 : 0.1), rSp * 0.72); rSlabR += rSp * 0.2; }
+  }
+  if (uRGlass > 0.0) rH += (texture2D(uDetail, rUV * 0.37 + 0.13).g - 0.5) * uRGlass * uReal;
   float rLum = dot(diffuseColor.rgb, vec3(0.3333)), rSat = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b)) - min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b));
   if (uRJoint > 0.0) { // pierre de taille : assises de 45 cm à joints croisés, chaque pierre a sa nuance
     float rM = uReal * uRJoint * (1.0 - rUp) * smoothstep(0.42, 0.6, rLum) * (1.0 - smoothstep(0.1, 0.22, rSat)) * (1.0 - smoothstep(28.0, 70.0, rDist));
@@ -94,7 +108,7 @@ export function patchMaterial(m, P) {
   diffuseColor.rgb *= 1.0 + rK * (rGrain * 0.13 + rBlot * 0.36) + uReal * uRStreak * min(rStreak, 0.08) * 0.7;
   diffuseColor.rgb *= 1.0 - uReal * (rBase * (0.16 + rBlot * 0.25) + rWet * 0.42);`))
       .replace('#include <roughnessmap_fragment>', LEAF ? '#include <roughnessmap_fragment>' : `#include <roughnessmap_fragment>
-  roughnessFactor = clamp(roughnessFactor + rK * (rBlot * 0.35 + rGrain * 0.2), 0.04, 1.0);
+  roughnessFactor = clamp(roughnessFactor + rK * (rBlot * 0.35 + rGrain * 0.2) + rSlabR, 0.04, 1.0);
   roughnessFactor = mix(roughnessFactor, 0.05, rWet * uReal);`)
       .replace('#include <normal_fragment_maps>', LEAF ? '#include <normal_fragment_maps>' : `#include <normal_fragment_maps>
   { // relief : la normale suit la pente du grain, des joints et de la texture (aucune lecture de texture en plus)
@@ -103,10 +117,11 @@ export function patchMaterial(m, P) {
       vec3 rR1 = cross(rPy, normal), rR2 = cross(normal, rPx); float rDet = dot(rPx, rR1);
       vec3 rNb = abs(rDet) * normal - rBk * sign(rDet) * (rHx * rR1 + rHy * rR2); float rL = dot(rNb, rNb);
       if (rL > 1e-16 && rL < 1e16) normal = rNb * inversesqrt(rL); }
+    if (rTilt.x != 0.0 || rTilt.y != 0.0) normal = normalize(normal + mat3(viewMatrix) * vec3(rTilt.x, 0.0, rTilt.y) * (1.0 - rWet));
   }`);
   };
   const key = m.customProgramCacheKey?.bind(m);
-  m.customProgramCacheKey = () => (key ? key() : '') + '|real8' + (LEAF ? 'L' : '');
+  m.customProgramCacheKey = () => (key ? key() : '') + '|real9' + (LEAF ? 'L' : '');
   m.needsUpdate = true;
 }
 
