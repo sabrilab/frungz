@@ -47,6 +47,14 @@ const STREAKS = {
 const STREAK_BY_ID = Object.fromEntries(Object.values(STREAKS).flat().map((r) => [r.id, r]));
 export { STREAKS };
 const TIER_COLS = ['#ffcc3d', '#ffcc3d', '#ff9d3d', '#57b6ff', '#ff7ad9', '#ff4a3d', '#c27bff'];
+// séries sans fin : après le dernier palier, un bonus tous les 5 éliminations en reprenant les gros atouts (10, 14, 18, 25) en boucle
+function streakTiers(team, upto) {
+  const L = STREAKS[team]; const last = L[L.length - 1].n; if (upto < last) return L;
+  const big = L.slice(3), out = L.slice(); for (let n = last + 5, j = 0; n <= upto + 15; n += 5, j++) { const b = big[j % big.length]; out.push({ ...b, n, loop: true, tier: L.indexOf(b) }); }
+  return out;
+}
+const LEGENDS = ['FRUNGZ IMMORTEL', 'FRUNGZ DIVIN', 'FRUNGZ COSMIQUE', 'FRUNGZ ABSOLU', 'FRUNGZ INFINI', 'FRUNGZ MYTHIQUE', 'FRUNGZ DE LÉGENDE'];
+const LEGEND_COLS = ['#ffcc3d', '#57b6ff', '#ff7ad9', '#ff4a3d', '#c27bff', '#9ff59f'];
 const LOOT_PTS = { commun: 2, rare: 4, epique: 6, legendaire: 10 };
 // contribution à la partie (classement)
 const V2 = new THREE.Vector2(); const BULLET_V = 380; const BULLET_GEO = new THREE.CylinderGeometry(0.012, 0.02, 0.09, 6).rotateX(Math.PI / 2); const BULLET_MAT = new THREE.MeshStandardMaterial({ color: '#d9a441', metalness: 0.9, roughness: 0.25, emissive: '#5a3a00' });
@@ -288,11 +296,31 @@ export class Game {
   }
   // ---------------------------------------------------------------- séries
   addStreak(a) {
-    a.streak++; const r = STREAKS[a.team].find((x) => x.n === a.streak); if (!r) return;
-    a.rewards.push(r.id); const tier = STREAKS[a.team].indexOf(r); const col = TIER_COLS[tier] || '#ffcc3d';
+    a.streak++; this.streakVitality(a);
+    const L = streakTiers(a.team, a.streak), r = L.find((x) => x.n === a.streak); if (a.streak >= 30 && a.streak % 10 === 0) this.streakLegend(a, !!r); if (!r) return;
+    a.rewards.push(r.id); const tier = r.loop ? r.tier : STREAKS[a.team].indexOf(r); const col = TIER_COLS[tier] || '#ffcc3d';
+    if (a === this.player && r.loop && a.streak % 10 === 0) { this.streakDirty = 1; this.audio.streakReady(tier); return; } // le titre légendaire annonce déjà ce bonus
     if (a === this.player) { this.bigText(`${svg(r.ico)} ${r.nom.toUpperCase()} !${tier >= 3 ? '!' : ''}${tier >= 5 ? '!' : ''}`, `série de ${a.streak} · ${this.input.label('streak')} pour l'activer`, col, `t${tier}`); this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,0) ${40 - tier * 4}%, ${col}${tier >= 3 ? 'cc' : '99'})`); this.audio.streakReady(tier); this.input.rumble(1, 0.8, 300 + tier * 80); this.cam.trauma = Math.min(1, this.cam.trauma + 0.35 + tier * 0.08); this.streakDirty = 1; if (tier >= 3) { $('hud').classList.remove('shake'); void $('hud').offsetWidth; $('hud').classList.add('shake'); } }
     else if (r.n >= 14) this.toast(`${a.name} : série de ${a.streak} · ${r.nom} !`, a.team === this.player.team ? TEAMS[a.team].color : '#ff4a4a');
     else if (a.bot) a.ai.streakT = rnd(1.5, 5);
+  }
+  // vitalité : chaque élimination de la série soigne, puis renforce le gilet ; plus la série est longue, plus ça remonte
+  streakVitality(a) {
+    if (!a.alive || a.streak < 2) return; const k = Math.min(3, 1 + a.streak / 15);
+    const heal = 12 * k; const over = Math.max(0, a.hp + heal - 100); a.hp = Math.min(100, a.hp + heal); a.regenT = 0;
+    if (over > 0 || a.streak % 5 === 0) a.armor = Math.min(150, (a.armor || 0) + over + (a.streak % 5 === 0 ? 40 : 0));
+    if (a === this.player && a.streak % 5 === 0) this.toast(`Série ${a.streak} : vitalité au max, gilet +40`, '#9ff59f');
+  }
+  // tous les 10 au-delà de 25 : un titre Frungz qui monte, une prime qui grossit, et tout le quartier l'apprend
+  streakLegend(a, withReward) {
+    const i = a.streak / 10 - 3; const name = LEGENDS[i] || `FRUNGZ ×${a.streak / 10}`; const col = LEGEND_COLS[i % LEGEND_COLS.length];
+    if (a === this.player) {
+      const r = withReward ? streakTiers(a.team, a.streak).find((x) => x.n === a.streak) : null;
+      this.bigText(`${name} !!!`, `série de ${a.streak} sans mourir${r ? ` · ${r.nom} prêt (${this.input.label('streak')})` : ''}`, col, 't6');
+      this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,.25), ${col}cc)`); this.cam.trauma = 1; this.input.rumble(1, 1, 700);
+      $('hud').classList.remove('shake'); void $('hud').offsetWidth; $('hud').classList.add('shake');
+      this.earn(250 * a.streak / 10 * (i + 1), name.charAt(0) + name.slice(1).toLowerCase(), true);
+    } else this.toast(`${a.name} : ${name} (série de ${a.streak})`, a.team === this.player.team ? TEAMS[a.team].color : '#ff4a4a');
   }
   streakDef(a, id) { return STREAKS[a.team].find((r) => r.id === id) || STREAK_BY_ID[id]; }
   useStreak(a) {
@@ -834,7 +862,7 @@ export class Game {
     if (I.pressed('view') && !scopedNow) { C.fps = !C.fps; this.save.settings.fps = C.fps; this.persist(); this.viewGun(); }
     if (I.pressed('map')) $('minimap').classList.toggle('big');
     if (I.pressed('inv')) this.toggleInv();
-    if (I.pressed('streak') && !this.thr?.spell && !a.inCar) { if (a.rewards.length) this.useStreak(a); else this.toast(`Série : ${a.streak} — prochain bonus à ${STREAKS[a.team].find((r) => r.n > a.streak)?.n ?? '—'} éliminations`, '#ccc'); }
+    if (I.pressed('streak') && !this.thr?.spell && !a.inCar) { if (a.rewards.length) this.useStreak(a); else this.toast(`Série : ${a.streak} — prochain bonus à ${streakTiers(a.team, a.streak).find((r) => r.n > a.streak)?.n ?? '—'} éliminations`, '#ccc'); }
     if (I.pressed('pause')) { this.onPause?.(); return; }
     if (!a.alive) { a.respawnT -= dt; this.aiming = false; if (a.respawnT <= 0) this.respawn(a); return; }
     a.spawnProt = Math.max(0, (a.spawnProt || 0) - dt);
@@ -1788,12 +1816,16 @@ export class Game {
   }
   // barre des séries : progression vers chaque bonus, bonus prêt mis en avant avec la touche à presser
   drawStreakbar() {
-    const a = this.player, el = $('streakbar'); if (!el) return; const L = STREAKS[a.team];
+    const a = this.player, el = $('streakbar'); if (!el) return; const L = streakTiers(a.team, a.streak);
     const key = `${a.streak}|${a.rewards.join(',')}|${this.input.st.usingPad}|${this.streakUsed || ''}`; if (key === this._sbKey) return; this._sbKey = key;
     // 7 paliers : on montre les bonus prêts et les 3 prochains (le reste se devine dans le sac)
-    const locked = L.filter((r) => r.n > a.streak).slice(0, 3); let prev = 0; const cards = L.map((r) => { const ready = a.rewards.includes(r.id); const seg = r.n - prev, got = Math.max(0, Math.min(seg, a.streak - prev)); prev = r.n;
+    let prev = 0;
+    const shown = new Set(); for (const id of new Set(a.rewards)) { const c = L.filter((r) => r.id === id && r.n <= a.streak).pop() || L.find((r) => r.id === id); if (c) shown.add(c); }
+    if (shown.size > 4) { const keep = [...shown].sort((p, q) => q.n - p.n).slice(0, 4); shown.clear(); keep.forEach((c) => shown.add(c)); } // les 4 plus gros bonus prêts ; les autres restent utilisables
+    const locked = L.filter((r) => r.n > a.streak).slice(0, shown.size >= 4 ? 1 : 3); const cnt = (id) => a.rewards.filter((x) => x === id).length; const cards = L.map((r) => { const ready = shown.has(r); // un bonus prêt = une seule carte
+      const seg = r.n - prev, got = Math.max(0, Math.min(seg, a.streak - prev)); prev = r.n;
       const next = !ready && a.streak < r.n && L.find((x) => x.n > a.streak) === r;
-      return `<div class="sk${ready ? ' ready' : next ? ' next' : ''}${this.streakUsed === r.id ? ' used' : ''}">${ready ? `<span class="key">${this.input.label('streak')} ACTIVER</span>` : ''}<div class="ic">${svg(r.ico)}</div><div class="nm">${r.nom}</div><div class="pips">${Array.from({ length: seg }, (_, i) => `<i class="${i < got || ready ? 'f' : ''}"></i>`).join('')}</div></div>`; }).filter((c, i) => { const r = L[i]; return a.rewards.includes(r.id) || locked.includes(r) || this.streakUsed === r.id; });
+      return `<div class="sk${ready ? ' ready' : next ? ' next' : ''}${this.streakUsed === r.id ? ' used' : ''}">${ready ? `<span class="key">${this.input.label('streak')} ACTIVER</span>` : ''}<div class="ic">${svg(r.ico)}</div><div class="nm">${r.nom}${ready && cnt(r.id) > 1 ? ` ×${cnt(r.id)}` : ''}</div><div class="pips">${Array.from({ length: seg }, (_, i) => `<i class="${i < got || ready ? 'f' : ''}"></i>`).join('')}</div></div>`; }).filter((c, i) => { const r = L[i]; return shown.has(r) || locked.includes(r) || (this.streakUsed === r.id && r.n <= a.streak && !shown.size); });
     el.innerHTML = `<div class="count">${a.streak}<small>SÉRIE</small></div>` + cards.join(''); this.streakUsed = null;
   }
   medal(big, small, gold) { const el = $('medal'); if (!el) return; el.innerHTML = `<b>${svg(gold ? 'target' : 'skull')} ${big}</b><small>${small}</small>`; el.className = gold ? 'gold' : ''; void el.offsetWidth; el.classList.add('on'); clearTimeout(this._medT); this._medT = setTimeout(() => el.classList.remove('on'), 1600); }
@@ -1855,7 +1887,7 @@ export class Game {
     const all = this.actors.filter((x) => !x.temp || !x.gone).sort((p, q) => contrib(q) - contrib(p) || q.stats.k - p.stats.k || (p === a ? -1 : q === a ? 1 : 0));
     const i = all.indexOf(a), from = Math.max(0, Math.min(i - 3, all.length - 7)), rows = all.slice(from, from + 7);
     const esc = (t) => String(t).replace(/[<&]/g, '');
-    const next = STREAKS[a.team].find((r) => r.n > a.streak);
+    const next = streakTiers(a.team, a.streak).find((r) => r.n > a.streak);
     const ready = a.rewards.length ? `<span class="rdy">${svg(this.streakDef(a, a.rewards[a.rewards.length - 1]).ico)} ${this.streakDef(a, a.rewards[a.rewards.length - 1]).nom} · ${this.input.label('streak')}</span>` : '';
     el.innerHTML = `<div class="top"><div class="kills">${svg('skull')} ${a.stats.k}<small>ÉLIM.</small></div><div class="pos">#${i + 1}<small>SUR ${all.length}</small></div></div>`
       + `<div class="sub"><span>Assist. <b>${a.stats.a}</b></span><span>Captures <b>${a.stats.cap}</b></span><span>Saccage <b>${a.stats.sac}</b></span></div>`
