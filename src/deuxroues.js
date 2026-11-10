@@ -250,6 +250,7 @@ export const rideMethods = {
     c.steerNode = obj.getObjectByName('steer');
     c.col = { type: 'box', x, z, hx: c.W / 2, hz: c.L / 2 - 0.15, h: moto ? 1.05 : 0.1, yaw, cs: Math.cos(yaw), sn: Math.sin(yaw), y0: c.pos.y, car: c };
     if (moto) this.world.dynamic.push(c.col); // le skate ne bloque personne
+    this.attachStatic(c);
     this.cars.push(c); this.syncCar(c); return c;
   },
   ridePrompt(a, c) {
