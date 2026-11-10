@@ -61,26 +61,34 @@ const pm = new THREE.PMREMGenerator(renderer);
 try { scene.environment = skyEnvironment(renderer, { sunDir: sun.position.clone().normalize().toArray() }); scene.environmentIntensity = 0.6; } catch (e) { console.warn('ciel de reflets indisponible', e); }
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, QS.far); scene.add(camera);
 // post-traitement : bloom léger (éclairs de bouche, néons, soleil), étalonnage et vignette dans un seul passage final
-let composer = null;
+let composer = null, cine = null, grade = null;
 async function setupPost() {
   if (!QS.post) return;
   const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }, { ShaderPass }] = await Promise.all([
     import('three/examples/jsm/postprocessing/EffectComposer.js'), import('three/examples/jsm/postprocessing/RenderPass.js'), import('three/examples/jsm/postprocessing/UnrealBloomPass.js'), import('three/examples/jsm/postprocessing/OutputPass.js'), import('three/examples/jsm/postprocessing/ShaderPass.js')]);
+  const { CinePass } = await import('./cine.js');
   composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, camera));
   // garde-fou : un seul pixel invalide (NaN ou infini, par exemple un éclat trop fort près d'une explosion) est étalé par le flou du bloom
-  // et noircit un grand rectangle de l'écran pendant quelques images ; on les neutralise et on borne la luminosité avant le bloom
-  composer.addPass(new ShaderPass({ uniforms: { tDiffuse: { value: null } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
-      void main(){ vec3 c = texture2D(tDiffuse, vUv).rgb; if (!(c.r >= 0.0 && c.r < 1e4)) c.r = c.r > 0.0 ? 16.0 : 0.0; if (!(c.g >= 0.0 && c.g < 1e4)) c.g = c.g > 0.0 ? 16.0 : 0.0; if (!(c.b >= 0.0 && c.b < 1e4)) c.b = c.b > 0.0 ? 16.0 : 0.0;
-        gl_FragColor = vec4(min(c, vec3(16.0)), 1.0); }` }));
+  // et noircit un grand rectangle de l'écran pendant quelques images ; le passage cinéma les neutralise et borne la luminosité avant le bloom.
+  // Il ajoute le flou de mouvement de caméra et la profondeur de champ en visée (src/cine.js), grâce à la profondeur de la scène.
+  for (const rt of [composer.renderTarget1, composer.renderTarget2]) { rt.depthTexture = new THREE.DepthTexture(rt.width, rt.height); rt.depthTexture.type = THREE.UnsignedIntType; }
+  cine = new CinePass(camera); cine.enabled2 = save.settings.cine !== false && !Q.has('nocine'); composer.addPass(cine); window.__cine = cine;
   const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.35, 0.5, 0.92); composer.addPass(bloom);
   composer.addPass(new OutputPass());
   // étalonnage : légère courbe en S, ombres un peu froides, hautes lumières chaudes, vignette douce
-  composer.addPass(new ShaderPass({ uniforms: { tDiffuse: { value: null } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
-      void main(){ vec3 c = texture2D(tDiffuse, vUv).rgb; float l = dot(c, vec3(0.299, 0.587, 0.114));
+  // étalonnage : légère courbe en S, ombres un peu froides, hautes lumières chaudes, vignette douce ; touche « pellicule » :
+  // grain fin animé et légère aberration chromatique sur les bords de l'objectif (coupés avec le reste du rendu cinéma)
+  grade = new ShaderPass({ uniforms: { tDiffuse: { value: null }, uT: { value: 0 }, uFilm: { value: 1 } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform sampler2D tDiffuse; uniform float uT, uFilm; varying vec2 vUv;
+      void main(){ vec2 d = vUv - 0.5; vec3 c = texture2D(tDiffuse, vUv).rgb;
+        if (uFilm > 0.01) { vec2 o = d * dot(d, d) * 0.012 * uFilm; c.r = texture2D(tDiffuse, vUv + o).r; c.b = texture2D(tDiffuse, vUv - o).b; }
+        float l = dot(c, vec3(0.299, 0.587, 0.114));
         c = mix(c, c * c * (3.0 - 2.0 * c), 0.22); c += vec3(-0.012, 0.0, 0.018) * (1.0 - l) + vec3(0.02, 0.008, -0.012) * l;
-        c = mix(vec3(l), c, 1.08); vec2 d = vUv - 0.5; c *= 1.0 - dot(d, d) * 0.55; gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }` }));
+        c = mix(vec3(l), c, 1.08); c *= 1.0 - dot(d, d) * 0.55;
+        float g = fract(sin(dot(floor(gl_FragCoord.xy) + fract(uT) * 97.0, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+        c += g * 0.028 * uFilm * (1.0 - 0.6 * l);
+        gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }` });
+  composer.addPass(grade);
   window.__post = composer;
 }
 setupPost();
@@ -326,6 +334,7 @@ pause.innerHTML = `<h2>PAUSE</h2>
 <label><input type="checkbox" id="s-killcam"> Kill-cam en incrustation (bulle)</label>
 <label>Qualité graphique <select id="s-quality"><option value="auto">Auto</option><option value="bas">Basse (PC modestes)</option><option value="moyen">Moyenne</option><option value="haut">Haute</option></select></label>
 <label><input type="checkbox" id="s-dynres"> Résolution adaptée aux images/s</label>
+<label><input type="checkbox" id="s-cine"> Rendu cinéma : flou de mouvement, mise au point en visée, grain (qualité haute)</label>
 <label>Images/s <b id="s-fpsn">–</b></label>
 <label>Joueurs par camp (prochaine partie) <select id="s-team"><option value="5">5 contre 5</option><option value="10">10 contre 10</option><option value="15">15 contre 15</option><option value="20">20 contre 20</option><option value="25">25 contre 25</option><option value="35">35 contre 35</option><option value="50">50 contre 50</option></select></label>
 </div>
@@ -348,7 +357,7 @@ document.body.appendChild(pause);
 const st = document.createElement('style'); st.textContent = `.padfocus{outline:3px solid #ffcc3d!important;outline-offset:3px;box-shadow:0 0 0 7px rgba(255,204,61,.22)!important}.settings{display:grid;gap:10px;text-align:left;background:rgba(255,255,255,.06);padding:16px;border-radius:12px;min-width:min(420px,100%)}.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left;margin-top:10px;font-size:13px}.controls h3{margin:0 0 6px;font:800 14px Inter}.controls p{margin:3px 0}@media(max-width:760px){.controls{grid-template-columns:1fr}}.settings label{display:flex;justify-content:space-between;gap:12px;align-items:center;font-weight:700}#minimap.big{width:min(700px,90vw);height:min(350px,45vw);left:50%;top:50%;transform:translate(-50%,-50%)}body.scoped #app canvas{}body.scoped::after{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 30vh,#000 30.5vh);z-index:1}body.scoped::before{content:'';position:fixed;left:50%;top:0;bottom:0;width:1px;background:#000;z-index:2;box-shadow:0 0 0 0 #000}`;
 document.head.appendChild(st);
 const bindSet = (id, key, prop = 'value', conv = Number) => { const el = $(id); el[prop] = save.settings[key]; el.addEventListener('input', () => { save.settings[key] = conv(el[prop]); input.settings[key] = save.settings[key]; persist(); if (key === 'fps' && game) { game.cam.fps = save.settings.fps; game.viewGun(); } }); };
-if (save.settings.killcam === undefined) save.settings.killcam = true; bindSet('s-killcam', 'killcam', 'checked', Boolean); bindSet('s-sens', 'sens'); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); bindSet('s-team', 'teamSize');
+if (save.settings.killcam === undefined) save.settings.killcam = true; bindSet('s-killcam', 'killcam', 'checked', Boolean); bindSet('s-sens', 'sens'); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); if (save.settings.cine === undefined) save.settings.cine = true; bindSet('s-cine', 'cine', 'checked', Boolean); $('s-cine').addEventListener('input', () => { if (cine) cine.enabled2 = save.settings.cine; }); bindSet('s-team', 'teamSize');
 { const el = $('s-quality'); el.value = save.settings.quality || 'auto'; el.addEventListener('change', () => { save.settings.quality = el.value; persist(); location.reload(); }); }
 function openSettings() { pause.querySelector('h2').textContent = 'RÉGLAGES'; $('resume').style.display = 'none'; $('quit').textContent = 'Retour au salon'; pause.classList.remove('hidden'); audio.init(); audio.play('uiSelect'); }
 function openPause() { if (!game || game.over) return; pause.querySelector('h2').textContent = 'PAUSE'; $('resume').style.display = ''; $('quit').textContent = 'Quitter la partie'; game.paused = true; pause.classList.remove('hidden'); document.exitPointerLock?.(); $('s-fps').checked = game.cam.fps; }
@@ -386,11 +395,29 @@ let ftAvg = 1 / 60, ftT = 0, fpsShown = 0;
 function dynRes(raw) {
   ftAvg += (Math.min(raw, 0.2) - ftAvg) * 0.05; ftT += raw; if (ftT < 1) return; ftT = 0;
   fpsShown = Math.round(1 / ftAvg); const el = $('s-fpsn'); if (el) el.textContent = fpsShown + ' (résolution ' + Math.round(prCur * 100) + ' %)';
+  // rendu cinéma coupé quand on passe sous ~40 images/s, rallumé au-dessus de ~52
+  if (cine) cine.auto = ftAvg > 1 / 40 ? 0 : ftAvg < 1 / 52 ? 1 : cine.auto;
   if (save.settings.dynres === false || !game || game.paused) return;
   // effets allégés quand ça rame (moins d'éclats, fumée moins dense), puis rétablis quand il y a de la marge
   const L = fx.stats().load; fx.setLoad(ftAvg > 1 / 40 ? L - 0.15 : ftAvg < 1 / 55 ? L + 0.1 : L);
   let n = prCur; if (ftAvg > 1 / 45) n = Math.max(QS.prMin, prCur - 0.1); else if (ftAvg < 1 / 57) n = Math.min(prMax, prCur + 0.05);
   if (Math.abs(n - prCur) > 0.01) { prCur = n; renderer.setPixelRatio(prCur); composer?.setPixelRatio?.(prCur); }
+}
+// état du rendu cinéma selon la caméra du jeu : quoi masquer près de l'objectif, mise au point, intensité
+function cineState(raw) {
+  const g = game && !game.paused ? game : null, a = g?.player;
+  let mb = 0.5, dof = 0, focus = 20, mask = [2.6, 5];
+  if (g && a) {
+    const W = g.weapon(a), scope = g.aiming && W && WEAPONS[W.id]?.scope, fps = (g.cam.fps || !!g.sc?.was) && !a.inCar && a.alive;
+    if (a.inCar) mask = a.inCar.kind ? [3.2, 5.5] : [6.5, 10]; // la voiture (ou la moto) suit la caméra : on ne la floute pas
+    else if (fps) mask = [1.1, 2.0]; // bras et arme
+    else if (g.aiming) mask = [1.5, 3.0];
+    if (g.aiming && !scope && a.alive) { dof = 1; focus = g.aimPt ? g.aimPt.distanceTo(camera.position) : 20; }
+    if (scope) mb = 0.2; // à la lunette, un flou fort gênerait la visée
+    if (g.killcam) mb = 0.35;
+  }
+  cine.set({ dt: raw, mb, dof, focus, mask });
+  if (grade) { grade.uniforms.uT.value = (grade.uniforms.uT.value + raw * 24) % 1000; grade.uniforms.uFilm.value = cine.enabled2 ? cine.k : 0; }
 }
 function frame() {
   requestAnimationFrame(frame);
@@ -406,7 +433,9 @@ function frame() {
     else { menuT += dt * 0.04; camera.position.set(Math.cos(menuT) * 150, 55, Math.sin(menuT) * 150); camera.lookAt(0, 4, 0); followShadow(camera.position); } world.metro?.update(menuT * 25, dt, null);
     input.poll(); padMenu(dt); input.endFrame(); night?.update(dt, camera.position, null);
   }
+  if (cine) cineState(raw);
   if (composer) composer.render(); else renderer.render(scene, camera); if (game && !game.paused) game.renderPip(renderer, scene); window.__frames = (window.__frames || 0) + 1;
 }
+window.__cineState = (dt) => cine && cineState(dt);
 renderMenu(); frame();
 loadAll().catch((e) => { $('loadtxt').textContent = 'Erreur de chargement : ' + e.message; console.error(e); });
