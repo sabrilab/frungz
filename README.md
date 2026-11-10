@@ -15,3 +15,12 @@ Assets : personnages et armes Quaternius (CC0), sons CC0 (voir `public/assets/sf
 - Motos : sportive, roadster, scooter (Frungz et rues), motos de service à la base de la Brigade (prises sans crochetage par la Brigade). Elles s'inclinent dans les virages ; `Espace` (✕) bloque la roue arrière pour faire dériver. Un choc fort éjecte le pilote, la moto se couche.
 - Skates : côté Frungz et autour des places. Avancer pour pousser, reculer pour freiner, `Espace` (✕) pour un ollie (monter sur un trottoir ou un banc). Une bordure prise de face ou un mur font tomber.
 - Tests : `node test/ride.cjs http://localhost:8124/ prefixe` (conduite) et `node test/ride-shots.cjs http://localhost:8124/ planche.png` (pilotes vus de côté).
+
+## Jouer en ligne entre amis
+
+`Inviter` dans le salon ouvre ton salon en ligne (code `FRZ-XXXX`). Tes amis ouvrent ton lien (`?equipe=FRZ-XXXX`) ou tapent le code : ils prennent les places libres de ton équipe et suivent ton camp. Tu lances la partie avec `JOUER`, elle démarre chez tout le monde.
+
+- Le chef (celui dont c'est le code) fait tourner les bots, les zones, le score et le temps ; chaque joueur décide de son propre perso. Un tir est calculé chez le tireur, les dégâts sont appliqués par le « propriétaire » de la cible (le chef pour un bot, l'ami pour son perso), qui annonce la mort à tous. Code : `src/net.js` (+ `netOwns`, `updatePuppet`, `netShot` dans `src/game.js`).
+- Transport : Supabase Realtime (broadcast + présence), projet Supabase de Sabri, clé publique anon. Quota gratuit : 100 messages/s et 2 millions de messages par mois (environ 10 h de jeu à trois). Pour plus de joueurs, prévoir un transport Cloudflare Durable Objects (même interface join/send/track/leave).
+- En ligne, l'équipe est limitée à 20 contre 20 (messages plus légers). Pas encore synchronisés : voitures, vitrines, butin, barricades, lancers et atouts de série (chacun les voit chez soi ; leurs dégâts, eux, passent bien).
+- Tests sans Supabase : `node test/relay.cjs 8125 &` puis `node test/online.cjs http://localhost:8124/` (3 navigateurs : salon, lancement, positions, tirs, morts, départ) et `node test/online-shots.cjs http://localhost:8124/ dossier` (captures). Dans le navigateur : `?net=ws://localhost:8125&profil=a` (relais) ou `?net=local&profil=a` (onglets), `profil` sépare les sauvegardes.
