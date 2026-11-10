@@ -410,7 +410,7 @@ pause.innerHTML = `<h2>PAUSE</h2>
 <label>Images/s <b id="s-fpsn">–</b></label>
 <label>Joueurs par camp (prochaine partie) <select id="s-team"><option value="5">5 contre 5</option><option value="10">10 contre 10</option><option value="15">15 contre 15</option><option value="20">20 contre 20</option><option value="25">25 contre 25</option><option value="35">35 contre 35</option><option value="50">50 contre 50</option></select></label>
 </div>
-<div class="row-btns"><button class="big" id="resume">REPRENDRE</button><button class="ghost" id="quit">Quitter la partie</button></div>
+<div class="row-btns"><button class="big" id="resume">REPRENDRE</button><button class="ghost" id="quit">Quitter la partie</button><button class="ghost" id="s-fullscreen">Plein écran (⌘L)</button></div>
 <div class="controls"><div><h3>Manette</h3>
 <p><kbd>L</kbd> se déplacer · <kbd>R</kbd> regarder</p><p><kbd>R2</kbd> tirer · <kbd>L2</kbd> viser</p><p><kbd>✕</kbd> sauter / escalader · <kbd>○</kbd> roulade / glissade</p>
 <p><kbd>L1</kbd> s'accroupir · <kbd>L3</kbd> sprint · <kbd>R3</kbd> vue FPS / TPS</p><p><kbd>□</kbd> agir, ramasser, monter dans un véhicule · <kbd>△</kbd> changer d'arme</p>
@@ -424,7 +424,7 @@ pause.innerHTML = `<h2>PAUSE</h2>
 <p><kbd>X</kbd> préparer l'atout de série, <kbd>Clic</kbd> pour le lancer</p>
 <p>Lunette : <kbd>Molette</kbd> zoom ×4 / ×8 · <kbd>Maj</kbd> retenir son souffle</p>
 <p>Véhicule : <kbd>Espace</kbd> frein à main / ollie · <kbd>H</kbd> klaxon</p>
-<p><kbd>1-4</kbd> armes · <kbd>Q</kbd> barricade · <kbd>B</kbd> armurerie (à la base)</p><p><kbd>M</kbd> carte · <kbd>Tab</kbd> sac · <kbd>Échap</kbd> pause</p></div></div>`;
+<p><kbd>1-4</kbd> armes · <kbd>Q</kbd> barricade · <kbd>B</kbd> armurerie (à la base)</p><p><kbd>M</kbd> carte · <kbd>Tab</kbd> sac · <kbd>Échap</kbd> pause · <kbd>⌘L</kbd> / <kbd>Ctrl+L</kbd> plein écran</p></div></div>`;
 document.body.appendChild(pause);
 const st = document.createElement('style'); st.textContent = `.padfocus{outline:3px solid #ffcc3d!important;outline-offset:3px;box-shadow:0 0 0 7px rgba(255,204,61,.22)!important}.settings{display:grid;gap:10px;text-align:left;background:rgba(255,255,255,.06);padding:16px;border-radius:12px;min-width:min(420px,100%)}.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left;margin-top:10px;font-size:13px}.controls h3{margin:0 0 6px;font:800 14px Inter}.controls p{margin:3px 0}@media(max-width:760px){.controls{grid-template-columns:1fr}}.settings label{display:flex;justify-content:space-between;gap:12px;align-items:center;font-weight:700}#minimap.big{width:min(700px,90vw);height:min(350px,45vw);left:50%;top:50%;transform:translate(-50%,-50%)}body.scoped #app canvas{}body.scoped::after{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 30vh,#000 30.5vh);z-index:1}body.scoped::before{content:'';position:fixed;left:50%;top:0;bottom:0;width:1px;background:#000;z-index:2;box-shadow:0 0 0 0 #000}`;
 document.head.appendChild(st);
@@ -435,8 +435,20 @@ function openSettings() { pause.querySelector('h2').textContent = 'RÉGLAGES'; $
 function openPause() { if (!game || game.over) return; pause.querySelector('h2').textContent = 'PAUSE'; $('resume').style.display = ''; $('quit').textContent = 'Quitter la partie'; game.paused = true; pause.classList.remove('hidden'); document.exitPointerLock?.(); $('s-fps').checked = game.cam.fps; }
 function closePause() { pause.classList.add('hidden'); if (game) { game.paused = false; renderer.domElement.requestPointerLock?.(); } else renderMenu(); }
 $('resume').addEventListener('click', closePause);
+$('s-fullscreen').addEventListener('click', () => toggleFullscreen());
 $('quit').addEventListener('click', () => { pause.classList.add('hidden'); endGame(null); });
-document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && game && !game.paused && !game.over && !input.st.usingPad && $('shop').classList.contains('hidden') && $('inv').classList.contains('hidden')) openPause(); });
+// ---------- plein écran : Cmd+L (Mac) ou Ctrl+L, bouton dans la pause ----------
+let fsSwitch = 0;
+function toggleFullscreen() {
+  fsSwitch = performance.now() + 1500;
+  const d = document, el = d.documentElement;
+  if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen)?.call(d)?.catch?.(() => {});
+  else (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el, { navigationUI: 'hide' })?.catch?.(() => {});
+}
+window.__toggleFullscreen = toggleFullscreen;
+addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.code === 'KeyL') { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) toggleFullscreen(); } }, true);
+document.addEventListener('fullscreenchange', () => { $('s-fullscreen') && ($('s-fullscreen').textContent = document.fullscreenElement ? 'Quitter le plein écran (⌘L)' : 'Plein écran (⌘L)'); if (game && !game.paused && !game.over && !input.st.usingPad && !document.pointerLockElement) renderer.domElement.requestPointerLock?.(); });
+document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && performance.now() < fsSwitch && game && !game.paused && !game.over) { renderer.domElement.requestPointerLock?.(); return; } if (!document.pointerLockElement && game && !game.paused && !game.over && !input.st.usingPad && $('shop').classList.contains('hidden') && $('inv').classList.contains('hidden')) openPause(); });
 renderer.domElement.addEventListener('click', () => { if (game && !game.paused) renderer.domElement.requestPointerLock?.(); });
 
 // ---------- partie ----------
