@@ -19,7 +19,7 @@ const fmt = (n) => Math.round(n).toLocaleString('fr-FR');
 const Q = new URLSearchParams(location.search);
 
 // ---------- sauvegarde ----------
-const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Punk', settings: { sens: 1, padSens: 1, assist: true, fps: false, teamSize: 50, invertY: false, dynres: true } };
+const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Paysan', settings: { sens: 1, padSens: 1, assist: true, fps: false, teamSize: 50, invertY: false, dynres: true } };
 let save; try { save = { ...DEFAULT, ...JSON.parse(localStorage.getItem('frungz-save') || '{}') }; save.settings = { ...DEFAULT.settings, ...save.settings }; save.upgrades ||= {}; } catch { save = structuredClone(DEFAULT); }
 const persist = () => { try { localStorage.setItem('frungz-save', JSON.stringify(save)); } catch {} };
 if ((save.sv || 1) < 2) { save.sv = 2; save.settings.teamSize = 50; } // passage au 50 contre 50 par défaut

@@ -1,0 +1,10 @@
+[
+  {"name": "Paysan", "outfit": "Male_Peasant", "base": "Superhero_Male_FullBody", "hair": ["Hair_SimpleParted", "Eyebrows_Regular"], "hairColor": "#4a2f1c"},
+  {"name": "Paysan_2", "outfit": "Male_Peasant", "tex": "T_Peasant_2_BaseColor.png", "base": "Superhero_Male_FullBody", "hair": ["Hair_Buzzed", "Hair_Beard", "Eyebrows_Regular"], "hairColor": "#1c1a18"},
+  {"name": "Paysanne", "outfit": "Female_Peasant", "base": "Superhero_Female_FullBody", "hair": ["Hair_Long"], "hairColor": "#8a5a2b"},
+  {"name": "Paysanne_2", "outfit": "Female_Peasant", "tex": "T_Peasant_2_BaseColor.png", "base": "Superhero_Female_FullBody", "hair": ["Hair_Buns"], "hairColor": "#b5482a"},
+  {"name": "Rodeur", "outfit": "Male_Ranger", "base": "Superhero_Male_FullBody", "hair": ["Hair_Beard", "Eyebrows_Regular"], "hairColor": "#5b3a22"},
+  {"name": "Rodeur_3", "outfit": "Male_Ranger", "tex": "T_Ranger_3_BaseColor.png", "base": "Superhero_Male_FullBody", "hair": ["Eyebrows_Regular"], "hairColor": "#1c1a18"},
+  {"name": "Rodeuse", "outfit": "Female_Ranger", "base": "Superhero_Female_FullBody", "hair": [], "hairColor": "#2a1c14"},
+  {"name": "Rodeuse_3", "outfit": "Female_Ranger", "tex": "T_Ranger_3_BaseColor.png", "base": "Superhero_Female_FullBody", "hair": [], "hairColor": "#c9a25a"}
+]

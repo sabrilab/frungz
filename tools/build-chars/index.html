@@ -1,0 +1,68 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#777">
+<script type="importmap">{"imports":{"three":"/frungz/node_modules/three/build/three.module.js","three/addons/":"/frungz/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+// Assemble un perso du jeu à partir des packs Quaternius « Modular Character Outfits – Fantasy » (tenue) et « Universal Base Characters » (tête, cheveux) :
+// textures cuites en couleurs par sommet (le jeu fusionne tout en un seul maillage sans texture), os renommés comme dans le jeu, export GLB.
+// index.html?outfit=Male_Ranger&tex=T_Ranger_3_BaseColor.png&base=Superhero_Male_FullBody&hair=Hair_Buzzed,Hair_Beard&shot=1
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+const Q = new URLSearchParams(location.search), P = '/pack/src/';
+const loader = new GLTFLoader();
+const load = (u) => loader.loadAsync(encodeURI(u));
+const outfit = await load(`${P}outfits/${Q.get('outfit')}.gltf`), base = await load(`${P}base/${Q.get('base')}.gltf`);
+const hairs = await Promise.all((Q.get('hair') || '').split(',').filter(Boolean).map((h) => load(`${P}hair/${h}.gltf`)));
+const img = (u) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = encodeURI(u); });
+const altTex = Q.get('tex') ? await img(`${P}outfits/${Q.get('tex')}`) : null;
+const hairTint = Q.get('hairColor') ? new THREE.Color(Q.get('hairColor')) : null;
+// noms du jeu
+const MAP = { pelvis: 'Hips', spine_01: 'Abdomen', spine_02: 'Torso', spine_03: 'Chest', neck_01: 'Neck', Head: 'Head' };
+for (const [s, S] of [['l', 'L'], ['r', 'R']]) { Object.assign(MAP, { [`clavicle_${s}`]: `Shoulder${S}`, [`upperarm_${s}`]: `UpperArm${S}`, [`lowerarm_${s}`]: `LowerArm${S}`, [`hand_${s}`]: `Wrist${S}`, [`thigh_${s}`]: `UpperLeg${S}`, [`calf_${s}`]: `LowerLeg${S}`, [`foot_${s}`]: `Foot${S}`, [`ball_${s}`]: `Toe${S}` });
+  for (const [f, F] of [['index', 'Index'], ['middle', 'Middle'], ['ring', 'Ring'], ['pinky', 'Pinky'], ['thumb', 'Thumb']]) for (let k = 1; k <= 3; k++) MAP[`${f}_0${k}_${s}`] = `${F}${k}${S}`; }
+// échantillonneur de texture (réduite à 512 : moyenne locale, pas de bruit de texel)
+const samplers = new Map();
+function sampler(image) { if (!image) return null; if (samplers.has(image)) return samplers.get(image); const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(image, 0, 0, 512, 512); const d = g.getImageData(0, 0, 512, 512).data;
+  const f = (u, v, out) => { const x = Math.min(511, Math.max(0, Math.floor((u - Math.floor(u)) * 512))), y = Math.min(511, Math.max(0, Math.floor((v - Math.floor(v)) * 512))), i = (y * 512 + x) * 4; out.setRGB(d[i] / 255, d[i + 1] / 255, d[i + 2] / 255, THREE.SRGBColorSpace); return d[i + 3]; }; samplers.set(image, f); return f; }
+const main = outfit.scene; main.updateMatrixWorld(true);
+let skel = null; main.traverse((o) => { if (o.isSkinnedMesh && !skel) skel = o.skeleton; });
+const bone = (sk, n) => sk.bones.find((b) => b.name === n);
+const out = []; const c = new THREE.Color();
+function add(mesh, kind, keep, fix) {
+  const mats = [].concat(mesh.material), src = mesh.geometry, n = src.attributes.position.count;
+  const groups = src.groups.length ? src.groups : [{ start: 0, count: src.index ? src.index.count : n, materialIndex: 0 }];
+  for (const gr of groups) { const m = mats[gr.materialIndex] || mats[0];
+    let image = m.map?.image; const isOutfit = /Peasant|Ranger/.test(m.name) && !/Regular/.test(m.name); if (isOutfit && altTex) image = altTex; const S = sampler(image);
+    const name = /Hair/.test(m.name) || kind === 'hair' ? 'Hair' : /Eye/.test(m.name) ? 'Eye' : /Regular|Superhero/.test(m.name) ? 'Skin' : 'Outfit';
+    const idx = []; for (let i = gr.start; i < gr.start + gr.count; i += 3) { const t = [0, 1, 2].map((k) => src.index ? src.index.getX(i + k) : i + k); if (!keep || t.every(keep(src, mesh.skeleton))) idx.push(...t); }
+    if (!idx.length) continue;
+    const used = [...new Set(idx)], remap = new Map(used.map((v, i) => [v, i])); const g = new THREE.BufferGeometry();
+    for (const key of ['position', 'normal', 'skinIndex', 'skinWeight']) { const a = src.attributes[key]; const arr = key === 'skinIndex' ? new Uint16Array(used.length * a.itemSize) : new Float32Array(used.length * a.itemSize); used.forEach((v, i) => { for (let k = 0; k < a.itemSize; k++) arr[i * a.itemSize + k] = a.getComponent(v, k); }); g.setAttribute(key, new THREE.BufferAttribute(arr, a.itemSize)); }
+    const col = new Float32Array(used.length * 3), uv = src.attributes.uv; let alphaCut = null;
+    used.forEach((v, i) => { if (S && uv) S(uv.getX(v), uv.getY(v), c); else c.copy(m.color); if (S && m.color) c.multiply(m.color); if (name === 'Hair' && hairTint) { const l = (c.r + c.g + c.b) / 3; c.copy(hairTint).multiplyScalar(0.35 + l * 2.2); } col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; });
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setIndex(idx.map((v) => remap.get(v)));
+    // ramène la pièce dans l'espace de liaison du squelette principal
+    const T = new THREE.Matrix4().copy(mesh.bindMatrix); if (fix) T.premultiply(fix); g.applyMatrix4(T);
+    out.push({ g, name });
+  }
+}
+main.traverse((o) => { if (o.isSkinnedMesh) add(o, 'outfit'); });
+// corps de base : on ne garde que la tête et le cou (le reste passerait à travers les vêtements), plus ce que la tenue ne couvre pas (?keep=…)
+const KEEP = new Set(['Head', 'neck_01', ...(Q.get('keep') || '').split(',').filter(Boolean)]);
+const dom = (src, sk) => (v) => { let b = 0, w = -1; for (let k = 0; k < 4; k++) { const ww = src.attributes.skinWeight.getComponent(v, k); if (ww > w) { w = ww; b = src.attributes.skinIndex.getComponent(v, k); } } return KEEP.has(sk.bones[b].name); };
+base.scene.updateMatrixWorld(true); base.scene.traverse((o) => { if (o.isSkinnedMesh) add(o, 'base', dom); });
+// cheveux, barbe : recalés sur l'os de la tête du squelette principal
+for (const h of hairs) { h.scene.updateMatrixWorld(true); h.scene.traverse((o) => { if (o.isSkinnedMesh) { const hb = bone(o.skeleton, 'Head'), mb = bone(skel, 'Head'); const fix = new THREE.Matrix4().copy(mb.matrixWorld).multiply(hb.matrixWorld.clone().invert()); add(o, 'hair', null, fix); } }); }
+// scène de sortie : squelette principal renommé + un maillage par matière
+let root = skel.bones[0]; while (root.parent && root.parent.isBone) root = root.parent; const arm = root.parent;
+const olds = []; main.traverse((o) => { if (o.isSkinnedMesh) olds.push(o); }); for (const o of olds) o.parent.remove(o);
+const byName = {}; for (const p of out) (byName[p.name] ||= []).push(p.g);
+const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js');
+for (const [name, geos] of Object.entries(byName)) { const g = mergeGeometries(geos, false); const m = new THREE.SkinnedMesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, metalness: 0, name })); m.name = name; arm.add(m); m.bind(skel, new THREE.Matrix4()); }
+for (const b of skel.bones) if (MAP[b.name]) b.name = MAP[b.name];
+main.updateMatrixWorld(true);
+if (Q.get('shot')) { const W = 900, H = 900; const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(W, H); document.body.appendChild(r.domElement); const s = new THREE.Scene(); s.background = new THREE.Color('#8a8f98'); s.add(new THREE.HemisphereLight('#fff', '#667', 2.4)); const dl = new THREE.DirectionalLight('#fff', 2.2); dl.position.set(2, 4, 3); s.add(dl); s.add(main); r.setScissorTest(true);
+  [[0.5, 0, 0, W / 2, H, 1.0, 2.9], [Math.PI + 0.5, W / 2, 0, W / 2, H / 2, 1.0, 2.9], [0.25, W / 2, H / 2, W / 2, H / 2, 1.62, 0.8]].forEach(([a, x, y, w, h, ty, d]) => { const cam = new THREE.PerspectiveCamera(35, w / h, 0.05, 30); cam.position.set(Math.sin(a) * d, ty + 0.1, Math.cos(a) * d); cam.lookAt(0, ty, 0); r.setViewport(x, y, w, h); r.setScissor(x, y, w, h); r.render(s, cam); }); }
+const glb = await new GLTFExporter().parseAsync(main, { binary: true });
+const u8 = new Uint8Array(glb); let bin = ''; for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); window.__out = btoa(bin);
+window.__info = Object.fromEntries(Object.entries(byName).map(([k, v]) => [k, v.reduce((s, g) => s + g.attributes.position.count, 0)])); window.__done = true;
+</script>

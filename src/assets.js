@@ -1,4 +1,4 @@
-// Personnages (Quaternius Ultimate Modular Men, animations incluses) et armes (Quaternius Ultimate Gun, OBJ).
+// Personnages (Quaternius Modular Character Outfits – Fantasy + Universal Base Characters, assemblés par tools/build-chars) et armes (Quaternius Ultimate Gun, OBJ).
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -52,7 +52,8 @@ function mergeChar(scene) {
     const groups = src.groups.length && Array.isArray(p.material) ? src.groups : [{ start: 0, count: src.index ? src.index.count : n, materialIndex: 0 }];
     for (const gr of groups) {
       const m = mats[gr.materialIndex] || mats[0]; const vs = [];
-      for (let i = gr.start; i < gr.start + gr.count; i++) { const v = src.index ? src.index.getX(i) : i; col[v * 3] = m.color.r; col[v * 3 + 1] = m.color.g; col[v * 3 + 2] = m.color.b; vs.push(v + off); }
+      const sc = src.attributes.color; // persos Fantasy : couleurs déjà cuites par sommet (textures du pack), sinon la couleur de la matière
+      for (let i = gr.start; i < gr.start + gr.count; i++) { const v = src.index ? src.index.getX(i) : i; if (sc) { col[v * 3] = sc.getX(v) * m.color.r; col[v * 3 + 1] = sc.getY(v) * m.color.g; col[v * 3 + 2] = sc.getZ(v) * m.color.b; } else { col[v * 3] = m.color.r; col[v * 3 + 1] = m.color.g; col[v * 3 + 2] = m.color.b; } vs.push(v + off); }
       ranges.push({ name: m.name || '', verts: vs });
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -72,7 +73,7 @@ function mergeChar(scene) {
 // tenues d'équipe : Brigade en bleu police, Frungz en vert ; peau, cheveux, yeux, métal et noir gardent leur couleur
 const NOT_CLOTH = /Skin|Hair|Eye|Moustache|Earrings|Gold|Visor|Metal|Tie|Black/;
 const TEAM_HUE = { ordre: new THREE.Color('#1f4fd1'), civils: new THREE.Color('#1fa83f') };
-const tinted = {};
+const tinted = {}; const _tc = new THREE.Color();
 export function tintTeam(model, skin, team) {
   const key = skin + '#' + team, base = TEAM_HUE[team]; const hb = {}; base.getHSL(hb);
   model.traverse((o) => {
@@ -80,7 +81,11 @@ export function tintTeam(model, skin, team) {
     if (!tinted[key]) {
       const g = o.geometry.clone(); g.userData = o.geometry.userData; const col = g.attributes.color, c = new THREE.Color(), hsl = {};
       for (const r of g.userData.ranges) if (!NOT_CLOTH.test(r.name)) for (const v of r.verts) {
-        c.fromBufferAttribute(col, v); c.getHSL(hsl); c.setHSL(hb.h, Math.max(0.55, hb.s * 0.9), Math.min(0.42, Math.max(0.12, hsl.l * 0.55 + 0.08))); col.setXYZ(v, c.r, c.g, c.b);
+        c.fromBufferAttribute(col, v); c.getHSL(hsl);
+        // on garde le modelé de la tenue : le cuir (bruns) et le métal (clairs, gris) restent tels quels, les tissus colorés prennent la teinte de l'équipe, les tissus clairs sont teintés à moitié
+        const cuir = hsl.h > 0.02 && hsl.h < 0.13 && hsl.s > 0.22 && hsl.l < 0.4, metal = hsl.s < 0.12 && hsl.l > 0.5; if (cuir || metal) continue;
+        if (hsl.s >= 0.2) c.setHSL(hb.h, Math.max(0.5, hsl.s), hsl.l); else c.lerp(_tc.setHSL(hb.h, 0.6, Math.max(0.12, hsl.l * 0.8)), 0.5);
+        col.setXYZ(v, c.r, c.g, c.b);
       }
       tinted[key] = g;
     }
@@ -136,8 +141,8 @@ export async function loadGuns(onEach) {
 }
 export function gunInstance(id) { const g = guns[id].clone(true); g.userData.muzzle = g.children[1]; return g; }
 
-// réglage de la prise en main (repère de l'os Wrist.R des Modular Men)
-export const GRIP = { rot: [-0.022, 0.177, 1.615], off: [0, 0.07, 0.0] };
+// réglage de la prise en main (repère de l'os de la main droite, renommé WristR)
+export const GRIP = { rot: [-1.96, 1.452, -2.725], off: [0, 0.08, 0.0] }; // os de la main droite des persos Fantasy (tools/bake-anims/calib.html)
 // accroche l'arme à la main droite (os WristR), orientée canon vers l'avant du personnage
 export function attachGun(ch, id) {
   const w = ch.bones.WristR; if (ch.gun) ch.gun.parent?.remove(ch.gun);

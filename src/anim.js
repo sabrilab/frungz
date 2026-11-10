@@ -30,25 +30,31 @@ const angDiff = (a, b) => { let d = (a - b) % (2 * Math.PI); if (d > Math.PI) d 
 
 function makeRig(a) {
   const ch = a.ch, B = ch.bones;
-  const R = { ok: false, spine: SPINE.map((n) => B[n] || null), legs: [], saved: [] };
-  if (!B.Body || !B.UpperLegL || !B.LowerLegL || !B.FootL) return R;
+  // deux squelettes connus : Modular Men (Root > Body > Hips, cuisses sous Body, pieds libres sous Root) et le squelette type Unreal
+  // des persos Fantasy (root couché de 90° > Hips, cuisses sous Hips, pieds sous les tibias). Le bassin est Body s'il existe, sinon Hips.
+  const pel = B.Body || B.Hips;
+  const R = { ok: false, spine: SPINE.map((n, i) => (i === 0 ? pel : n === 'Hips' && !B.Body ? null : B[n]) || null), legs: [], saved: [] };
+  if (!pel || !pel.parent?.isBone || !B.UpperLegL || !B.LowerLegL || !B.FootL) return R;
   // longueur du tibia : mesurée sur le modèle source au repos (pied posé au bout du tibia)
   let shin = 0.511; const src = chars[a.skin]?.scene;
   if (src) { const f = src.getObjectByName('FootL'), l = src.getObjectByName('LowerLegL'); if (f && l) { src.updateMatrixWorld(true); const d = l.worldToLocal(f.getWorldPosition(V3())).length(); if (d > 0.2 && d < 1.2) shin = d; } }
   for (const s of ['L', 'R']) {
     const U = B['UpperLeg' + s], L = B['LowerLeg' + s], F = B['Foot' + s];
-    R.legs.push({ U, L, F, free: F.parent !== L, l1: L.position.length(), l2: shin, T: V3(), fq: Q(), off: 0, lock: null, step: null, restY: src?.getObjectByName('Foot' + s)?.position.y ?? F.position.y });
+    // hauteur de la cheville au repos, dans le repère du perso (parent de l'os racine)
+    let restY = 0.03; const sf = src?.getObjectByName('Foot' + s), sp = src?.getObjectByName(pel.name)?.parent?.parent; if (sf && sp) restY = sp.worldToLocal(sf.getWorldPosition(V3())).y;
+    R.legs.push({ U, L, F, free: F.parent !== L, l1: L.position.length(), l2: shin, T: V3(), fq: Q(), off: 0, lock: null, step: null, restY });
   }
+  { const sp = src?.getObjectByName(pel.name), sc = sp?.parent?.parent; R.pelY = sp && sc ? sc.worldToLocal(sp.getWorldPosition(V3())).y : 0.85; }
   // bassin : dans les clips Mixamo c'est l'os Hips qui bouge et tourne, alors que les cuisses sont accrochées à Body ;
   // on garde la pose de repos de Hips pour reporter son mouvement sur Body (sinon les cuisses s'étirent dès que le bassin s'écarte : saut, glissade, roulade, chutes)
   const h0 = src?.getObjectByName('Hips'); R.hips = B.Hips && B.Hips.parent === B.Body && h0 ? { b: B.Hips, q: h0.quaternion.clone(), qi: h0.quaternion.clone().invert(), p: h0.position.clone() } : null;
-  R.rootBone = B.Body.parent; R.flat = R.legs.every((g) => g.free && g.F.parent === R.rootBone) && R.legs.every((g) => g.U.parent === B.Body);
+  R.rootBone = pel.parent; R.flat = R.legs.every((g) => (g.free ? g.F.parent === R.rootBone : true) && g.U.parent === pel);
   // os que les couches modifient : remis dans leur pose d'animation avant chaque passage du mixer
   const mod = new Set(R.spine.filter(Boolean)); for (const g of R.legs) { mod.add(g.U); mod.add(g.L); mod.add(g.F); }
-  for (const b of mod) R.saved.push({ b, q: b.quaternion.clone(), p: b.position.clone(), pos: b === B.Body || b === B.Hips || /^Foot/.test(b.name) });
+  for (const b of mod) R.saved.push({ b, q: b.quaternion.clone(), p: b.position.clone(), pos: b === pel || b === B.Hips || /^Foot/.test(b.name) });
   R.lean = { x: S(), z: S() }; R.pelvis = S(); R.twist = S(); R.head = { yaw: S(), pitch: S(), nod: S() }; R.curl = S();
   R.rec = { p: S(), y: S(), z: S() }; R.hit = { x: S(), z: S(), hx: S(), hz: S() };
-  R.pv = V3(); R.acc = V3(); R.yaw0 = a.yaw; R.yawRate = 0; R.effort = 0; R.breath = Math.random() * 6; R.plantW = 0; R.slide = 0; R.stepSide = 0; R.wasGround = true; R.vy = 0; R.w = 1; R.drop = 0;
+  R.pv = V3(); R.acc = V3(); R.yaw0 = a.yaw; R.yawRate = 0; R.effort = 0; R.breath = Math.random() * 6; R.plantW = 0; R.slide = 0; R.roll = 0; R.stepSide = 0; R.wasGround = true; R.vy = 0; R.w = 1; R.drop = 0;
   R.ok = true; return R;
 }
 const rig = (a) => a.ch.rig || (a.ch.rig = makeRig(a));
@@ -80,10 +86,25 @@ function ankle(body, g, out, knee) {
   out.set(0, g.l2, 0).applyQuaternion(_q2).add(_knee); if (knee) knee.copy(_knee);
   return out;
 }
-// le pied (os libre, enfant de Root) est posé au bout du tibia : sans cela il reste au sol pendant que la jambe court
+// bassin dans le repère du perso (y = haut, z = devant), quel que soit l'os racine ; tout le calcul des jambes se fait dessus
+const _zero = new THREE.Vector3();
+const PB = { position: V3(), quaternion: Q() }, _ri = Q();
+function load(R) {
+  const pel = R.spine[0], rt = R.rootBone; _ri.copy(rt.quaternion).invert();
+  PB.quaternion.multiplyQuaternions(rt.quaternion, pel.quaternion); PB.position.copy(pel.position).applyQuaternion(rt.quaternion).add(rt.position);
+}
+const store = (R) => R.spine[0].position.copy(PB.position).sub(R.rootBone.position).applyQuaternion(_ri);
+// pose d'animation remise d'aplomb : bassin qui emmène les cuisses (Modular Men), et pas de montée du bassin venue du clip
+// (les clips de saut le montent de près d'un mètre alors que c'est la physique du jeu qui porte le perso)
+function settle(R) {
+  pelvis(R); load(R);
+  if (!R.hips) { const up = PB.position.y - R.pelY; if (up > 0.05) { PB.position.y = R.pelY + 0.05 + (up - 0.05) * 0.12; store(R); } }
+}
+const putFoot = (R, g, T) => g.F.position.copy(T).sub(R.rootBone.position).applyQuaternion(_ri);
+// le pied libre (enfant de Root) est posé au bout du tibia : sans cela il reste au sol pendant que la jambe court
 export function attachFeet(a) {
-  const R = rig(a); if (!R.ok || !R.flat) return; const body = R.spine[0]; pelvis(R);
-  for (const g of R.legs) g.F.position.copy(ankle(body, g, _v));
+  const R = rig(a); if (!R.ok || !R.flat) return; settle(R);
+  for (const g of R.legs) if (g.free) putFoot(R, g, ankle(PB, g, _v));
 }
 // acteur mort : le clip de chute joue seul, pieds attachés
 export function dead(a, dt) { restore(a); a.ch.mixer.update(dt); capture(a); attachFeet(a); const R = rig(a); if (R.ok) { R.plantW = 0; for (const g of R.legs) { g.lock = g.step = null; } } }
@@ -124,7 +145,7 @@ export function flinch(a, f, sd, amount = 20) { const R = rig(a); if (!R.ok) ret
 // couche principale. near : calcul complet (IK, sol, colonne) ; sinon seulement les pieds attachés. Renvoie true si la couche « après visée » doit passer
 export function layers(game, a, dt, near) {
   const R = rig(a); if (!R.ok) return false;
-  const ch = a.ch, body = R.spine[0];
+  const ch = a.ch, body = PB;
   // ---- état : accélération et vitesse de rotation, dans le repère du perso
   const yaw = ch.root.rotation.y, sn = Math.sin(yaw), cs = Math.cos(yaw);
   const idt = dt > 1e-4 ? 1 / dt : 0, kA = 1 - Math.exp(-dt * 12);
@@ -157,14 +178,17 @@ export function layers(game, a, dt, near) {
   if (!near || !R.flat) { attachFeet(a); return false; }
 
   // ---- 1. cibles des pieds d'après l'animation (avant de bouger le bassin)
-  pelvis(R);
-  for (const g of R.legs) { ankle(body, g, g.T); g.fq.copy(g.F.quaternion); }
+  settle(R);
+  // roulade : le clip est une roulade plongée, le corps en boule passait à hauteur d'homme ; on le ramène au ras du sol
+  R.roll += ((a.rollT > 0 ? 1 : 0) - R.roll) * (1 - Math.exp(-dt * 14));
+  if (R.roll > 0.01 && body.position.y > 0.42) { body.position.y += (0.42 - body.position.y) * R.roll; store(R); }
+  for (const g of R.legs) { ankle(body, g, g.T); if (!g.free) g.fq.copy(_q2).multiply(g.F.quaternion); } // (_q2 = orientation du tibia) orientation du pied à garder
   // ---- 2. bassin et colonne
   const br = Math.sin(R.breath) * (0.006 + 0.022 * R.effort);
   const hitX = clamp(hz, -0.3, 0.3), hitZ = clamp(-hx, -0.3, 0.3); // encaisser : le buste part à l'opposé du tir
   if (sw) { // bassin au ras du sol, un peu en retrait ; le dos part en arrière et la colonne se recourbe pour garder l'arme et le regard devant
     body.position.y += (0.19 - body.position.y) * sw; body.position.z -= 0.12 * sw; body.position.x -= 0.03 * sw;
-    setD(iBody, -1.05 * sw, -0.22 * sw, 0.1 * sw); setD(iAbdomen, 0.22 * sw, 0.1 * sw, -0.05 * sw); setD(iTorso, 0.22 * sw, 0.12 * sw, -0.05 * sw); setD(iChest, 0.16 * sw, 0, 0);
+    setD(iBody, -1.05 * sw, -0.22 * sw, 0.1 * sw); setD(iAbdomen, 0.17 * sw, 0.1 * sw, -0.05 * sw); setD(iTorso, 0.17 * sw, 0.12 * sw, -0.05 * sw); setD(iChest, 0.11 * sw, 0, 0);
     spinePass(R);
   }
   body.position.y += pel * W; body.position.z += (lx * 0.16 - clamp(rz, -1, 1) * 0.012) * W; body.position.x -= lz * 0.16 * W;
@@ -173,8 +197,9 @@ export function layers(game, a, dt, near) {
   setD(iTorso, (lx * 0.2 + curl * 0.3 + hitX * 0.6) * W, tw * 0.45 * W, (lz * 0.2 + hitZ * 0.6) * W);
   setD(iChest, br * 1.6 * W, tw * 0.35 * W, 0);
   spinePass(R);
+  body.quaternion.multiplyQuaternions(R.rootBone.quaternion, R.spine[0].quaternion);
   // ---- 3. pieds : adaptation au sol, pieds plantés à l'arrêt, puis IK
-  const k = ch.model.scale.x, rb = R.rootBone.position, ground = a.onGround && (!calm || sliding) && !a.inCar;
+  const k = ch.model.scale.x, rb = _zero, ground = a.onGround && (!calm || sliding) && !a.inCar;
   const still = ground && sp < 0.3 && a.anim === 'LOCO' && Math.abs(R.yawRate) < 6;
   R.plantW = clamp(R.plantW + dt * (still ? 6 : -9), 0, 1); if (R.plantW <= 0) for (const g of R.legs) g.lock = g.step = null;
   let low = 0, stepping = R.legs[0].step || R.legs[1].step, worst = null, worstE = 0;
@@ -201,9 +226,11 @@ export function layers(game, a, dt, near) {
   // le bassin descend vers le pied le plus bas (marches, bord de trottoir)
   R.drop += (low * 0.85 - R.drop) * (1 - Math.exp(-dt * 12)); body.position.y += R.drop;
   for (const g of R.legs) {
-    solveLeg(body, g, g.T); g.F.position.copy(g.T);
-    if (g.fyaw) g.F.quaternion.premultiply(_q3.setFromAxisAngle(Y, g.fyaw));
+    solveLeg(body, g, g.T); // (_q2 = nouvelle orientation du tibia)
+    if (g.free) { putFoot(R, g, g.T); if (g.fyaw) { _q3.setFromAxisAngle(Y, g.fyaw); g.F.quaternion.premultiply(_t.copy(_ri).multiply(_q3).multiply(R.rootBone.quaternion)); } }
+    else { if (g.fyaw) g.fq.premultiply(_q3.setFromAxisAngle(Y, g.fyaw)); g.F.quaternion.copy(_q2.invert().multiply(g.fq)); } // le pied garde son orientation d'animation (à plat) quand la jambe change
   }
+  store(R);
   // ---- valeurs gardées pour la couche d'après visée
   R.post = { sw, hy: hy * W, nod: nod * W, lx: lx * W, lz: lz * W, rp, ry, hhx: clamp(hhz, -0.4, 0.4), hhz: clamp(-hhx, -0.4, 0.4), br: br * W };
   return true;
