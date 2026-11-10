@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"><body>
+<script type="importmap">{"imports":{"three":"/frungz/node_modules/three/build/three.module.js","three/addons/":"/frungz/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three'; import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const Q = new URLSearchParams(location.search);
+const [gltf, json] = await Promise.all([new GLTFLoader().loadAsync(`/frungz/public/assets/chars/${Q.get('char')}.glb`), fetch(Q.get('file')).then(r => r.json())]);
+const m = gltf.scene; const B = {}; m.traverse(o => { if (o.isBone) B[o.name] = o; }); const mixer = new THREE.AnimationMixer(m); const out = {};
+for (const n of ['MX_Idle', 'MX_RunAim', 'MX_CrouchIdle', 'MXP_Idle']) { const c = THREE.AnimationClip.parse(json.find(c => c.name === n)); mixer.stopAllAction(); const a = mixer.clipAction(c); a.play(); a.time = c.duration * 0.3; mixer.update(0); m.updateMatrixWorld(true);
+  const r = B.WristR.getWorldPosition(new THREE.Vector3()), l = B.WristL.getWorldPosition(new THREE.Vector3()), mid = B.Middle1R.getWorldPosition(new THREE.Vector3());
+  // canon : de la main droite vers la main gauche (fusil) ; pistolet : droit devant
+  const x = n === 'MXP_Idle' ? new THREE.Vector3(0, 0, 1) : l.clone().sub(r).normalize(); const up = new THREE.Vector3(0, 1, 0); const z = x.clone().cross(up).normalize(); const y = z.clone().cross(x).normalize();
+  const G = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z)); const W = B.WristR.getWorldQuaternion(new THREE.Quaternion());
+  const q = W.clone().invert().multiply(G); const e = new THREE.Euler().setFromQuaternion(q);
+  const ws = B.WristR.getWorldScale(new THREE.Vector3()); out[n] = { rot: [e.x, e.y, e.z].map(v => +v.toFixed(3)), q: q.toArray().map(v => +v.toFixed(3)), mid: B.WristR.worldToLocal(mid.clone()).toArray().map(v => +(v * ws.x).toFixed(3)), dir: x.toArray().map(v => +v.toFixed(2)), ws: +ws.x.toFixed(3), hands: +l.distanceTo(r).toFixed(2) }; }
+window.__r = out;
+</script>

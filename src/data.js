@@ -1,9 +1,9 @@
 // Données de jeu : camps, armes, raretés, butin, améliorations.
 export const TEAMS = {
-  ordre: { name: 'LA BRIGADE', short: 'Brigade', color: '#3d8bff', base: 'Commissariat', skins: ['Swat', 'Suit', 'Adventurer', 'Worker'] },
-  civils: { name: 'LES FRUNGZ', short: 'Frungz', color: '#34c759', base: 'Planque', skins: ['Beach', 'King', 'Punk', 'Farmer', 'Casual_Hoodie', 'Casual_2', 'Spacesuit'] },
+  ordre: { name: 'LA BRIGADE', short: 'Brigade', color: '#3d8bff', base: 'Commissariat', skins: ['Rodeur', 'Rodeuse', 'Rodeur_3', 'Rodeuse_3'] },
+  civils: { name: 'LES FRUNGZ', short: 'Frungz', color: '#34c759', base: 'Planque', skins: ['Paysan', 'Paysanne', 'Paysan_2', 'Paysanne_2'] },
 };
-export const SKIN_NAMES = { Swat: 'CRS', Suit: 'BAC en civil', Adventurer: 'Gendarme mobile', Worker: 'Agent de voirie', Beach: 'Le Touriste', King: 'Le Caïd', Punk: 'Le Punk', Farmer: 'Le Paysan', Casual_Hoodie: 'Le Sweat', Casual_2: 'Le Voisin', Spacesuit: 'Le Combinard' };
+export const SKIN_NAMES = { Rodeur: 'Le Rôdeur', Rodeuse: 'La Rôdeuse', Rodeur_3: 'Le Traqueur', Rodeuse_3: 'La Traqueuse', Paysan: 'Le Paysan', Paysanne: 'La Paysanne', Paysan_2: 'Le Forgeron', Paysanne_2: 'La Rousse' };
 
 export const RARITY = {
   commun: { name: 'Commun', color: '#b9c0c9', mult: 1, w: 60 },

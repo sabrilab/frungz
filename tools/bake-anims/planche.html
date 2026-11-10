@@ -2,14 +2,14 @@
 <script type="importmap">{"imports":{"three":"/frungz/node_modules/three/build/three.module.js","three/addons/":"/frungz/node_modules/three/examples/jsm/"}}</script>
 <script type="module">
 // Planche de contrôle : chaque clip de mx.json joué sur un perso, à plusieurs instants (une ligne par clip)
-// planche.html?file=/mx.json&only=MX_Run,MX_Roll&cols=6&char=Punk&side=1
+// planche.html?file=/mx.json&only=MX_Run,MX_Roll&cols=6&char=Paysan&side=1
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 const Q = new URLSearchParams(location.search);
 const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
-const [gltf, json] = await Promise.all([loader.loadAsync(`/frungz/public/assets/chars/${Q.get('char') || 'Punk'}.glb`), fetch(Q.get('file') || '/frungz/public/assets/anims/mx.json').then(r => r.json())]);
+const [gltf, json] = await Promise.all([loader.loadAsync(`/frungz/public/assets/chars/${Q.get('char') || 'Paysan'}.glb`), fetch(Q.get('file') || '/frungz/public/assets/anims/mx.json').then(r => r.json())]);
 let clips = json.map(c => THREE.AnimationClip.parse(c)); const only = Q.get('only'); if (only) { const L = only.split(','); clips = L.map(n => clips.find(c => c.name === n)).filter(Boolean); }
 const COLS = +(Q.get('cols') || 6), CW = 190, RH = 230, W = CW * COLS + 150, H = RH * clips.length;
 const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(W, H); r.setScissorTest(true); document.body.appendChild(r.domElement);
@@ -19,12 +19,12 @@ const cam = new THREE.PerspectiveCamera(32, CW / RH, 0.1, 50); const side = +(Q.
 const ang = side ? Math.PI / 2 * side : 0.5; cam.position.set(Math.sin(ang) * 4.6, 1.2, Math.cos(ang) * 4.6); cam.lookAt(0, 0.85, 0);
 const box = new THREE.Box3().setFromObject(gltf.scene); const k = 1.75 / (box.max.y - box.min.y);
 const model = SkeletonUtils.clone(gltf.scene); model.scale.setScalar(k); model.position.y = -box.min.y * k; s.add(model);
-model.traverse(o => { if (o.isMesh && /Pistol|Sword|Knife/i.test(o.name)) o.visible = false; });
+model.traverse(o => { if (o.isMesh && /Pistol|Sword|Knife/i.test(o.name)) o.visible = false; if (o.isMesh && o.material.vertexColors) o.frustumCulled = false; });
 let wrist; model.traverse(o => { if (o.isBone && o.name === 'WristR') wrist = o; });
 // arme factice : barre le long de l'axe +x du repère « arme » (même réglage que GRIP du jeu)
 const gun = new THREE.Group(); const bar = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.07, 0.04), new THREE.MeshStandardMaterial({ color: '#222' })); bar.position.x = 0.2; gun.add(bar);
 const mz = new THREE.Mesh(new THREE.SphereGeometry(0.03), new THREE.MeshBasicMaterial({ color: '#f30' })); mz.position.x = 0.52; gun.add(mz);
-model.updateMatrixWorld(true); const ws = new THREE.Vector3(); wrist.getWorldScale(ws); gun.scale.setScalar(1 / ws.x); gun.rotation.set(-0.022, 0.177, 1.615); gun.position.set(0, 0.07 / ws.x, 0); wrist.add(gun);
+model.updateMatrixWorld(true); const ws = new THREE.Vector3(); wrist.getWorldScale(ws); gun.scale.setScalar(1 / ws.x); gun.rotation.set(-1.96, 1.452, -2.725); gun.position.set(0, 0.08 / ws.x, 0); wrist.add(gun);
 const mixer = new THREE.AnimationMixer(model); const lab = [];
 clips.forEach((c, row) => {
   mixer.stopAllAction(); const a = mixer.clipAction(c); a.play();
