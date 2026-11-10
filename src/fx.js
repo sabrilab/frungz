@@ -30,7 +30,7 @@ export function createFX(scene, camera) {
   function muzzle(pos, big = 1) {
     const s = new THREE.Sprite(flashMat); s.position.copy(pos); const k = (0.35 + Math.random() * 0.25) * big; s.scale.set(k, k, k); s.material.rotation = Math.random() * 6;
     scene.add(s); items.push({ o: s, t: 0, life: 0.05 });
-    flashLight.position.copy(pos); flashLight.position.y += 0.12; // jamais pile sur une surface (éclairage indéfini, taches noires avec le bloom) flashLight.intensity = 14 * big; flashT = 0.05;
+    flashLight.position.copy(pos); flashLight.position.y += 0.12; /* jamais pile sur une surface */ flashLight.intensity = 14 * big; flashT = 0.05;
   }
   let flashT = 0;
   // particules ponctuelles (étincelles, verre, débris, confettis)
@@ -157,7 +157,7 @@ export function createFX(scene, camera) {
     burst(pos, 16, { color: '#2b2b2b', speed: 4, size: 0.25, life: 1.6 });
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowT, color: '#ff9a3d', blending: THREE.AdditiveBlending, transparent: true, depthWrite: false })); s.position.copy(pos); scene.add(s);
     items.push({ o: s, t: 0, life: 0.6, upd: (it, k) => { const sc = 2 + k * 9; s.scale.set(sc, sc, sc); s.material.opacity = 1 - k; } });
-    flashLight.position.copy(pos); flashLight.intensity = 60; flashT = 0.15;
+    flashLight.position.copy(pos); flashLight.position.y += 0.6; flashLight.intensity = 60; flashT = 0.15;
     cloud(pos.clone(), 'smoke-dark');
   }
   // anneau qui s'élargit (capture, ramassage)

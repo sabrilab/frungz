@@ -65,6 +65,12 @@ async function setupPost() {
   const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }, { ShaderPass }] = await Promise.all([
     import('three/examples/jsm/postprocessing/EffectComposer.js'), import('three/examples/jsm/postprocessing/RenderPass.js'), import('three/examples/jsm/postprocessing/UnrealBloomPass.js'), import('three/examples/jsm/postprocessing/OutputPass.js'), import('three/examples/jsm/postprocessing/ShaderPass.js')]);
   composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, camera));
+  // garde-fou : un seul pixel invalide (NaN ou infini, par exemple un éclat trop fort près d'une explosion) est étalé par le flou du bloom
+  // et noircit un grand rectangle de l'écran pendant quelques images ; on les neutralise et on borne la luminosité avant le bloom
+  composer.addPass(new ShaderPass({ uniforms: { tDiffuse: { value: null } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+      void main(){ vec3 c = texture2D(tDiffuse, vUv).rgb; if (!(c.r >= 0.0 && c.r < 1e4)) c.r = c.r > 0.0 ? 16.0 : 0.0; if (!(c.g >= 0.0 && c.g < 1e4)) c.g = c.g > 0.0 ? 16.0 : 0.0; if (!(c.b >= 0.0 && c.b < 1e4)) c.b = c.b > 0.0 ? 16.0 : 0.0;
+        gl_FragColor = vec4(min(c, vec3(16.0)), 1.0); }` }));
   const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.35, 0.5, 0.92); composer.addPass(bloom);
   composer.addPass(new OutputPass());
   // étalonnage : légère courbe en S, ombres un peu froides, hautes lumières chaudes, vignette douce
