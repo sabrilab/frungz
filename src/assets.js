@@ -1,4 +1,5 @@
 // Personnages (Quaternius Modular Character Outfits – Fantasy + Universal Base Characters, assemblés par tools/build-chars) et armes (Quaternius Ultimate Gun, OBJ).
+import { buildLauncher } from './lanceurs.js';
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { mergeGeometries, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -150,6 +151,7 @@ export async function loadGuns(onEach) {
   const ids = Object.keys(WEAPONS);
   await Promise.all(ids.map(async (id) => {
     const W = WEAPONS[id];
+    if (W.build) { guns[id] = buildLauncher(id); onEach?.(); return; } // lanceurs : modèle construit en code
     try {
     const mtl = await new MTLLoader().setPath('assets/guns/').loadAsync(`${W.model}.mtl`); mtl.preload();
     const obj = await new OBJLoader().setMaterials(mtl).setPath('assets/guns/').loadAsync(`${W.model}.obj`);

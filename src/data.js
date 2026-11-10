@@ -48,10 +48,13 @@ export const WEAPONS = {
   sniper: { name: 'Fusil de précision', ico: 'sniper', cat: 'precision', model: 'SniperRifle_1', len: 1.36, dmg: 95, rps: 0.9, spread: 0.002, mag: 5, reload: 2.6, range: 220, pellets: 1, kick: 0.07, sound: 'sniper', auto: false, price: 6500, scope: true, mob: 0.95 },
   calibre50: { name: 'Fusil antimatériel', ico: 'sniper', cat: 'precision', model: 'SniperRifle_5', grip: 0.23, len: 1.65, dmg: 150, rps: 0.6, spread: 0.002, mag: 5, reload: 3.4, range: 260, pellets: 1, kick: 0.11, sound: 'heavy50', auto: false, price: 9500, scope: true, veh: 3, mob: 0.88 },
   // lourdes
+  // explosifs (achetés à l'armurerie) : modèle construit en code (src/lanceurs.js), projectile qui vole puis explose (rayon R, dégâts au centre)
+  lance_roquettes: { name: 'Lance-roquettes', ico: 'missile', cat: 'explosif', build: 'roquettes', support: [0.3, 0.0], len: 1.37, dmg: 150, rps: 0.9, spread: 0.004, mag: 1, reload: 2.8, range: 300, pellets: 1, kick: 0.09, sound: 'rocket', auto: false, price: 14000, mob: 0.86, veh: 3, casings: false, ammo: 'roquette', proj: { kind: 'roquette', speed: 34, max: 90, accel: 110, grav: 0.8, R: 6, dmg: 150, life: 4 } },
+  lance_patates: { name: 'Lance-patates', ico: 'frag', cat: 'explosif', build: 'patates', support: [0.27, 0.0], len: 0.86, dmg: 95, rps: 1.6, spread: 0.01, mag: 6, reload: 3.2, range: 120, pellets: 1, kick: 0.05, sound: 'launcher', auto: false, price: 9000, mob: 0.93, veh: 2, casings: false, ammo: 'obus de 40 mm', proj: { kind: 'patate', speed: 44, grav: 9.8, R: 4.2, dmg: 95, life: 6 } },
   mitrailleuse: { name: 'Fusil-mitrailleur', ico: 'lmg', cat: 'lourde', model: 'Bullpup_1', grip: 0.48, support: [0.34, 0.024], len: 1.12, dmg: 25, rps: 10, spread: 0.028, mag: 75, reload: 3.6, range: 120, pellets: 1, kick: 0.012, sound: 'lmg', auto: true, price: 7000, mob: 0.88, veh: 1.3 },
 };
 for (const [id, W] of Object.entries(WEAPONS)) { W.id = id; W.mob ??= 1; W.veh ??= 1; W.hs ??= 2; W.casings ??= true; }
-export const WEAPON_CATS = { pistolet: 'Pistolets', pm: 'Pistolets-mitrailleurs', fusil: "Fusils d'assaut", pompe: 'Fusils à pompe', precision: 'Précision', lourde: 'Armes lourdes' };
+export const WEAPON_CATS = { pistolet: 'Pistolets', pm: 'Pistolets-mitrailleurs', fusil: "Fusils d'assaut", pompe: 'Fusils à pompe', precision: 'Précision', lourde: 'Armes lourdes', explosif: 'Explosifs' };
 
 // classes : arme principale et secondaire par défaut, protection, vitesse, équipement et un atout propre
 // atouts : cap (vitesse de capture des zones), casse (dégâts aux vitrines, barricades, mobilier), spot (ennemis touchés marqués), reload (vitesse de rechargement),
