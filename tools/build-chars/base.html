@@ -1,0 +1,75 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#777">
+<script type="importmap">{"imports":{"three":"/frungz/node_modules/three/build/three.module.js","three/addons/":"/frungz/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+// Mannequin des skins : corps complet du pack Quaternius « Universal Base Characters » (CC0) + toutes les coiffures, au squelette du jeu.
+// Sortie : un GLB par corps (Base_M, Base_F) avec un maillage par pièce : Skin (corps, couleurs de la texture claire cuites par sommet),
+// Eye, Brows, et une pièce par coiffure (Hair_*, en niveaux de gris : la couleur est appliquée par le jeu, src/skins.js).
+// base.html?base=Superhero_Male_FullBody&tex=T_Superhero_Male_Ligh.png&hair=Hair_Buzzed,Hair_Beard,...
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+const Q = new URLSearchParams(location.search), P = '/pack/src/';
+THREE.DefaultLoadingManager.setURLModifier((u) => /\.png$/i.test(u) ? 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAMAASsJTYQAAAAASUVORK5CYII=' : u); // textures du pack chargées à part
+const loader = new GLTFLoader();
+const load = (u) => loader.loadAsync(encodeURI(u));
+const img = (u) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = encodeURI(u); });
+const base = await load(`${P}base/${Q.get('base')}.gltf`);
+const bodyTex = await img(`${P}tex/${Q.get('tex')}`), eyeTex = await img(`${P}base/T_Eye_Brown.png`);
+const hairNames = (Q.get('hair') || '').split(',').filter(Boolean);
+const hairs = await Promise.all(hairNames.map((h) => load(`${P}hair/${h}.gltf`)));
+const hairTex = { 1: await img(`${P}hair/T_Hair_1_BaseColor.png`), 2: await img(`${P}hair/T_Hair_2_BaseColor.png`) };
+const MAP = { pelvis: 'Hips', spine_01: 'Abdomen', spine_02: 'Torso', spine_03: 'Chest', neck_01: 'Neck', Head: 'Head' };
+for (const [s, S] of [['l', 'L'], ['r', 'R']]) { Object.assign(MAP, { [`clavicle_${s}`]: `Shoulder${S}`, [`upperarm_${s}`]: `UpperArm${S}`, [`lowerarm_${s}`]: `LowerArm${S}`, [`hand_${s}`]: `Wrist${S}`, [`thigh_${s}`]: `UpperLeg${S}`, [`calf_${s}`]: `LowerLeg${S}`, [`foot_${s}`]: `Foot${S}`, [`ball_${s}`]: `Toe${S}` });
+  for (const [f, F] of [['index', 'Index'], ['middle', 'Middle'], ['ring', 'Ring'], ['pinky', 'Pinky'], ['thumb', 'Thumb']]) for (let k = 1; k <= 3; k++) MAP[`${f}_0${k}_${s}`] = `${F}${k}${S}`; }
+const samplers = new Map();
+function sampler(image, N = 1024) { if (!image) return null; if (samplers.has(image)) return samplers.get(image); const c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(image, 0, 0, N, N); const d = g.getImageData(0, 0, N, N).data;
+  const f = (u, v, out) => { const x = Math.min(N - 1, Math.max(0, Math.floor((u - Math.floor(u)) * N))), y = Math.min(N - 1, Math.max(0, Math.floor((v - Math.floor(v)) * N))), i = (y * N + x) * 4; out.setRGB(d[i] / 255, d[i + 1] / 255, d[i + 2] / 255, THREE.SRGBColorSpace); return d[i + 3]; }; samplers.set(image, f); return f; }
+const main = base.scene; main.updateMatrixWorld(true);
+let skel = null; main.traverse((o) => { if (o.isSkinnedMesh && /Superhero/.test([].concat(o.material)[0].name)) skel = o.skeleton; });
+const boneIdx = new Map(skel.bones.map((b, i) => [b.name, i]));
+const out = []; const c = new THREE.Color();
+function add(mesh, name, image, gray, fix) {
+  const src = mesh.geometry, n = src.attributes.position.count, S = sampler(image);
+  const g = new THREE.BufferGeometry();
+  for (const key of ['position', 'normal', 'skinIndex', 'skinWeight']) { const a = src.attributes[key]; const arr = key === 'skinIndex' ? new Uint16Array(n * 4) : new Float32Array(n * a.itemSize); for (let v = 0; v < n; v++) for (let k = 0; k < a.itemSize; k++) arr[v * a.itemSize + k] = a.getComponent(v, k); g.setAttribute(key, new THREE.BufferAttribute(arr, a.itemSize)); }
+  // os de la pièce → os du squelette principal (par nom)
+  const si = g.attributes.skinIndex; for (let v = 0; v < n; v++) for (let k = 0; k < 4; k++) { const b = mesh.skeleton.bones[si.getComponent(v, k)]; si.setComponent(v, k, boneIdx.get(b.name) ?? boneIdx.get('Head')); }
+  const col = new Float32Array(n * 3), uv = src.attributes.uv, m = [].concat(mesh.material)[0];
+  const alpha = new Uint8Array(n);
+  for (let v = 0; v < n; v++) { if (S && uv) alpha[v] = S(uv.getX(v), uv.getY(v), c); else { c.copy(m.color); alpha[v] = 255; } if (gray) { const l = (c.r + c.g + c.b) / 3; c.setRGB(l, l, l); } col[v * 3] = c.r; col[v * 3 + 1] = c.g; col[v * 3 + 2] = c.b; }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  // coiffures et sourcils : le pack découpe leurs mèches par transparence ; sans texture, on enlève les triangles transparents
+  let I = src.index ? Array.from(src.index.array) : [...Array(n).keys()]; if (gray) { const k = []; for (let t = 0; t < I.length; t += 3) if (alpha[I[t]] + alpha[I[t + 1]] + alpha[I[t + 2]] > 3 * 110) k.push(I[t], I[t + 1], I[t + 2]); I = k; } g.setIndex(I);
+  const T = new THREE.Matrix4().copy(mesh.bindMatrix); if (fix) T.premultiply(fix); g.applyMatrix4(T);
+  out.push({ g, name });
+}
+const info = { meshes: {} };
+main.traverse((o) => { if (!o.isSkinnedMesh) return; const mn = [].concat(o.material)[0].name;
+  if (/Superhero/.test(mn)) add(o, 'Skin', bodyTex); else if (/Eye/.test(mn)) add(o, 'Eye', eyeTex); else if (/Hair/.test(mn)) add(o, 'Brows', /Hair_2/.test(mn) ? hairTex[2] : hairTex[1], true); });
+const bone = (sk, n) => sk.bones.find((b) => b.name === n);
+hairs.forEach((h, i) => { h.scene.updateMatrixWorld(true); h.scene.traverse((o) => { if (!o.isSkinnedMesh) return; const hb = bone(o.skeleton, 'Head'), mb = bone(skel, 'Head'); const fix = new THREE.Matrix4().copy(mb.matrixWorld).multiply(hb.matrixWorld.clone().invert()); const mn = [].concat(o.material)[0].name; add(o, hairNames[i], /Hair_2/.test(mn) ? hairTex[2] : hairTex[1], true, fix); }); });
+// pose de liaison : le corps est remis dans la pose de repos du squelette des persos actuels (?ref=…, Paysan.glb / Paysanne.glb),
+// pour que les animations (mx.json) et la prise de l'arme (GRIP), calées sur ce squelette, tombent juste. Skinning linéaire : v' = Σ w · (os du réf. · inverse de liaison du pack) · v
+const ref = await load(Q.get('ref')); ref.scene.updateMatrixWorld(true); let rsk = null; ref.scene.traverse((o) => { if (o.isSkinnedMesh && !rsk) rsk = o.skeleton; });
+const rByName = new Map(rsk.bones.map((b) => [b.name, b])); const M = skel.bones.map((b, i) => { const rb = rByName.get(MAP[b.name] || b.name); return rb ? rb.matrixWorld.clone().multiply(skel.boneInverses[i]) : new THREE.Matrix4(); });
+const tmp = new THREE.Matrix4(), acc = new THREE.Matrix4(), v3 = new THREE.Vector3(), n3 = new THREE.Vector3(), nm = new THREE.Matrix3();
+for (const p of out) { const g = p.g, pos = g.attributes.position, nor = g.attributes.normal, si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
+  for (let v = 0; v < pos.count; v++) { acc.makeScale(0, 0, 0); acc.elements[15] = 0; for (let k = 0; k < 4; k++) { const w = sw.getComponent(v, k); if (!w) continue; const e = M[si.getComponent(v, k)].elements; for (let j = 0; j < 16; j++) acc.elements[j] += e[j] * w; }
+    v3.fromBufferAttribute(pos, v).applyMatrix4(acc); pos.setXYZ(v, v3.x, v3.y, v3.z); nm.getNormalMatrix(acc); n3.fromBufferAttribute(nor, v).applyMatrix3(nm).normalize(); nor.setXYZ(v, n3.x, n3.y, n3.z); } }
+// sortie : la scène du réf. (squelette aux noms du jeu), ses maillages remplacés par les pièces du corps de base ; skinIndex renumérotés vers les os du réf.
+const rIdx = new Map(rsk.bones.map((b, i) => [b.name, i])), remap = skel.bones.map((b) => rIdx.get(MAP[b.name] || b.name) ?? rIdx.get('Head'));
+for (const p of out) { const si = p.g.attributes.skinIndex; for (let v = 0; v < si.count; v++) for (let k = 0; k < 4; k++) si.setComponent(v, k, remap[si.getComponent(v, k)]); }
+const olds = []; ref.scene.traverse((o) => { if (o.isMesh) olds.push(o); }); for (const o of olds) o.parent.remove(o);
+let root = rsk.bones[0]; while (root.parent && root.parent.isBone) root = root.parent; const arm = root.parent;
+const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js');
+const byName = {}; for (const p of out) (byName[p.name] ||= []).push(p.g);
+const nsk = new THREE.Skeleton(rsk.bones); // inverses recalculées sur la pose de repos du réf.
+const inv = new THREE.Matrix4().copy(arm.matrixWorld).invert();
+for (const [name, geos] of Object.entries(byName)) { const g = geos.length > 1 ? mergeGeometries(geos, false) : geos[0]; g.applyMatrix4(inv); const m = new THREE.SkinnedMesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, metalness: 0, name })); m.name = name; arm.add(m); m.updateMatrixWorld(true); m.bind(nsk, m.matrixWorld); info.meshes[name] = g.attributes.position.count; }
+const main2 = ref.scene; main2.updateMatrixWorld(true); skel = nsk;
+info.bones = skel.bones.length; info.box = new THREE.Box3().setFromObject(main2); info.hips = bone(skel, 'Hips').getWorldPosition(new THREE.Vector3()); info.head = bone(skel, 'Head').getWorldPosition(new THREE.Vector3()); info.handL = bone(skel, 'WristL').getWorldPosition(new THREE.Vector3());
+info.inv = Object.fromEntries(skel.bones.map((b, i) => [b.name, Array.from(skel.boneInverses[i].elements).map((x) => +x.toFixed(4))]));
+const glb = await new GLTFExporter().parseAsync(main2, { binary: true });
+const u8 = new Uint8Array(glb); let bin = ''; for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); window.__out = btoa(bin);
+window.__info = info; window.__done = true;
+</script>

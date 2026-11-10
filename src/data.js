@@ -1,9 +1,11 @@
 // Données de jeu : camps, armes, raretés, butin, améliorations.
+import { BUILTIN_SKINS } from './skins-data.js';
 export const TEAMS = {
-  ordre: { name: 'LA BRIGADE', short: 'Brigade', color: '#3d8bff', base: 'Commissariat', skins: ['Rodeur', 'Rodeuse', 'Rodeur_3', 'Rodeuse_3'] },
-  civils: { name: 'LES FRUNGZ', short: 'Frungz', color: '#34c759', base: 'Planque', skins: ['Paysan', 'Paysanne', 'Paysan_2', 'Paysanne_2'] },
+  ordre: { name: 'LA BRIGADE', short: 'Brigade', color: '#3d8bff', base: 'Commissariat', skins: BUILTIN_SKINS.filter((s) => s.team === 'ordre').map((s) => s.id) },
+  civils: { name: 'LES FRUNGZ', short: 'Frungz', color: '#34c759', base: 'Planque', skins: BUILTIN_SKINS.filter((s) => s.team === 'civils').map((s) => s.id) },
 };
-export const SKIN_NAMES = { Rodeur: 'Le Rôdeur', Rodeuse: 'La Rôdeuse', Rodeur_3: 'Le Traqueur', Rodeuse_3: 'La Traqueuse', Paysan: 'Le Paysan', Paysanne: 'La Paysanne', Paysan_2: 'Le Forgeron', Paysanne_2: 'La Rousse' };
+// skins : fabriqués en code (src/skins.js) ; ceux du studio (/studio) s'ajoutent au menu au chargement
+export const SKIN_NAMES = Object.fromEntries(BUILTIN_SKINS.map((s) => [s.id, s.name]));
 
 export const RARITY = {
   commun: { name: 'Commun', color: '#b9c0c9', mult: 1, w: 60 },

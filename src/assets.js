@@ -13,9 +13,10 @@ export const guns = {}; // id → Object3D (barre vers +x, poignée à l'origine
 
 // animations Mixamo reciblées hors ligne sur le squelette des Modular Men (outil : bake/ dans le fil du jeu) : course, pas chassés, diagonales, saut, chute, accroupi
 let mxClips = null;
-async function loadMx() { try { const j = await (await fetch('assets/anims/mx.json')).json(); return j.map((c) => THREE.AnimationClip.parse(c)); } catch (e) { console.warn('anims Mixamo absentes', e); return []; } }
+export function loadMx() { return (mxClips ||= fetchMx()); }
+async function fetchMx() { try { const j = await (await fetch('assets/anims/mx.json')).json(); return j.map((c) => THREE.AnimationClip.parse(c)); } catch (e) { console.warn('anims Mixamo absentes', e); return []; } }
 export async function loadChars(names, onEach) {
-  mxClips ||= loadMx(); const mx = await mxClips;
+  const mx = await loadMx();
   await Promise.all(names.map(async (n) => {
     const g = await loadGLB(`assets/chars/${n}.glb`);
     const s = g.scene; s.updateMatrixWorld(true);
@@ -74,6 +75,7 @@ const NOT_CLOTH = /Skin|Hair|Eye|Moustache|Earrings|Gold|Visor|Metal|Tie|Black/;
 const TEAM_HUE = { ordre: new THREE.Color('#1f4fd1'), civils: new THREE.Color('#1fa83f') };
 const tinted = {}; const _tc = new THREE.Color();
 export function tintTeam(model, skin, team) {
+  if (chars[skin]?.noTint) return; // skins du studio : vraies couleurs
   const key = skin + '#' + team, base = TEAM_HUE[team]; const hb = {}; base.getHSL(hb);
   model.traverse((o) => {
     if (!o.isSkinnedMesh || !o.geometry.userData.ranges) return;
@@ -175,8 +177,11 @@ function markTexture() {
 const RECT_TEXT = [0.01, 1 - 126 / 256, 0.99, 1 - 6 / 256], RECT_BAND = [0, 1 - 248 / 256, 1, 1 - 136 / 256];
 export function teamMarkings(ch, skin) {
   let mesh = null; ch.model.traverse((o) => { if (o.isSkinnedMesh && o.name === 'corps') mesh = o; }); if (!mesh) return null;
-  if (markCache[skin] === undefined) markCache[skin] = buildMarkings(ch, mesh);
-  const geo = markCache[skin]; if (!geo) return null;
+  // skins du studio : marquages au choix (« POLICE » dans le dos, brassard) ; cache par géométrie (le studio refait le skin à chaque retouche)
+  const def = chars[skin]?.def, want = def ? { dos: (def.extras || []).includes('dos'), brassard: (def.extras || []).includes('brassard') } : { dos: true, brassard: true };
+  if (!want.dos && !want.brassard) return null; const key = mesh.geometry.uuid + (want.dos ? 'D' : '') + (want.brassard ? 'B' : '');
+  if (markCache[key] === undefined) markCache[key] = buildMarkings(ch, mesh, want);
+  const geo = markCache[key]; if (!geo) return null;
   const mat = new THREE.MeshStandardMaterial({ map: markTexture(), roughness: 0.85, metalness: 0, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
   mat.onBeforeCompile = (sh) => {
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 dRect; attribute float dWrap; varying vec4 vDRect; varying float vDWrap;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvDRect = dRect; vDWrap = dWrap;');
@@ -186,7 +191,7 @@ export function teamMarkings(ch, skin) {
   const dm = new THREE.SkinnedMesh(geo, mat); dm.name = 'marquages'; dm.bind(mesh.skeleton, mesh.bindMatrix); dm.position.copy(mesh.position); dm.quaternion.copy(mesh.quaternion); dm.scale.copy(mesh.scale);
   dm.frustumCulled = false; dm.castShadow = false; dm.renderOrder = 1; mesh.parent.add(dm); return dm;
 }
-function buildMarkings(ch, mesh) {
+function buildMarkings(ch, mesh, want = { dos: true, brassard: true }) {
   const src = mesh.geometry, I = src.index, P = src.attributes.position, SI = src.attributes.skinIndex, SW = src.attributes.skinWeight; if (!I || !SI) return null;
   ch.root.updateMatrixWorld(true); mesh.skeleton.update(); const m = ch.root.matrixWorld.clone().invert().multiply(mesh.matrixWorld);
   // sommets en pose de repos, dans le repère du perso (mètres, y vers le haut, dos vers -z)
@@ -198,10 +203,10 @@ function buildMarkings(ch, mesh) {
   const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), n = new THREE.Vector3(), e = new THREE.Vector3();
   const TORSO = /^(Chest|Torso|Abdomen|Shoulder|Neck)/;
   // plans : dos (large) et poitrine côté cœur (petit), à hauteur de poitrine
-  const plans = [{ cx: 0, cy: y0 + H * 0.725, w: 0.3, h: 0.3 * 120 / 502, back: true }];
+  const plans = want.dos ? [{ cx: 0, cy: y0 + H * 0.725, w: 0.3, h: 0.3 * 120 / 502, back: true }] : [];
   // brassard : bande autour du bras gauche, entre l'épaule et le coude
   const UA = ch.bones.UpperArmL, LA = ch.bones.LowerArmL; let band = null;
-  if (UA && LA) { const inv = ch.root.matrixWorld.clone().invert(), a0 = UA.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv), a1 = LA.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv), d = a1.clone().sub(a0), L = d.length(); d.normalize();
+  if (UA && LA && want.brassard) { const inv = ch.root.matrixWorld.clone().invert(), a0 = UA.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv), a1 = LA.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv), d = a1.clone().sub(a0), L = d.length(); d.normalize();
     const p1 = new THREE.Vector3(0, 0, 1).addScaledVector(d, -d.z).normalize(), p2 = new THREE.Vector3().crossVectors(d, p1); band = { a0, d, L, p1, p2, s0: L * 0.42, h: 0.085 }; }
   for (let t = 0; t < I.count; t += 3) { const ia = I.getX(t), ib = I.getX(t + 1), ic = I.getX(t + 2);
     A.fromArray(R, ia * 3); B.fromArray(R, ib * 3); C.fromArray(R, ic * 3); n.copy(B).sub(A).cross(e.copy(C).sub(A)).normalize();

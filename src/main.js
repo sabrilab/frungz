@@ -1,7 +1,8 @@
 // Point d'entrée : chargement, menu (camp, skin), armurerie, réglages, partie, écran de fin.
 import * as THREE from 'three';
 import { setupScene, loadMap, loadGLB, World, loader } from './world.js';
-import { loadChars, loadGuns, makeCharacter, attachGun } from './assets.js';
+import { loadGuns, makeCharacter, attachGun, chars, loadMx } from './assets.js';
+import { loadSkinBases, registerSkin, BUILTIN_SKINS, userSkins } from './skins.js';
 import { createAudio } from './audio.js';
 import { createFX } from './fx.js';
 import { createInput } from './input.js';
@@ -20,7 +21,7 @@ const fmt = (n) => Math.round(n).toLocaleString('fr-FR');
 const Q = new URLSearchParams(location.search);
 
 // ---------- sauvegarde ----------
-const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, cls: { ordre: 'intervention', civils: 'casseur' }, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Paysan', settings: { sens: 1, padSens: 1, assist: true, fps: false, teamSize: 50, invertY: false, dynres: true } };
+const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, cls: { ordre: 'intervention', civils: 'casseur' }, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Bloc_Cagoule', settings: { sens: 1, padSens: 1, assist: true, fps: false, teamSize: 50, invertY: false, dynres: true } };
 let save; try { save = { ...DEFAULT, ...JSON.parse(localStorage.getItem('frungz-save') || '{}') }; save.settings = { ...DEFAULT.settings, ...save.settings }; save.upgrades ||= {}; save.cls = { ...DEFAULT.cls, ...save.cls }; save.kit ||= {}; } catch { save = structuredClone(DEFAULT); }
 const persist = () => { try { localStorage.setItem('frungz-save', JSON.stringify(save)); } catch {} };
 if ((save.sv || 1) < 2) { save.sv = 2; save.settings.teamSize = 50; } // passage au 50 contre 50 par défaut
@@ -97,7 +98,9 @@ const audio = createAudio(); const input = createInput(renderer.domElement); Obj
 const fx = createFX(scene, camera);
 
 // ---------- chargement ----------
-const ALL_SKINS = [...TEAMS.ordre.skins, ...TEAMS.civils.skins];
+// skins : ceux du jeu + ceux créés dans le studio (/studio), fabriqués au chargement sur les deux mannequins
+const MY_SKINS = userSkins().filter((s) => TEAMS[s.team]); for (const s of MY_SKINS) SKIN_NAMES[s.id] = s.name;
+const ALL_SKINS = [...BUILTIN_SKINS, ...MY_SKINS];
 const CARS = [['sportscar', 'sport', 'Coupé sport orange'], ['sportscar2', 'sport', 'Coupé sport blanc'], ['sports', 'sport', 'Coupé sport rouge'], ['roadster', 'sport', 'Cabriolet bleu'], ['muscle', 'sport', 'Muscle car jaune'], ['sports-armored', 'blinde', 'Sportive blindée'], ['cop', 'police', 'Voiture de police'], ['police-sedan', 'police', 'Berline de police'], ['suv-luxury', 'civil', 'SUV de luxe']];
 let world, mapRoot, carDefs = [], night = null, lobby = null;
 let progress = { map: 0, chars: 0, guns: 0, cars: 0 };
@@ -106,7 +109,7 @@ async function loadAll() {
   const gp = await fetch('assets/gameplay.json').then((r) => r.json());
   const [{ root, ground, cassables, rame }] = await Promise.all([
     loadMap('assets/map.glb', (p) => { progress.map = p; showProgress(); }),
-    loadChars(ALL_SKINS, () => { progress.chars++; showProgress(); }),
+    Promise.all([loadSkinBases(), loadMx()]).then(([, mx]) => { for (const d of ALL_SKINS) { try { registerSkin(chars, d, mx); } catch (e) { console.warn('skin', d.id, e); } progress.chars++; showProgress(); } }),
     loadGuns(() => { progress.guns++; showProgress(); }),
     Promise.all(CARS.map(async ([f, classe, nom]) => { try { const g = await loadGLB(`assets/cars/${f}.glb`); const s = g.scene; const box = new THREE.Box3().setFromObject(s); const sz = s.userData.size || [box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z]; carDefs.push({ scene: s, classe, nom, size: sz }); } catch (e) { console.warn('voiture', f, e); } progress.cars++; showProgress(); })),
   ]);
@@ -129,8 +132,8 @@ async function loadAll() {
 let preview = null;
 function renderMenu() {
   document.querySelectorAll('.side').forEach((b) => b.classList.toggle('on', b.dataset.team === save.team));
-  const skins = TEAMS[save.team].skins; if (!skins.includes(save.skin)) save.skin = skins[0];
-  $('skins').innerHTML = skins.map((s) => `<button data-skin="${s}" class="${s === save.skin ? 'on' : ''}">${SKIN_NAMES[s] || s}</button>`).join('');
+  const skins = [...TEAMS[save.team].skins, ...MY_SKINS.filter((s) => s.team === save.team && (!window.__loaded || chars[s.id])).map((s) => s.id)]; if (!skins.includes(save.skin)) save.skin = skins[0];
+  $('skins').innerHTML = skins.map((s) => `<button data-skin="${s}" class="${s === save.skin ? 'on' : ''}${s.startsWith('u_') ? ' mine' : ''}">${(SKIN_NAMES[s] || s).replace(/[<>&]/g, '')}</button>`).join('') + '<a class="studio-link" href="/studio/">Studio de skins</a>';
   const cur = classOf(save.team, save.cls[save.team]).id;
   $('classes').innerHTML = Object.values(CLASSES[save.team]).map((K) => `<button data-cls="${K.id}" class="${K.id === cur ? 'on' : ''}"><em>${svg(K.ico)}</em><b>${K.name}</b><small>${K.role}</small></button>`).join('');
   const K = classOf(save.team, cur), kit = kitOf(save, save.team, K), { prim, sec } = classWeapons(K, save.unlocked);
