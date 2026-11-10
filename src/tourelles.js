@@ -47,7 +47,7 @@ const box = (w, h, d) => GEO[`b${w}|${h}|${d}`] ||= new THREE.BoxGeometry(w, h, 
 const cyl = (r0, r1, h, n = 10) => GEO[`c${r0}|${r1}|${h}|${n}`] ||= new THREE.CylinderGeometry(r0, r1, h, n);
 const tube = (r, h, n = 8) => GEO[`t${r}|${h}|${n}`] ||= new THREE.CylinderGeometry(r, r, h, n).rotateX(Math.PI / 2); // couché le long de z
 const plane = (w, h) => GEO[`p${w}|${h}`] ||= new THREE.PlaneGeometry(w, h);
-const GHOST = { ok: new THREE.MeshBasicMaterial({ color: '#5fd7ff', transparent: true, opacity: 0.5, depthWrite: false }), bad: new THREE.MeshBasicMaterial({ color: '#ff4a4a', transparent: true, opacity: 0.5, depthWrite: false }) };
+const GHOST = { ok: new THREE.MeshBasicMaterial({ color: '#5fd7ff', transparent: true, opacity: 0.5, depthWrite: false, depthTest: false }), bad: new THREE.MeshBasicMaterial({ color: '#ff4a4a', transparent: true, opacity: 0.5, depthWrite: false, depthTest: false }) };
 const mesh = (g, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); return o; };
 
 // style : Brigade = bleu nuit, bandeau blanc, optique à bulle ; Frungz = jaune de chantier, scotch gris, webcam scotchée, tag rose
@@ -150,7 +150,7 @@ export function installTurrets(Game) {
   };
   P.carryTurret = function (a, level, hpK) {
     a.carryTurret = { level, hpK };
-    if (a === this.player) { const gh = turretMesh(a.team, level, GHOST.ok); gh.userData.u = gh.userData; this.root.add(gh); this.turretGhost = gh; }
+    if (a === this.player) { const gh = turretMesh(a.team, level, GHOST.ok); gh.renderOrder = 10; gh.traverse((o) => { o.renderOrder = 10; }); this.root.add(gh); this.turretGhost = gh; }
   };
   P.dropCarry = function (a, keep) { // mort ou fin de partie pendant le transport : l'atout revient (le niveau est gardé)
     const c = a.carryTurret; if (!c) return; a.carryTurret = null;
@@ -160,14 +160,14 @@ export function installTurrets(Game) {
 
   // ---- emplacement : devant soi, au sol, pas sur un drapeau, pas collé à une autre tourelle ou barricade
   P.turretSpot = function (a, yaw) {
-    const f = V(Math.sin(yaw), 0, Math.cos(yaw)); const p = a.pos.clone().addScaledVector(f, 2.5); p.y = this.world.groundY(p.x, p.z, a.pos.y + 0.6);
+    const f = V(Math.sin(yaw), 0, Math.cos(yaw)); const p = a.pos.clone().addScaledVector(f, 2.8); p.y = this.world.groundY(p.x, p.z, a.pos.y + 0.6);
     if (Math.abs(p.y - a.pos.y) > 1.1) return { p, why: 'Trop en pente ici' };
     if (!this.world.free(...this.world.cell(p.x, p.z))) return { p, why: 'Pas de place ici' };
     if (!this.world.los(a.pos.clone().add(V(0, 0.9, 0)), p.clone().add(V(0, 0.9, 0)))) return { p, why: 'Pas de place ici' };
     if ((this.turrets || T0()).some((T) => T.pos.distanceTo(p) < 2.2)) return { p, why: 'Trop près d\'une autre tourelle' };
     if (this.walls.some((w) => w.pos.distanceTo(p) < 1.6)) return { p, why: 'Trop près d\'une barricade' };
     for (const z of this.zoneState) if (Math.hypot(p.x - z.center[0], p.z - z.center[1]) < 3) return { p, why: 'Pas sur le drapeau' };
-    for (const c of this.cars) if (!c.dead && c.pos.distanceTo(p) < 2.6) return { p, why: 'Une voiture gêne' };
+    for (const c of this.cars) if (!c.dead && c.pos.distanceTo(p) < 2.2) return { p, why: 'Une voiture gêne' };
     return { p };
   };
   P.placeTurret = function (a, yaw, level = 0, hpK = 1) {
