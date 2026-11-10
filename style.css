@@ -122,6 +122,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 .skins { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 640px; }
 .skins button { padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,.08); font-weight: 700; font-size: 12px; border: 2px solid transparent; }
 .skins button.on { border-color: #fff; }
+.skins button.mine { background: rgba(255,204,61,.14); }
+.skins .studio-link { padding: 6px 10px; border-radius: 8px; font-weight: 800; font-size: 12px; color: #ffcc3d; text-decoration: none; border: 2px dashed rgba(255,204,61,.5); }
+.skins .studio-link:hover { background: rgba(255,204,61,.12); }
 .row-btns { display: flex; gap: 10px; }
 .big { font: 28px Bungee; padding: 12px 46px; border-radius: 14px; background: linear-gradient(180deg, #ffd34d, #ff8a1f); color: #2a1300; box-shadow: 0 6px 0 #b04f0c; }
 .big:active { transform: translateY(3px); box-shadow: 0 3px 0 #b04f0c; }

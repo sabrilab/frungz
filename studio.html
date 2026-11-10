@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="/">
+<title>Studio Frungz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root { --ordre: #3d8bff; --civils: #34c759; --bg: #0d1016; --panel: #141821; --line: #252b38; --ink: #f2f4f8; --dim: #9aa3b2; --gold: #ffcc3d; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.4 Inter, system-ui, sans-serif; }
+button, input, select { font: inherit; color: inherit; }
+#wrap { display: grid; grid-template-columns: 250px 1fr 340px; height: 100vh; }
+aside { background: var(--panel); border-right: 1px solid var(--line); overflow: auto; padding: 14px; }
+#edit { border-right: 0; border-left: 1px solid var(--line); }
+h1 { font: 22px Bungee, sans-serif; margin: 0 0 2px; letter-spacing: .5px; }
+h1 small { display: block; font: 600 12px Inter, sans-serif; color: var(--dim); letter-spacing: 0; }
+h2 { font: 800 11px Inter, sans-serif; text-transform: uppercase; letter-spacing: 1.2px; color: var(--dim); margin: 18px 0 8px; }
+.list button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 8px; padding: 7px 8px; cursor: pointer; }
+.list button:hover { background: #1b202b; }
+.list button.on { background: #1f2533; border-color: #3a4357; }
+.list i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.list .empty { color: var(--dim); font-size: 13px; padding: 4px 8px; }
+.btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.btn { background: #222838; border: 1px solid #343c50; border-radius: 8px; padding: 7px 11px; cursor: pointer; font-weight: 700; font-size: 13px; }
+.btn:hover { background: #2a3144; }
+.btn.main { background: var(--gold); color: #141414; border-color: var(--gold); }
+.btn.danger:hover { background: #4a1f24; border-color: #7a2a33; }
+#view { position: relative; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #2a3140, #10131a 70%); }
+#view canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+#bar { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: calc(100% - 24px); }
+#bar .btn.on { background: #39425a; border-color: #5a678a; }
+#hint { position: absolute; left: 14px; top: 12px; color: var(--dim); font-size: 12px; }
+#title { position: absolute; right: 16px; top: 12px; text-align: right; }
+#title b { display: block; font: 20px Bungee, sans-serif; }
+#title span { font-size: 12px; font-weight: 800; letter-spacing: 1px; }
+#banner { margin: 0 0 10px; padding: 9px 11px; border-radius: 8px; background: #2a2614; border: 1px solid #574c1c; color: #f3dc8a; font-size: 13px; }
+.row { display: grid; grid-template-columns: 92px 1fr; gap: 8px; align-items: center; margin: 7px 0; }
+.row label { color: var(--dim); font-size: 13px; }
+.seg { display: flex; border: 1px solid #343c50; border-radius: 8px; overflow: hidden; }
+.seg button { flex: 1; background: none; border: 0; padding: 6px 8px; cursor: pointer; font-weight: 700; font-size: 13px; }
+.seg button.on { background: #39425a; }
+.seg button.ordre.on { background: var(--ordre); color: #fff; } .seg button.civils.on { background: var(--civils); color: #0c1a10; }
+input[type=text], select { width: 100%; background: #0f131b; border: 1px solid #343c50; border-radius: 8px; padding: 7px 9px; }
+.piece { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; align-items: center; }
+input[type=color] { width: 34px; height: 30px; padding: 0; border: 1px solid #343c50; border-radius: 7px; background: none; cursor: pointer; }
+input[type=color]::-webkit-color-swatch-wrapper { padding: 3px; } input[type=color]::-webkit-color-swatch { border: 0; border-radius: 4px; }
+.tones { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.tones button { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.tones button.on { border-color: #fff; }
+.extras label { display: flex; align-items: center; gap: 8px; margin: 5px 0; color: var(--ink); cursor: pointer; }
+.extras label span { flex: 1; }
+.cl { font-size: 11px; color: var(--dim); }
+#toast { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); background: #222838; border: 1px solid #3a4357; padding: 8px 14px; border-radius: 10px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+#toast.on { opacity: 1; }
+#loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--dim); }
+a { color: var(--gold); }
+@media (max-width: 900px) {
+  html, body { height: auto; }
+  #wrap { grid-template-columns: 1fr; height: auto; }
+  #view { height: 62vh; order: -1; }
+  aside { border: 0; border-top: 1px solid var(--line); }
+}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <aside id="side">
+    <h1>STUDIO<small>Les skins de Frungz</small></h1>
+    <div class="btns" style="margin-top:12px"><button class="btn main" id="new">+ Nouveau skin</button></div>
+    <h2>Mes skins</h2>
+    <div class="list" id="mine"></div>
+    <h2>Skins du jeu</h2>
+    <div class="list" id="builtin"></div>
+    <h2>Partager</h2>
+    <div class="btns">
+      <button class="btn" id="export">Exporter</button>
+      <button class="btn" id="import">Importer</button>
+      <button class="btn" id="copy">Copier la fiche</button>
+      <input type="file" id="file" accept=".json,application/json" hidden>
+    </div>
+    <p class="cl">Tes skins sont gardés dans ce navigateur. « Exporter » les enregistre dans un fichier pour les retrouver ailleurs.</p>
+    <h2>Jeu</h2>
+    <div class="btns"><a class="btn" href="/" style="text-decoration:none">Retour au jeu</a></div>
+  </aside>
+  <main id="view">
+    <div id="loading">Chargement des mannequins…</div>
+    <div id="hint">Glisse pour tourner · molette pour zoomer</div>
+    <div id="title"><b id="tName"></b><span id="tTeam"></span></div>
+    <div id="bar"></div>
+  </main>
+  <aside id="edit"></aside>
+</div>
+<div id="toast"></div>
+<script type="module" src="studio/app.js"></script>
+</body>
+</html>
