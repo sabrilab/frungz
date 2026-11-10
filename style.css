@@ -105,6 +105,12 @@ kbd { display: inline-block; padding: 0 6px; border-radius: 5px; background: rgb
 #car { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); background: var(--panel); padding: 6px 16px; border-radius: 10px; font-weight: 700; display: none; text-align: center; width: 160px; }
 #car b { font: 26px Bungee; } #car .bar i { background: #ff9d3d; }
 #car.on { display: block; }
+#car.heli { width: 200px; bottom: 150px; }
+#heliui .alt { font-size: 12px; opacity: 0.85; margin-top: 4px; } #heliui .alt b { font: 15px Bungee; }
+#heliui .heat { height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; margin: 4px 0; overflow: hidden; } #heliui .heat i { display: block; height: 100%; background: #ffd23d; } #heliui .heat.over i { background: #ff4a3d; }
+#heliui .ars { display: flex; gap: 6px; justify-content: center; font-size: 13px; }
+#heliui .ars span { display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px; border-radius: 6px; border: 1px solid transparent; } #heliui .ars span.sel { border-color: #ffcc3d; color: #ffcc3d; } #heliui .ars span.vide { opacity: 0.35; }
+#heliui svg { width: 15px; height: 15px; }
 #keys { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); font-size: 11px; color: var(--dim); white-space: nowrap; padding: 2px; }
 #keys kbd { font-size: 10px; }
 
@@ -122,6 +128,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 .skins { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 640px; }
 .skins button { padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,.08); font-weight: 700; font-size: 12px; border: 2px solid transparent; }
 .skins button.on { border-color: #fff; }
+.skins button.mine { background: rgba(255,204,61,.14); }
+.skins .studio-link { padding: 6px 10px; border-radius: 8px; font-weight: 800; font-size: 12px; color: #ffcc3d; text-decoration: none; border: 2px dashed rgba(255,204,61,.5); }
+.skins .studio-link:hover { background: rgba(255,204,61,.12); }
 .row-btns { display: flex; gap: 10px; }
 .big { font: 28px Bungee; padding: 12px 46px; border-radius: 14px; background: linear-gradient(180deg, #ffd34d, #ff8a1f); color: #2a1300; box-shadow: 0 6px 0 #b04f0c; }
 .big:active { transform: translateY(3px); box-shadow: 0 3px 0 #b04f0c; }
@@ -342,7 +351,14 @@ body.scoped #cross, body.scoped #streakbar { visibility: hidden; }
 .classes button em { grid-row: span 2; font-style: normal; font-size: 22px; opacity: .85; }
 .classes button b { font-size: 14px; } .classes button small { color: var(--dim); font-size: 11px; }
 .classes button.on { border-color: #fff; background: rgba(255,255,255,.14); }
-.clsinfo { display: flex; gap: 6px 14px; flex-wrap: wrap; justify-content: center; max-width: 680px; font-size: 12px; color: var(--dim); }
+.clsinfo { display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 760px; font-size: 12px; color: var(--dim); }
+.clsinfo p { display: flex; gap: 6px 14px; flex-wrap: wrap; justify-content: center; margin: 2px 0 0; }
+.kitrow { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; align-items: center; }
+.kitrow label { font-weight: 800; color: #fff; margin-right: 4px; min-width: 110px; text-align: right; }
+.kitrow button { display: flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 8px; background: rgba(255,255,255,.07); border: 2px solid transparent; font-size: 12px; font-weight: 700; color: #ddd; }
+.kitrow button.on { border-color: var(--gold); background: rgba(255,200,60,.14); color: #fff; }
+.kitrow button i { font-style: normal; font-size: 10px; color: var(--gold); }
+.card .free { font-style: normal; font-size: 11px; color: var(--gold); }
 .clsinfo b { color: #fff; } .clsinfo i { color: var(--gold); font-style: normal; }
 .shead { grid-column: 1 / -1; margin: 8px 0 0; font: 13px Bungee, sans-serif; letter-spacing: .04em; color: var(--dim); }
 

@@ -53,7 +53,7 @@ const { chromium } = require('playwright');
   
   // départ d'un ami : son perso disparaît chez le chef
   const g1id = await G[0].evaluate(() => window.__game.player.id);
-  await G[0].br.close(); await H.waitForTimeout(16000);
+  await G[0].br.close(); await H.waitForTimeout(35000); // le relais de test oublie un joueur après 30 s sans nouvelles
   console.log('ami1 parti, perso retiré chez le chef :', await H.evaluate((id) => window.__game.actors[id].gone, g1id));
   await b.close(); await H.br.close(); await G[1].br.close();
 })();

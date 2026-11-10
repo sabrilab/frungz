@@ -3,11 +3,12 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { makeCharacter, attachGun, gunInstance, chars, tintTeam, teamMarkings } from './assets.js';
-import { TEAMS, WEAPONS, CLASSES, classOf, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COMMERCE_TYPES, SHOP_NAMES, SKIN_NAMES } from './data.js';
+import { TEAMS, WEAPONS, CLASSES, classOf, kitOf, SECONDARIES, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COMMERCE_TYPES, SHOP_NAMES, SKIN_NAMES } from './data.js';
 import { shopCase, lootMesh, beam, socle, baseSign, receleur, barricade, BARRICADE, grenadeMesh, headMarker, textTex } from './props.js';
 import { pointInPoly } from './world.js';
 import * as Anim from './anim.js';
 import { rideMethods } from './deuxroues.js';
+import { heliMethods } from './helico.js';
 import { installThrows, THROWS, solveThrow } from './throws.js';
 import { svg, iconize } from './icons.js';
 import { installSeries } from './series.js';
@@ -63,7 +64,7 @@ export class Game {
     Object.assign(this, env); // renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts, onEnd
     this.actors = []; this.shops = []; this.drops = []; this.socles = { ordre: [], civils: [] }; this.cars = []; this.walls = []; this.grenades = [];
     this.score = { ordre: 0, civils: 0 }; this.time = 0; this.matchLen = 600; this.over = false;
-    this.zoneState = this.world.zones.filter((z) => !z.optionnelle || this.opts.teamSize >= 30).map((z) => ({ ...z, owner: null, cap: null, p: 0, contested: false }));
+    this.zoneState = this.world.zones.filter((z) => !z.optionnelle || z.id === 'I' || this.opts.teamSize >= 30).map((z) => ({ ...z, owner: null, cap: null, p: 0, contested: false }));
     this.scoreLimit = 100 * this.zoneState.length;
     this.root = new THREE.Group(); this.scene.add(this.root);
     this.cam = { yaw: 0, pitch: 0, dist: 3, fps: !!this.save.settings?.fps, trauma: 0, bob: 0, dip: 0, roll: 0, kickP: 0, kickY: 0, fov: 70, shake: V() };
@@ -73,7 +74,7 @@ export class Game {
 
   // ---------------------------------------------------------------- mise en place
   build() {
-    this.fx.setGround((x, z, y) => this.world.groundY(x, z, y), (p, big) => this.audio.tink(p, big)); this.buildBases(); this.buildShops(); this.buildReceleur(); this.buildCars(); this.buildRides(); this.buildZones();
+    this.fx.setGround((x, z, y) => this.world.groundY(x, z, y), (p, big) => this.audio.tink(p, big)); this.buildBases(); this.buildShops(); this.buildReceleur(); this.buildCars(); this.buildRides(); this.buildHelis(); this.buildZones();
     // nouvelle manche : mobilier réparé, rame sur la voie
     const W = this.world; if (W.cass) for (const e of W.cass.list) if (e.broken) W.cass.repair(e);
     if (W.metro) W.dynamic.push(...W.metro.cols);
@@ -237,12 +238,13 @@ export class Game {
     this.actors.push(a); return a;
   }
   // équipement de la classe : arme secondaire + arme principale (celle choisie à l'armurerie remplace celle de la classe)
+  // équipement de la classe : l'arme principale et le pistolet choisis pour cette classe (menu ou armurerie) ; les bots tirent au sort parmi les armes de leur classe
   loadout(a) {
     const K = classOf(a.team, a.cls); a.perk = K.perk;
-    a.slots = [{ id: K.secondary, rarity: 'commun', mag: WEAPONS[K.secondary].mag }];
-    let prim = K.primary;
-    if (!a.bot) { const own = this.save.primary; if (own && own !== 'pistol' && this.save.unlocked.includes(own) && WEAPONS[own]) { if (WEAPONS[own].cat === 'pistolet') a.slots[0] = { id: own, rarity: 'rare', mag: WEAPONS[own].mag }; else prim = own; } }
-    a.slots.push({ id: prim, rarity: a.bot ? rollRarity() : 'rare', mag: WEAPONS[prim].mag }); a.cur = 1;
+    let prim = K.primary, sec = K.secondary;
+    if (a.bot) { if (Math.random() < 0.45) prim = pick(K.primaries); if (Math.random() < 0.3) sec = pick(SECONDARIES); }
+    else ({ p: prim, s: sec } = kitOf(this.save, a.team, K));
+    a.slots = [{ id: sec, rarity: a.bot ? 'commun' : 'rare', mag: WEAPONS[sec].mag }, { id: prim, rarity: a.bot ? rollRarity() : 'rare', mag: WEAPONS[prim].mag }]; a.cur = 1;
     this.equip(a, a.cur, true);
   }
   equip(a, i, silent) {
@@ -296,7 +298,7 @@ export class Game {
   }
   kill(t, by, opts) {
     t.alive = false; t.hp = 0; t.respawnT = t.bot ? 6 : 5; t.stats.d++; t.channel = null;
-    if (t.inCar) this.exitCar(t, true);
+    if (t.inCar) { t.lastBy = by; this.exitCar(t, true); }
     t.overs = null; { const dn = this.deathAnim(t, by, opts); this.setAnim(t, dn, 0.1, /^MX_Death[FBLR]$/.test(dn) ? 1.2 : 1); } this.audio.play('voxDie', t.pos, 0.9);
     // le sac tombe au sol (et l'arme principale, parfois)
     if (by && by !== t && by.team === 'ordre' && t.bag.length) this.scoreEvent('ordre', 4, 'Interpellation', by);
@@ -305,7 +307,7 @@ export class Game {
     if (t.hitBy) { for (const [h, at] of t.hitBy) if (h !== by && h !== t && h.team !== t.team && this.time - at < 8) { h.stats.a++; if (h === this.player) this.toast('+ Assistance', '#cfe3ff'); } t.hitBy.clear(); }
     const w = t.slots[t.cur]; if (w && WEAPONS[w.id].cat !== 'pistolet' && (Math.random() < 0.6 || !t.bot)) this.dropPile(t.pos.clone().add(V(rnd(-0.6, 0.6), 0, rnd(-0.6, 0.6))), [], { id: w.id, rarity: w.rarity });
     if (by && by !== t) {
-      by.stats.k++; this.addStreak(by); if (by.bot && by.alive && Math.random() < 0.12) this.overlay(by, 'U_FistPump', 1.2, { busy: true });
+      by.stats.k++; this.addStreak(by); if (by.inCar?.kind === 'heli') this.heliKill(by); if (by.bot && by.alive && Math.random() < 0.12) this.overlay(by, 'U_FistPump', 1.2, { busy: true });
       if (by === this.player) this.maybeKillcam(t, opts);
       if (by === this.player) { this.multiKill(opts); this.streakDirty = 1; }
       if (by === this.player) { this.medal(opts.head ? (opts.dist > 80 ? "TIR D'ÉLITE" : 'TIR À LA TÊTE') : 'ÉLIMINÉ', t.name + (by.streak >= 2 ? ` · série ${by.streak}` : ''), opts.head); this.stats.kills++; this.earn(50 + (opts.head ? 25 : 0), opts.head ? 'Tir à la tête' : 'Élimination'); this.audio.kill(); this.input.rumble(0.9, 0.6, 160); }
@@ -731,12 +733,13 @@ export class Game {
   }
   nearestCar(a, r = 3.2) { let best = null, bd = r; for (const c of this.cars) { if (c.dead || c.driver || c.flipped) continue; const d = c.pos.distanceTo(a.pos); if (d < bd) { bd = d; best = c; } } return best; }
   enterCar(a, c) {
+    if (c.kind === 'heli') return this.heliEnter(a, c); // mini-hélico (helico.js)
     if (c.kind) return this.rideEnter(a, c); // moto, skate (deuxroues.js)
     c.driver = a; a.inCar = c; a.ch.root.visible = false; a.vel.set(0, 0, 0);
     if (a === this.player) { this.announce('', c.def.nom || 'Voiture volée', '#fff', 1.5); this.audio.play('slam', c.pos, 0.6); this.cam.carYaw = c.yaw; }
   }
   exitCar(a, dead) {
-    const c = a.inCar; if (!c) return; if (c.kind) return this.rideExit(a, c, dead); c.driver = null; a.inCar = null; a.ch.root.visible = true;
+    const c = a.inCar; if (!c) return; if (c.kind === 'heli') return this.heliExit(a, c, dead); if (c.kind) return this.rideExit(a, c, dead); c.driver = null; a.inCar = null; a.ch.root.visible = true;
     const side = V(Math.cos(c.yaw), 0, -Math.sin(c.yaw)); const p = c.pos.clone().addScaledVector(side, c.W / 2 + 0.7);
     a.pos.copy(p); this.world.pushOut(a.pos, 0.35, a.pos.y); a.pos.y = this.world.groundY(a.pos.x, a.pos.z, c.pos.y + 0.5); a.yaw = c.yaw;
     if (a === this.player) { this.audio.engine(false); this.audio.play('slam', c.pos, 0.6); this.cam.yaw = c.yaw; }
@@ -753,6 +756,7 @@ export class Game {
     c.obj.visible = false; const j = this.world.dynamic.indexOf(c.col); if (j >= 0) this.world.dynamic.splice(j, 1);
   }
   updateCar(c, dt) {
+    if (c.kind === 'heli') return this.updateHeli(c, dt);
     if (c.kind) return this.updateRide(c, dt);
     if (c.dead) { c.dead -= dt; if (c.dead <= 0) { c.dead = 0; c.sunk = false; c.fallV = 0; [c.pos.x, c.pos.z, c.yaw] = c.spawn; c.pos.y = this.world.groundY(c.pos.x, c.pos.z); c.hp = c.maxHp; c.speed = 0; c.vel = null; c.obj.visible = true; this.world.dynamic.push(c.col); this.syncCar(c); } return; }
     const drv = c.driver;
@@ -856,6 +860,7 @@ export class Game {
     for (const a of this.actors) if (a.puppet) this.updatePuppet(a, dt); else this.updateActor(a, dt);
     this.net?.tick(dt);
     for (const c of this.cars) this.updateCar(c, dt);
+    this.updateHeliShots(dt);
     this.updateMetro(dt); this.world.cass?.update(dt); this.world.flushNav();
     // 51 voitures : on n'affiche que celles assez proches (et l'ombre seulement de près)
     if ((this.carCullT = (this.carCullT || 0) - dt) <= 0) { this.carCullT = 0.3; const cp = this.camera.position;
@@ -892,10 +897,11 @@ export class Game {
     if (I.pressed('view') && !scopedNow) { C.fps = !C.fps; this.save.settings.fps = C.fps; this.persist(); this.viewGun(); }
     if (I.pressed('map')) $('minimap').classList.toggle('big');
     if (I.pressed('inv')) this.toggleInv();
-    if (I.pressed('streak') && !this.thr?.spell) { if (a.rewards.length) this.useStreak(a); else this.toast(`Série : ${a.streak} — prochain bonus à ${STREAKS[a.team].find((r) => r.n > a.streak)?.n ?? '—'} éliminations`, '#ccc'); }
+    if (I.pressed('streak') && !this.thr?.spell && !a.inCar) { if (a.rewards.length) this.useStreak(a); else this.toast(`Série : ${a.streak} — prochain bonus à ${STREAKS[a.team].find((r) => r.n > a.streak)?.n ?? '—'} éliminations`, '#ccc'); }
     if (I.pressed('pause')) { this.onPause?.(); return; }
     if (!a.alive) { a.respawnT -= dt; this.aiming = false; if (a.respawnT <= 0) this.respawn(a); return; }
     a.spawnProt = Math.max(0, (a.spawnProt || 0) - dt);
+    if (a.inCar?.kind === 'heli') { this.heliPlayer(a, I, dt); return; }
     if (a.inCar) {
       if (I.pressed('car') || I.pressed('interact')) this.exitCar(a);
       this.aiming = false; return;
@@ -959,8 +965,8 @@ export class Game {
     }
     const car = this.nearestCar(a, 3.4);
     if (car) {
-      const R = car.kind ? this.ridePrompt(a, car) : null; const quick = R ? R.quick : car.police ? a.team === 'ordre' : false;
-      prompt = `<b>${I.label('car')}</b> ${R ? R.text : quick ? 'Prendre la voiture de service' : 'Voler'} <span class="r">${car.kind === 'skate' ? '' : car.def.nom || ''}</span>`;
+      const R = car.kind === 'heli' ? this.heliPrompt(a, car) : car.kind ? this.ridePrompt(a, car) : null; const quick = R ? R.quick : car.police ? a.team === 'ordre' : false;
+      prompt = `<b>${I.label('car')}</b> ${R ? R.text : quick ? 'Prendre la voiture de service' : 'Voler'} <span class="r">${car.kind === 'skate' || car.kind === 'heli' ? '' : car.def.nom || ''}</span>`;
       if ((I.pressed('car')) && !a.channel) { if (quick) this.enterCar(a, car); else this.startChannel(a, R?.label || 'Crochetage…', R?.dur || 0.9, () => car.pos.distanceTo(a.pos) < 4 && !car.driver, () => this.enterCar(a, car)); }
     }
     if (!prompt) {
@@ -1289,6 +1295,7 @@ export class Game {
   // ---------------------------------------------------------------- bots
   updateBot(b, dt) {
     if (!b.alive || this.over) return;
+    if (b.inCar) return; // pilote d'un mini-hélico : c'est l'engin qui décide (helico.js)
     b.spawnProt = Math.max(0, (b.spawnProt || 0) - dt);
     const ai = b.ai; ai.think -= dt; ai.losT -= dt; ai.strafeT -= dt; ai.nadeT -= dt;
     b.wantSprint = false; b.wish = V();
@@ -1299,7 +1306,7 @@ export class Game {
       ai.losT = rnd(0.25, 0.45);
       let best = null, bd = 55;
       for (const t of this.actors) { if (!t.alive || t.team === b.team) continue; const d = t.pos.distanceTo(b.pos); if (d < bd) { bd = d; best = t; } }
-      if (best) { const e = b.pos.clone().add(V(0, 1.6, 0)), tp = best.pos.clone().add(V(0, 1.3, 0)); const vis = this.world.los(e, tp) && !this.smokeBlocks(e, tp) && !(best.inCar && bd > 25); if (vis) { if (ai.target !== best) ai.react = rnd(0.25, 0.55) + (best.slideT > 0 || best.rollT > 0 ? 0.3 : 0); ai.target = best; ai.seeT = 2.5; ai.los = true; ai.lastSeen = best.pos.clone(); } else ai.los = ai.target === best ? false : ai.los; }
+      if (best) { const e = b.pos.clone().add(V(0, 1.6, 0)), tp = best.pos.clone().add(V(0, 1.3, 0)); const vis = this.world.los(e, tp) && !this.smokeBlocks(e, tp) && !(best.inCar && best.inCar.kind !== 'heli' && bd > 25); if (vis) { if (ai.target !== best) ai.react = rnd(0.25, 0.55) + (best.slideT > 0 || best.rollT > 0 ? 0.3 : 0); ai.target = best; ai.seeT = 2.5; ai.los = true; ai.lastSeen = best.pos.clone(); } else ai.los = ai.target === best ? false : ai.los; }
       if (ai.target && (!ai.target.alive || ai.target.pos.distanceTo(b.pos) > 70)) { ai.target = null; ai.los = false; }
     }
     ai.seeT -= dt; if (ai.seeT <= 0 && !ai.los) ai.target = null;
@@ -1592,11 +1599,11 @@ export class Game {
     const yaw = C.yaw + C.kickY + shY + sw[0], pitch = C.pitch + C.kickP + shP + sw[1];
     const dir = V(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
     if (a.inCar) {
-      const c = a.inCar; C.carYaw = lerp_angle(C.carYaw ?? c.yaw, c.yaw, 1 - Math.exp(-dt * 3));
-      // la caméra regarde où on pointe à la souris, puis revient derrière la voiture
-      const look = this.input.st.mx || this.input.st.lookX ? 1 : 0; C.freeT = look ? 1.2 : Math.max(0, (C.freeT || 0) - dt); if (!C.freeT) C.yaw = lerp_angle(C.yaw, C.carYaw, 1 - Math.exp(-dt * 2.5)), C.pitch = lerp(C.pitch, -0.2, 1 - Math.exp(-dt * 2));
-      const piv = c.pos.clone().add(V(0, c.camH ?? c.H + 0.6, 0)); const back = (c.camBack ?? 5.5) + Math.abs(c.speed) * (c.kind ? 0.03 : 0.06);
-      const want = piv.clone().addScaledVector(dir, -back); const hit = this.world.ray(piv, want.clone().sub(piv).normalize(), back); if (hit) want.copy(piv).addScaledVector(want.sub(piv).normalize(), Math.max(1, hit.t - 0.3));
+      const c = a.inCar, heli = c.kind === 'heli'; C.carYaw = lerp_angle(C.carYaw ?? c.yaw, c.yaw, 1 - Math.exp(-dt * 3));
+      // la caméra regarde où on pointe à la souris, puis revient derrière la voiture (en mini-hélico, c'est la caméra qui oriente l'engin)
+      const look = this.input.st.mx || this.input.st.lookX ? 1 : 0; C.freeT = look ? 1.2 : Math.max(0, (C.freeT || 0) - dt); if (!C.freeT && !heli) C.yaw = lerp_angle(C.yaw, C.carYaw, 1 - Math.exp(-dt * 2.5)), C.pitch = lerp(C.pitch, -0.2, 1 - Math.exp(-dt * 2));
+      const piv = c.pos.clone().add(V(0, c.camH ?? c.H + 0.6, 0)); const back = heli ? (this.aiming ? 3.8 : c.camBack) + c.speed * 0.05 : (c.camBack ?? 5.5) + Math.abs(c.speed) * (c.kind ? 0.03 : 0.06);
+      if (heli) c.col.off = true; const want = piv.clone().addScaledVector(dir, -back); const hit = this.world.ray(piv, want.clone().sub(piv).normalize(), back); if (heli) c.col.off = false; if (hit) want.copy(piv).addScaledVector(want.sub(piv).normalize(), Math.max(1, hit.t - 0.3));
       cam.position.copy(want); cam.position.y += bobY; cam.lookAt(piv.clone().addScaledVector(dir, 6)); cam.rotateZ(shR);
     } else if (fps) {
       const eye = a.pos.clone().add(V(0, (a.slideT > 0 ? 0.95 : a.rollT > 0 ? 0.9 : EYE - (a.crouchK || 0) * 0.55) + bobY + C.dip, 0));
@@ -1887,15 +1894,18 @@ export class Game {
     const W = this.weapon(a); if (W) { $('mag').textContent = a.reloadT > 0 ? '…' : W.mag; $('reserve').textContent = `/ ${WEAPONS[W.id].mag}`; $('wname').textContent = `${WEAPONS[W.id].name.toUpperCase()} · ${RARITY[W.rarity].name.toUpperCase()}`; $('wname').style.color = RARITY[W.rarity].color; }
     const pr = $('prompt'); if (this.ui.prompt && a.alive) { pr.innerHTML = this.ui.prompt; pr.classList.add('on'); } else pr.classList.remove('on');
     const ch = $('channel'); if (a.channel) { ch.classList.add('on'); ch.querySelector('i').style.width = (a.channel.t / a.channel.dur * 100) + '%'; ch.querySelector('span').textContent = a.channel.label; } else ch.classList.remove('on');
-    const car = $('car'); if (a.inCar) { car.classList.add('on'); $('kmh').textContent = Math.round(Math.abs(a.inCar.speed) * 3.6); $('carhp').style.width = (a.inCar.hp / a.inCar.maxHp * 100) + '%'; } else car.classList.remove('on');
+    const car = $('car'); if (a.inCar) { car.classList.add('on'); $('kmh').textContent = Math.round(Math.abs(a.inCar.speed) * 3.6); $('carhp').style.width = (a.inCar.hp / a.inCar.maxHp * 100) + '%'; this.heliHud(a.inCar); } else car.classList.remove('on');
     // réticule : s'ouvre avec la dispersion
     const D = W ? WEAPONS[W.id] : null; const sp = this.feetSpeed(a);
     const gap = D ? 4 + D.spread * 260 * (sp > 2 ? 1.6 : 1) * (this.aiming ? (this.cam.fps ? 0.1 : 0.18) : 1) * (a.onGround ? 1 : 1.8) + (this.ui.crossKick || 0) * 8 : 6; this.ui.crossKick = 0;
-    $('cross').style.setProperty('--g', gap.toFixed(1) + 'px'); $('cross').style.display = (this.cam.fps && this.aiming && D?.scope) || a.inCar ? 'none' : '';
+    $('cross').style.setProperty('--g', gap.toFixed(1) + 'px'); $('cross').style.display = (this.cam.fps && this.aiming && D?.scope) || (a.inCar && a.inCar.kind !== 'heli') ? 'none' : '';
     // aide en bas de l'écran : selon le contexte (à pied, en véhicule, en visée) et le périphérique
     const kk = `${I.st.usingPad ? 1 : 0}|${a.inCar ? (a.inCar.kind || 'car') : ''}|${this.aiming && D?.scope ? 's' : ''}|${a.team}`;
     if (kk !== this._keysK) { this._keysK = kk; const P = I.st.usingPad, k = (x) => `<kbd>${x}</kbd>`;
-      $('keys').innerHTML = a.inCar
+      $('keys').innerHTML = a.inCar?.kind === 'heli'
+        ? (P ? `${k('✕')} monter · ${k('○')} descendre · ${k('L3')} turbo · ${k('R2')} mitrailleuse · ${k('R1')} arsenal · ${k('→')} changer · ${k('□')} sortir`
+          : `${k('Espace')} monter · ${k('Ctrl')}${k('C')} descendre · ${k('Maj')} turbo · ${k('Clic')} mitrailleuse · ${k('G')} arsenal · ${k('X')} changer · ${k('F')} sortir`)
+        : a.inCar
         ? (P ? `${k('R2')} accélérer · ${k('L2')} freiner · ${k('✕')} ${a.inCar.kind === 'skate' ? 'ollie' : 'frein à main'} · ${k('□')} descendre${a.inCar.kind === 'skate' ? '' : ` · ${k('↓')} klaxon`}`
           : `${k('Z')}${k('S')} avancer / freiner · ${k('Espace')} ${a.inCar.kind === 'skate' ? 'ollie' : 'frein à main'} · ${k('F')} descendre${a.inCar.kind === 'skate' ? '' : ` · ${k('H')} klaxon`}`)
         : this.aiming && D?.scope
@@ -1971,6 +1981,7 @@ export class Game {
   }
 }
 Object.assign(Game.prototype, rideMethods);
+Object.assign(Game.prototype, heliMethods);
 function lerp_angle(a, b, t) { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a + d * t; }
 installThrows(Game);
 installSeries(Game);

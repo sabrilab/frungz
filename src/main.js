@@ -1,7 +1,8 @@
 // Point d'entrée : chargement, menu (camp, skin), armurerie, réglages, partie, écran de fin.
 import * as THREE from 'three';
 import { setupScene, loadMap, loadGLB, World, loader } from './world.js';
-import { loadChars, loadGuns, makeCharacter, attachGun } from './assets.js';
+import { loadGuns, makeCharacter, attachGun, chars, loadMx } from './assets.js';
+import { loadSkinBases, registerSkin, BUILTIN_SKINS, userSkins } from './skins.js';
 import { createAudio } from './audio.js';
 import { createFX } from './fx.js';
 import { createInput } from './input.js';
@@ -12,7 +13,7 @@ import { Game } from './game.js';
 import { createPreview } from './preview.js';
 import { createLobby } from './lobby.js';
 import { applyRealism, skyEnvironment, realismUniforms } from './realisme.js';
-import { TEAMS, WEAPONS, WEAPON_CATS, CLASSES, classOf, UPGRADES, SKIN_NAMES } from './data.js';
+import { TEAMS, WEAPONS, WEAPON_CATS, CLASSES, classOf, classWeapons, kitOf, UPGRADES, SKIN_NAMES } from './data.js';
 import { svg } from './icons.js';
 import { createNet, ONLINE_MAX_TEAM } from './net.js';
 
@@ -21,9 +22,9 @@ const fmt = (n) => Math.round(n).toLocaleString('fr-FR');
 const Q = new URLSearchParams(location.search);
 
 // ---------- sauvegarde ----------
-const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, cls: { ordre: 'intervention', civils: 'casseur' }, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Paysan', settings: { sens: 1, padSens: 1, assist: true, fps: false, teamSize: 50, invertY: false, dynres: true } };
+const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, cls: { ordre: 'intervention', civils: 'casseur' }, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Bloc_Cagoule', settings: { sens: 1, padSens: 1, assist: true, fps: false, teamSize: 50, invertY: false, dynres: true } };
 const SAVE_KEY = 'frungz-save' + (Q.get('profil') ? '-' + Q.get('profil').replace(/\W/g, '').slice(0, 12) : ''); // ?profil=x : une autre sauvegarde (tester à plusieurs dans le même navigateur)
-let save; try { save = { ...DEFAULT, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; save.settings = { ...DEFAULT.settings, ...save.settings }; save.upgrades ||= {}; save.cls = { ...DEFAULT.cls, ...save.cls }; } catch { save = structuredClone(DEFAULT); }
+let save; try { save = { ...DEFAULT, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; save.settings = { ...DEFAULT.settings, ...save.settings }; save.upgrades ||= {}; save.cls = { ...DEFAULT.cls, ...save.cls }; save.kit ||= {}; } catch { save = structuredClone(DEFAULT); }
 const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {} };
 if ((save.sv || 1) < 2) { save.sv = 2; save.settings.teamSize = 50; } // passage au 50 contre 50 par défaut
 
@@ -63,26 +64,34 @@ const pm = new THREE.PMREMGenerator(renderer);
 try { scene.environment = skyEnvironment(renderer, { sunDir: sun.position.clone().normalize().toArray() }); scene.environmentIntensity = 0.6; } catch (e) { console.warn('ciel de reflets indisponible', e); }
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, QS.far); scene.add(camera);
 // post-traitement : bloom léger (éclairs de bouche, néons, soleil), étalonnage et vignette dans un seul passage final
-let composer = null;
+let composer = null, cine = null, grade = null;
 async function setupPost() {
   if (!QS.post) return;
   const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }, { ShaderPass }] = await Promise.all([
     import('three/examples/jsm/postprocessing/EffectComposer.js'), import('three/examples/jsm/postprocessing/RenderPass.js'), import('three/examples/jsm/postprocessing/UnrealBloomPass.js'), import('three/examples/jsm/postprocessing/OutputPass.js'), import('three/examples/jsm/postprocessing/ShaderPass.js')]);
+  const { CinePass } = await import('./cine.js');
   composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, camera));
   // garde-fou : un seul pixel invalide (NaN ou infini, par exemple un éclat trop fort près d'une explosion) est étalé par le flou du bloom
-  // et noircit un grand rectangle de l'écran pendant quelques images ; on les neutralise et on borne la luminosité avant le bloom
-  composer.addPass(new ShaderPass({ uniforms: { tDiffuse: { value: null } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
-      void main(){ vec3 c = texture2D(tDiffuse, vUv).rgb; if (!(c.r >= 0.0 && c.r < 1e4)) c.r = c.r > 0.0 ? 16.0 : 0.0; if (!(c.g >= 0.0 && c.g < 1e4)) c.g = c.g > 0.0 ? 16.0 : 0.0; if (!(c.b >= 0.0 && c.b < 1e4)) c.b = c.b > 0.0 ? 16.0 : 0.0;
-        gl_FragColor = vec4(min(c, vec3(16.0)), 1.0); }` }));
+  // et noircit un grand rectangle de l'écran pendant quelques images ; le passage cinéma les neutralise et borne la luminosité avant le bloom.
+  // Il ajoute le flou de mouvement de caméra et la profondeur de champ en visée (src/cine.js), grâce à la profondeur de la scène.
+  for (const rt of [composer.renderTarget1, composer.renderTarget2]) { rt.depthTexture = new THREE.DepthTexture(rt.width, rt.height); rt.depthTexture.type = THREE.UnsignedIntType; }
+  cine = new CinePass(camera); cine.enabled2 = save.settings.cine !== false && !Q.has('nocine'); composer.addPass(cine); window.__cine = cine;
   const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.35, 0.5, 0.92); composer.addPass(bloom);
   composer.addPass(new OutputPass());
   // étalonnage : légère courbe en S, ombres un peu froides, hautes lumières chaudes, vignette douce
-  composer.addPass(new ShaderPass({ uniforms: { tDiffuse: { value: null } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
-      void main(){ vec3 c = texture2D(tDiffuse, vUv).rgb; float l = dot(c, vec3(0.299, 0.587, 0.114));
+  // étalonnage : légère courbe en S, ombres un peu froides, hautes lumières chaudes, vignette douce ; touche « pellicule » :
+  // grain fin animé et légère aberration chromatique sur les bords de l'objectif (coupés avec le reste du rendu cinéma)
+  grade = new ShaderPass({ uniforms: { tDiffuse: { value: null }, uT: { value: 0 }, uFilm: { value: 1 } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform sampler2D tDiffuse; uniform float uT, uFilm; varying vec2 vUv;
+      void main(){ vec2 d = vUv - 0.5; vec3 c = texture2D(tDiffuse, vUv).rgb;
+        if (uFilm > 0.01) { vec2 o = d * dot(d, d) * 0.012 * uFilm; c.r = texture2D(tDiffuse, vUv + o).r; c.b = texture2D(tDiffuse, vUv - o).b; }
+        float l = dot(c, vec3(0.299, 0.587, 0.114));
         c = mix(c, c * c * (3.0 - 2.0 * c), 0.22); c += vec3(-0.012, 0.0, 0.018) * (1.0 - l) + vec3(0.02, 0.008, -0.012) * l;
-        c = mix(vec3(l), c, 1.08); vec2 d = vUv - 0.5; c *= 1.0 - dot(d, d) * 0.55; gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }` }));
+        c = mix(vec3(l), c, 1.08); c *= 1.0 - dot(d, d) * 0.55;
+        float g = fract(sin(dot(floor(gl_FragCoord.xy) + fract(uT) * 97.0, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+        c += g * 0.028 * uFilm * (1.0 - 0.6 * l);
+        gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }` });
+  composer.addPass(grade);
   window.__post = composer;
 }
 setupPost();
@@ -91,7 +100,9 @@ const audio = createAudio(); const input = createInput(renderer.domElement); Obj
 const fx = createFX(scene, camera);
 
 // ---------- chargement ----------
-const ALL_SKINS = [...TEAMS.ordre.skins, ...TEAMS.civils.skins];
+// skins : ceux du jeu + ceux créés dans le studio (/studio), fabriqués au chargement sur les deux mannequins
+const MY_SKINS = userSkins().filter((s) => TEAMS[s.team]); for (const s of MY_SKINS) SKIN_NAMES[s.id] = s.name;
+const ALL_SKINS = [...BUILTIN_SKINS, ...MY_SKINS];
 const CARS = [['sportscar', 'sport', 'Coupé sport orange'], ['sportscar2', 'sport', 'Coupé sport blanc'], ['sports', 'sport', 'Coupé sport rouge'], ['roadster', 'sport', 'Cabriolet bleu'], ['muscle', 'sport', 'Muscle car jaune'], ['sports-armored', 'blinde', 'Sportive blindée'], ['cop', 'police', 'Voiture de police'], ['police-sedan', 'police', 'Berline de police'], ['suv-luxury', 'civil', 'SUV de luxe']];
 let world, mapRoot, carDefs = [], night = null, lobby = null;
 let progress = { map: 0, chars: 0, guns: 0, cars: 0 };
@@ -100,7 +111,7 @@ async function loadAll() {
   const gp = await fetch('assets/gameplay.json').then((r) => r.json());
   const [{ root, ground, cassables, rame }] = await Promise.all([
     loadMap('assets/map.glb', (p) => { progress.map = p; showProgress(); }),
-    loadChars(ALL_SKINS, () => { progress.chars++; showProgress(); }),
+    Promise.all([loadSkinBases(), loadMx()]).then(([, mx]) => { for (const d of ALL_SKINS) { try { registerSkin(chars, d, mx); } catch (e) { console.warn('skin', d.id, e); } progress.chars++; showProgress(); } }),
     loadGuns(() => { progress.guns++; showProgress(); }),
     Promise.all(CARS.map(async ([f, classe, nom]) => { try { const g = await loadGLB(`assets/cars/${f}.glb`); const s = g.scene; const box = new THREE.Box3().setFromObject(s); const sz = s.userData.size || [box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z]; carDefs.push({ scene: s, classe, nom, size: sz }); } catch (e) { console.warn('voiture', f, e); } progress.cars++; showProgress(); })),
   ]);
@@ -123,13 +134,14 @@ async function loadAll() {
 let preview = null;
 function renderMenu() {
   document.querySelectorAll('.side').forEach((b) => b.classList.toggle('on', b.dataset.team === save.team));
-  const skins = TEAMS[save.team].skins; if (!skins.includes(save.skin)) save.skin = skins[0];
-  $('skins').innerHTML = skins.map((s) => `<button data-skin="${s}" class="${s === save.skin ? 'on' : ''}">${SKIN_NAMES[s] || s}</button>`).join('');
+  const skins = [...TEAMS[save.team].skins, ...MY_SKINS.filter((s) => s.team === save.team && (!window.__loaded || chars[s.id])).map((s) => s.id)]; if (!skins.includes(save.skin)) save.skin = skins[0];
+  $('skins').innerHTML = skins.map((s) => `<button data-skin="${s}" class="${s === save.skin ? 'on' : ''}${s.startsWith('u_') ? ' mine' : ''}">${(SKIN_NAMES[s] || s).replace(/[<>&]/g, '')}</button>`).join('') + '<a class="studio-link" href="/studio/">Studio de skins</a>';
   const cur = classOf(save.team, save.cls[save.team]).id;
   $('classes').innerHTML = Object.values(CLASSES[save.team]).map((K) => `<button data-cls="${K.id}" class="${K.id === cur ? 'on' : ''}"><em>${svg(K.ico)}</em><b>${K.name}</b><small>${K.role}</small></button>`).join('');
-  const K = classOf(save.team, cur), P = save.primary && save.unlocked.includes(save.primary) && WEAPONS[save.primary] ? WEAPONS[save.primary] : null;
-  const prim = P && P.cat !== 'pistolet' ? P : WEAPONS[K.primary], sec = P && P.cat === 'pistolet' ? P : WEAPONS[K.secondary];
-  $('clsInfo').innerHTML = `<span>${svg(prim.ico)} ${prim.name}${prim.id !== K.primary ? ' <i>(armurerie)</i>' : ''}</span><span>${svg(sec.ico)} ${sec.name}</span><span>${svg('vest')} ${K.armor ? 'Gilet ' + K.armor : 'Sans gilet'}</span><span>${svg('target')} <b>${K.perkName}</b> : ${K.perkDesc}</span>`;
+  const K = classOf(save.team, cur), kit = kitOf(save, save.team, K), { prim, sec } = classWeapons(K, save.unlocked);
+  const chip = (slot, id) => { const W = WEAPONS[id]; return `<button data-slot="${slot}" data-wid="${id}" class="${kit[slot] === id ? 'on' : ''}" title="${W.name}">${svg(W.ico)}<span>${W.name}</span>${K.primaries.includes(id) || slot === 's' && id !== 'revolver' ? '' : '<i>planque</i>'}</button>`; };
+  $('clsInfo').innerHTML = `<div class="kitrow"><label>Arme principale</label>${prim.map((id) => chip('p', id)).join('')}</div><div class="kitrow"><label>Arme de poing</label>${sec.map((id) => chip('s', id)).join('')}</div>`
+    + `<p><span>${svg('vest')} ${K.armor ? 'Gilet ' + K.armor : 'Sans gilet'}</span><span>${svg('target')} <b>${K.perkName}</b> : ${K.perkDesc}</span></p>`;
   $('nightBtn').classList.toggle('night', !!save.settings.night);
   $('bank').textContent = fmt(save.bank); $('lvl').textContent = save.lvl || 1;
   { const l = save.lvl || 1, a = 100 * (l - 1) ** 2, b = 100 * l ** 2; $('xpbar').style.width = Math.max(4, Math.min(100, ((save.xp || 0) - a) / (b - a) * 100)).toFixed(0) + '%'; }
@@ -140,7 +152,13 @@ function renderMenu() {
 document.querySelectorAll('.side').forEach((b) => b.addEventListener('click', () => { if (net.guest) { $('inviteNote').textContent = 'En ligne, c\'est le chef qui choisit le camp de l\'équipe.'; return; } save.team = b.dataset.team; persist(); renderMenu(); audio.init(); audio.play('uiSelect'); }));
 $('classes').addEventListener('click', (e) => { const b = e.target.closest('button[data-cls]'); if (!b) return; pickClass(b.dataset.cls); audio.init(); audio.play('uiTick'); });
 // choisir une classe reprend ses armes (l'arme achetée reste dans la planque, à rééquiper à l'armurerie) ; en partie, elle s'applique au prochain retour
-function pickClass(id) { save.cls[save.team] = id; save.primary = null; persist(); renderMenu(); if (game?.player) game.toast(`Classe ${classOf(save.team, id).name} : au prochain retour dans la rue`, '#ccc'); }
+function pickClass(id) { save.cls[save.team] = id; persist(); renderMenu(); if (game?.player) game.toast(`Classe ${classOf(save.team, id).name} : au prochain retour dans la rue`, '#ccc'); }
+$('clsInfo').addEventListener('click', (e) => { const b = e.target.closest('button[data-wid]'); if (!b) return; setKit(b.dataset.slot, b.dataset.wid); audio.init(); audio.play('uiTick'); });
+// arme choisie pour la classe en cours ; en partie, elle passe tout de suite dans les mains si on joue cette classe
+function setKit(slot, id) {
+  const K = classOf(save.team, save.cls[save.team]), key = save.team + ':' + K.id; save.kit[key] = { ...kitOf(save, save.team, K), [slot]: id }; persist(); renderMenu();
+  const a = game?.player; if (a?.alive && a.team === save.team && a.cls === K.id) { const i = slot === 's' ? 0 : 1; a.slots[i] = { id, rarity: 'rare', mag: WEAPONS[id].mag }; game.equip(a, i); }
+}
 $('skins').addEventListener('click', (e) => { const s = e.target.dataset?.skin; if (!s) return; save.skin = s; persist(); renderMenu(); audio.init(); audio.play('uiTick'); });
 $('play').disabled = true;
 $('play').addEventListener('click', () => start());
@@ -158,7 +176,7 @@ if (!/^FRZ-[A-Z0-9]{4}$/.test(save.teamCode || '')) { const A = 'ABCDEFGHJKLMNPQ
 persist();
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const net = createNet({ local: Q.get('net') === 'local' ? true : /^wss?:\/\//.test(Q.get('net') || '') ? Q.get('net') : false });
-const myGun = () => { const T = save.team, K = classOf(T, save.cls[T]); const P = save.primary && save.unlocked.includes(save.primary) && WEAPONS[save.primary]; return P && P.cat !== 'pistolet' ? P.id : K.primary; };
+const myGun = () => { const T = save.team, K = classOf(T, save.cls[T]); return kitOf(save, T, K).p; };
 const netMeta = () => ({ pseudo: save.pseudo || 'Joueur', skin: save.skin, team: save.team, cls: classOf(save.team, save.cls[save.team]).id, gun: myGun() });
 // amis connectés, sous la forme attendue par le salon 3D (tenue ramenée au camp de l'équipe)
 function onlineFriends() {
@@ -267,9 +285,9 @@ function stat(label, v, txt) { return `<div class="st"><span>${label}</span><i><
 function showPv(k, id) {
   if (!pv) return; pvSel = [k, id];
   if (k === 'w') {
-    const W = WEAPONS[id], owned = save.unlocked.includes(id) || id === 'pistol';
+    const W = WEAPONS[id], K = classOf(save.team, save.cls[save.team]), kit = kitOf(save, save.team, K), free = K.primaries.includes(id) || (W.cat === 'pistolet' && id !== 'revolver'), owned = free || save.unlocked.includes(id);
     pv.show('w', id);
-    $('pvinfo').innerHTML = `<h3>${svg(W.ico)} ${W.name}</h3><p class="pvtag">${owned ? (save.primary === id || id === 'pistol' ? 'Équipée' : 'Dans ta planque') : fmt(W.price) + ' €'}${W.scope ? ' · lunette ×4 / ×8' : ''}${W.auto ? ' · automatique' : W.burst ? ' · rafale de ' + W.burst : ''}${W.veh > 1 ? ' · perce-blindage' : ''}</p>`
+    $('pvinfo').innerHTML = `<h3>${svg(W.ico)} ${W.name}</h3><p class="pvtag">${kit.p === id || kit.s === id ? 'Équipée' : free ? 'Arme de la classe ' + K.name : owned ? 'Dans ta planque' : fmt(W.price) + ' €'}${W.scope ? ' · lunette ×4 / ×8' : ''}${W.auto ? ' · automatique' : W.burst ? ' · rafale de ' + W.burst : ''}${W.veh > 1 ? ' · perce-blindage' : ''}</p>`
       + stat('Dégâts', (W.dmg * W.pellets) / 120, W.dmg + (W.pellets > 1 ? '×' + W.pellets : ''))
       + stat('Cadence', (W.burst ? W.burst / (W.burst / W.rps + (W.burstPause || 0.25)) : W.rps) / 12, (W.burst ? (W.burst / (W.burst / W.rps + (W.burstPause || 0.25))).toFixed(1) : W.rps) + ' coups/s')
       + stat('Précision', 1 - Math.sqrt(W.spread / 0.08), '')
@@ -278,9 +296,9 @@ function showPv(k, id) {
       + stat('Rechargement', 1 - (W.reload - 1) / 2, W.reload + ' s')
       + stat('Mobilité', (W.mob - 0.8) / 0.3, Math.round(W.mob * 100) + ' %');
   } else if (k === 'c') {
-    const K = classOf(save.team, id), P = WEAPONS[K.primary], S = WEAPONS[K.secondary];
-    pv.show('w', K.primary);
-    $('pvinfo').innerHTML = `<h3>${svg(K.ico)} ${K.name}</h3><p class="pvtag">${K.role}${save.cls[save.team] === id ? ' · ta classe' : ''}</p><p class="pvdesc">${svg(P.ico)} ${P.name} · ${svg(S.ico)} ${S.name}</p><p class="pvdesc"><b>${K.perkName}</b> : ${K.perkDesc}</p>`
+    const K = classOf(save.team, id), kit = kitOf(save, save.team, K), P = WEAPONS[kit.p], S = WEAPONS[kit.s];
+    pv.show('w', kit.p);
+    $('pvinfo').innerHTML = `<h3>${svg(K.ico)} ${K.name}</h3><p class="pvtag">${K.role}${save.cls[save.team] === id ? ' · ta classe' : ''}</p><p class="pvdesc">${svg(P.ico)} ${P.name} · ${svg(S.ico)} ${S.name}</p><p class="pvdesc"><b>${K.perkName}</b> : ${K.perkDesc}</p><p class="pvdesc">Au choix : ${K.primaries.map((x) => WEAPONS[x].name).join(', ')}</p>`
       + stat('Protection', K.armor / 100, K.armor ? K.armor + ' / 100' : 'aucune') + stat('Vitesse', (K.speed - 0.8) / 0.35, Math.round(K.speed * 100) + ' %') + stat('Grenades', (K.nades + K.frags) / 4, `${K.nades} ${save.team === 'ordre' ? 'lacrymo' : 'fumigène'}${K.nades > 1 ? 's' : ''} · ${K.frags} grenade${K.frags > 1 ? 's' : ''}`);
   } else {
     const U = UPGRADES[id], l = save.upgrades[id] || 0;
@@ -296,20 +314,20 @@ function renderShop() {
   const th = (k, id, l) => { const u = pv?.thumb(k, id, l); return u ? `<img class="th" src="${u}" alt="">` : ''; };
   const head = (t) => `<h4 class="shead">${t}</h4>`;
   const curCls = classOf(save.team, save.cls[save.team]).id;
-  const c = [head('Classes ' + TEAMS[save.team].short)].concat(Object.values(CLASSES[save.team]).map((K) => `<div class="card cls ${K.id === curCls ? 'owned' : ''}" data-k="c" data-id="${K.id}" style="--c:${K.id === curCls ? '#2f6' : TEAMS[save.team].color}">${th('w', K.primary, 0)}<b>${svg(K.ico)} ${K.name}</b><small>${K.role} · ${WEAPONS[K.primary].name} · ${K.perkName}</small><button data-c="${K.id}">${K.id === curCls ? 'Ta classe ' + svg('check') : 'Choisir'}</button></div>`));
-  const w = [];
+  const c = [head('Classes ' + TEAMS[save.team].short)].concat(Object.values(CLASSES[save.team]).map((K) => `<div class="card cls ${K.id === curCls ? 'owned' : ''}" data-k="c" data-id="${K.id}" style="--c:${K.id === curCls ? '#2f6' : TEAMS[save.team].color}">${th('w', kitOf(save, save.team, K).p, 0)}<b>${svg(K.ico)} ${K.name}</b><small>${K.role} · ${WEAPONS[kitOf(save, save.team, K).p].name} · ${K.perkName}</small><button data-c="${K.id}">${K.id === curCls ? 'Ta classe ' + svg('check') : 'Choisir'}</button></div>`));
+  const w = [], CK = classOf(save.team, curCls), ckit = kitOf(save, save.team, CK);
   for (const [cat, label] of Object.entries(WEAPON_CATS)) {
-    const list = Object.entries(WEAPONS).filter(([id, W]) => W.cat === cat && id !== 'pistol'); if (!list.length) continue;
+    const list = Object.entries(WEAPONS).filter(([id, W]) => W.cat === cat); if (!list.length) continue;
     w.push(head(label));
     for (const [id, W] of list) {
-      const owned = save.unlocked.includes(id), eq = save.primary === id;
-      w.push(`<div class="card ${owned ? 'owned' : ''}" data-k="w" data-id="${id}" style="--c:${owned ? '#2f6' : '#777'}">${th('w', id, 0)}<b>${svg(W.ico)} ${W.name}</b><small>Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.burst ? 'rafale ×' + W.burst : W.rps + ' coups/s'} · chargeur ${W.mag}</small><button data-w="${id}" ${!owned && save.bank < W.price ? 'disabled' : ''}>${owned ? (eq ? 'Équipée ' + svg('check') : 'Équiper') : fmt(W.price) + ' €'}</button></div>`);
+      const free = CK.primaries.includes(id) || (cat === 'pistolet' && id !== 'revolver'), owned = free || save.unlocked.includes(id), eq = ckit.p === id || ckit.s === id;
+      w.push(`<div class="card ${owned ? 'owned' : ''}" data-k="w" data-id="${id}" style="--c:${owned ? '#2f6' : '#777'}">${th('w', id, 0)}<b>${svg(W.ico)} ${W.name}</b><small>Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.burst ? 'rafale ×' + W.burst : W.rps + ' coups/s'} · chargeur ${W.mag}</small><button data-w="${id}" ${!owned && save.bank < W.price ? 'disabled' : ''}>${owned ? (eq ? 'Équipée ' + svg('check') : 'Équiper') : fmt(W.price) + ' €'}</button>${free && cat !== 'pistolet' ? '<em class="free">' + CK.name + '</em>' : ''}</div>`);
     }
   }
   w.push(head('Planque'));
   const u = Object.entries(UPGRADES).map(([id, U]) => { const l = save.upgrades[id] || 0; const max = l >= U.max; const p = U.price(l); return `<div class="card" data-k="u" data-id="${id}" style="--c:#57b6ff">${th('u', id, id === 'gilet' ? Math.max(1, l) : 0)}<b>${svg(U.ico)} ${U.name} · niv. ${l}/${U.max}</b><small>${U.desc}</small><button data-u="${id}" ${max || save.bank < p ? 'disabled' : ''}>${max ? 'Maximum' : fmt(p) + ' €'}</button></div>`; });
   $('shopList').innerHTML = c.join('') + w.join('') + u.join('');
-  const sel = pvSel || ['w', save.primary && save.primary !== 'pistol' ? save.primary : 'rifle'];
+  const sel = pvSel || ['w', ckit.p];
   showPv(sel[0], sel[1]); markSel();
   pv?.start();
 }
@@ -321,7 +339,7 @@ $('shopList').addEventListener('focusin', (e) => pvFrom(e.target));
 $('shopList').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
   if (b.dataset.c) { pickClass(b.dataset.c); }
-  if (b.dataset.w) { const id = b.dataset.w; if (!save.unlocked.includes(id)) { save.bank -= WEAPONS[id].price; save.unlocked.push(id); audio.cash(true); } save.primary = id; if (game?.player?.alive) { const a = game.player; const W = { id, rarity: 'rare', mag: WEAPONS[id].mag }; const i = WEAPONS[id].cat === 'pistolet' ? 0 : 1; a.slots[i] = W; game.equip(a, i); } }
+  if (b.dataset.w) { const id = b.dataset.w; const K = classOf(save.team, save.cls[save.team]), free = K.primaries.includes(id) || (WEAPONS[id].cat === 'pistolet' && id !== 'revolver'); if (!free && !save.unlocked.includes(id)) { save.bank -= WEAPONS[id].price; save.unlocked.push(id); audio.cash(true); } setKit(WEAPONS[id].cat === 'pistolet' ? 's' : 'p', id); }
   if (b.dataset.u) { const id = b.dataset.u; const l = save.upgrades[id] || 0; save.bank -= UPGRADES[id].price(l); save.upgrades[id] = l + 1; audio.cash(true); if (game) { game.player.cap = 20 + (save.upgrades.sac || 0) * 8; } }
   persist(); renderShop(); renderMenu();
 });
@@ -369,6 +387,7 @@ pause.innerHTML = `<h2>PAUSE</h2>
 <label><input type="checkbox" id="s-killcam"> Kill-cam en incrustation (bulle)</label>
 <label>Qualité graphique <select id="s-quality"><option value="auto">Auto</option><option value="bas">Basse (PC modestes)</option><option value="moyen">Moyenne</option><option value="haut">Haute</option></select></label>
 <label><input type="checkbox" id="s-dynres"> Résolution adaptée aux images/s</label>
+<label><input type="checkbox" id="s-cine"> Rendu cinéma : flou de mouvement, mise au point en visée, grain (qualité haute)</label>
 <label>Images/s <b id="s-fpsn">–</b></label>
 <label>Joueurs par camp (prochaine partie) <select id="s-team"><option value="5">5 contre 5</option><option value="10">10 contre 10</option><option value="15">15 contre 15</option><option value="20">20 contre 20</option><option value="25">25 contre 25</option><option value="35">35 contre 35</option><option value="50">50 contre 50</option></select></label>
 </div>
@@ -391,7 +410,7 @@ document.body.appendChild(pause);
 const st = document.createElement('style'); st.textContent = `.padfocus{outline:3px solid #ffcc3d!important;outline-offset:3px;box-shadow:0 0 0 7px rgba(255,204,61,.22)!important}.settings{display:grid;gap:10px;text-align:left;background:rgba(255,255,255,.06);padding:16px;border-radius:12px;min-width:min(420px,100%)}.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left;margin-top:10px;font-size:13px}.controls h3{margin:0 0 6px;font:800 14px Inter}.controls p{margin:3px 0}@media(max-width:760px){.controls{grid-template-columns:1fr}}.settings label{display:flex;justify-content:space-between;gap:12px;align-items:center;font-weight:700}#minimap.big{width:min(700px,90vw);height:min(350px,45vw);left:50%;top:50%;transform:translate(-50%,-50%)}body.scoped #app canvas{}body.scoped::after{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 30vh,#000 30.5vh);z-index:1}body.scoped::before{content:'';position:fixed;left:50%;top:0;bottom:0;width:1px;background:#000;z-index:2;box-shadow:0 0 0 0 #000}`;
 document.head.appendChild(st);
 const bindSet = (id, key, prop = 'value', conv = Number) => { const el = $(id); el[prop] = save.settings[key]; el.addEventListener('input', () => { save.settings[key] = conv(el[prop]); input.settings[key] = save.settings[key]; persist(); if (key === 'fps' && game) { game.cam.fps = save.settings.fps; game.viewGun(); } }); };
-if (save.settings.killcam === undefined) save.settings.killcam = true; bindSet('s-killcam', 'killcam', 'checked', Boolean); bindSet('s-sens', 'sens'); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); bindSet('s-team', 'teamSize');
+if (save.settings.killcam === undefined) save.settings.killcam = true; bindSet('s-killcam', 'killcam', 'checked', Boolean); bindSet('s-sens', 'sens'); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); if (save.settings.cine === undefined) save.settings.cine = true; bindSet('s-cine', 'cine', 'checked', Boolean); $('s-cine').addEventListener('input', () => { if (cine) cine.enabled2 = save.settings.cine; }); bindSet('s-team', 'teamSize');
 { const el = $('s-quality'); el.value = save.settings.quality || 'auto'; el.addEventListener('change', () => { save.settings.quality = el.value; persist(); location.reload(); }); }
 function openSettings() { pause.querySelector('h2').textContent = 'RÉGLAGES'; $('resume').style.display = 'none'; $('quit').textContent = 'Retour au salon'; pause.classList.remove('hidden'); audio.init(); audio.play('uiSelect'); }
 function openPause() { if (!game || game.over) return; pause.querySelector('h2').textContent = 'PAUSE'; $('resume').style.display = ''; $('quit').textContent = 'Quitter la partie'; game.paused = true; pause.classList.remove('hidden'); document.exitPointerLock?.(); $('s-fps').checked = game.cam.fps; }
@@ -448,11 +467,29 @@ let ftAvg = 1 / 60, ftT = 0, fpsShown = 0;
 function dynRes(raw) {
   ftAvg += (Math.min(raw, 0.2) - ftAvg) * 0.05; ftT += raw; if (ftT < 1) return; ftT = 0;
   fpsShown = Math.round(1 / ftAvg); const el = $('s-fpsn'); if (el) el.textContent = fpsShown + ' (résolution ' + Math.round(prCur * 100) + ' %)';
+  // rendu cinéma coupé quand on passe sous ~40 images/s, rallumé au-dessus de ~52
+  if (cine) cine.auto = ftAvg > 1 / 40 ? 0 : ftAvg < 1 / 52 ? 1 : cine.auto;
   if (save.settings.dynres === false || !game || game.paused) return;
   // effets allégés quand ça rame (moins d'éclats, fumée moins dense), puis rétablis quand il y a de la marge
   const L = fx.stats().load; fx.setLoad(ftAvg > 1 / 40 ? L - 0.15 : ftAvg < 1 / 55 ? L + 0.1 : L);
   let n = prCur; if (ftAvg > 1 / 45) n = Math.max(QS.prMin, prCur - 0.1); else if (ftAvg < 1 / 57) n = Math.min(prMax, prCur + 0.05);
   if (Math.abs(n - prCur) > 0.01) { prCur = n; renderer.setPixelRatio(prCur); composer?.setPixelRatio?.(prCur); }
+}
+// état du rendu cinéma selon la caméra du jeu : quoi masquer près de l'objectif, mise au point, intensité
+function cineState(raw) {
+  const g = game && !game.paused ? game : null, a = g?.player;
+  let mb = 0.5, dof = 0, focus = 20, mask = [2.6, 5];
+  if (g && a) {
+    const W = g.weapon(a), scope = g.aiming && W && WEAPONS[W.id]?.scope, fps = (g.cam.fps || !!g.sc?.was) && !a.inCar && a.alive;
+    if (a.inCar) mask = a.inCar.kind ? [3.2, 5.5] : [6.5, 10]; // la voiture (ou la moto) suit la caméra : on ne la floute pas
+    else if (fps) mask = [1.1, 2.0]; // bras et arme
+    else if (g.aiming) mask = [1.5, 3.0];
+    if (g.aiming && !scope && a.alive) { dof = 1; focus = g.aimPt ? g.aimPt.distanceTo(camera.position) : 20; }
+    if (scope) mb = 0.2; // à la lunette, un flou fort gênerait la visée
+    if (g.killcam) mb = 0.35;
+  }
+  cine.set({ dt: raw, mb, dof, focus, mask });
+  if (grade) { grade.uniforms.uT.value = (grade.uniforms.uT.value + raw * 24) % 1000; grade.uniforms.uFilm.value = cine.enabled2 ? cine.k : 0; }
 }
 function frame() {
   requestAnimationFrame(frame);
@@ -469,8 +506,10 @@ function frame() {
     else { menuT += dt * 0.04; camera.position.set(Math.cos(menuT) * 150, 55, Math.sin(menuT) * 150); camera.lookAt(0, 4, 0); followShadow(camera.position); } world.metro?.update(menuT * 25, dt, null);
     input.poll(); padMenu(dt); input.endFrame(); night?.update(dt, camera.position, null);
   }
+  if (cine) cineState(raw);
   if (Q.has('norender')) { window.__frames = (window.__frames || 0) + 1; return; } // tests : simulation seule (plusieurs joueurs dans un même navigateur)
   if (composer) composer.render(); else renderer.render(scene, camera); if (game && !game.paused) game.renderPip(renderer, scene); window.__frames = (window.__frames || 0) + 1;
 }
+window.__cineState = (dt) => cine && cineState(dt);
 renderMenu(); frame();
 loadAll().catch((e) => { $('loadtxt').textContent = 'Erreur de chargement : ' + e.message; console.error(e); });
