@@ -181,7 +181,7 @@ export class Game {
   }
   equip(a, i, silent) {
     if (!a.slots[i]) return; a.cur = i; a.reloadT = 0; a.burstLeft = 0; a.fireT = Math.max(a.fireT, 0.25);
-    attachGun(a.ch, a.slots[i].id); a.ch.meshes = null; a.lodShadow = undefined; const rc = RARITY[a.slots[i].rarity].color;
+    attachGun(a.ch, a.slots[i].id); if (!silent) Anim.swap(a); a.ch.meshes = null; a.lodShadow = undefined; const rc = RARITY[a.slots[i].rarity].color;
     a.ch.gun.traverse((o) => { if (o.isMesh && a.slots[i].rarity !== 'commun') { o.material = o.material.map ? o.material : (Array.isArray(o.material) ? o.material.map((m) => tint(m, rc)) : tint(o.material, rc)); } });
     if (a.overs) a.overs = a.overs.filter((o) => o.name !== 'U_Reload'); if (!silent) this.overlay(a, 'U_Draw', 0.45, { busy: true });
     if (!a.bot) { this.viewGun(); if (!silent) this.audio.play('cloth', null, 0.5); }
@@ -957,7 +957,9 @@ export class Game {
     if (a.gone) return;
     if (a.temp && a.alive && this.time > a.expire) { a.alive = false; a.gone = true; if (a.bag.length) { this.dropPile(a.pos, a.bag.splice(0)); this.carryMesh(a); } ch.root.visible = false; this.fx.ring(a.pos, '#ffffff'); return; }
     a.stunT = Math.max(0, (a.stunT || 0) - dt);
-    if (!a.alive) { Anim.dead(a, dt); if (a.bot) { a.respawnT -= dt; if (a.respawnT <= 0) { if (a.temp) { a.gone = true; ch.root.visible = false; return; } this.respawn(a); } } if (a.respawnT < 1.5) ch.root.visible = (a.respawnT * 10 | 0) % 2 === 0; return; }
+    if (!a.alive) { if (ch.actions.MX_Idle) this.locomotion(a, dt, 0, false); /* les allures de marche s'effacent, sinon elles retiennent le corps debout pendant la chute */ Anim.dead(a, dt); { // tué en l'air ou sur une marche : le corps retombe au sol au lieu de rester suspendu, et l'inclinaison de glissade s'efface
+      const gy = this.world.standY(a.pos.x, a.pos.z, a.pos.y); if (a.pos.y > gy + 0.01 && !a.swim) { a.vel.y = Math.min(a.vel.y, 2) - GRAV * dt; a.pos.y = Math.max(gy, a.pos.y + a.vel.y * dt); } else a.vel.y = 0;
+      ch.root.position.copy(a.pos); ch.model.rotation.x = lerp(ch.model.rotation.x, 0, 1 - Math.exp(-dt * 10)); } if (a.bot) { a.respawnT -= dt; if (a.respawnT <= 0) { if (a.temp) { a.gone = true; ch.root.visible = false; return; } this.respawn(a); } } if (a.respawnT < 1.5) ch.root.visible = (a.respawnT * 10 | 0) % 2 === 0; return; }
     this.wallRecharge(a, dt);
     if (a.inCar) { if (a.inCar.kind) this.rideAnimate(a, dt); return; }
     a.fireT -= dt; a.wantJump = Math.max(0, (a.wantJump || 0) - dt); a.wantCrouch = Math.max(0, (a.wantCrouch || 0) - dt);
@@ -973,12 +975,18 @@ export class Game {
       if (k >= 1) { a.climb = null; a.vel.set(0, 0, 0); a.onGround = true; a.momentum = Math.max(a.momentum, 0.5); }
       this.animate(a, dt); return;
     }
-    if (a.wantSprint && wl > 0.5 && a.onGround && a.slideT <= 0) a.momentum = Math.min(1, a.momentum + dt / (civ ? 1.1 : 1.6));
+    // on ne sprinte que vers l'avant, et pas en tirant ; en reculant ou en pas chassés on va moins vite (comme un humain)
+    const fwdK = wl > 0.1 ? (wish.x * Math.sin(a.yaw) + wish.z * Math.cos(a.yaw)) / wl : 1;
+    const sprint = a.wantSprint && fwdK > 0.25 && this.time - (a.lastShot || -9) > 0.3;
+    if (sprint && wl > 0.5 && a.onGround && a.slideT <= 0) a.momentum = Math.min(1, a.momentum + dt / (civ ? 1.1 : 1.6));
     else if (a.onGround && a.slideT <= 0) a.momentum = Math.max(0, a.momentum - dt * 1.8);
     const load = a.bag.length ? 1 - 0.18 * (1 - 0.2 * (a.bot ? 0 : this.save.upgrades.sac || 0)) : 1; // porter un objet ralentit
     const slow = 1 - (a.inGas || 0) * 0.2;
     const K = classOf(a.team, a.cls), mob = (K.speed || 1) * (WEAPONS[this.weapon(a)?.id]?.mob || 1);
-    let top = (a.wantSprint ? 6.6 + a.momentum * (civ ? 3.2 : 1.8) * (a.perk?.sprint || 1) : 4.4) * load * slow * mob; if (this.aiming && !a.bot) top *= 0.6; a.crouchK = lerp(a.crouchK || 0, a.crouch ? 1 : 0, 1 - Math.exp(-dt * 12)); if (a.crouch) top *= 0.5;
+    let top = (sprint ? 6.6 + a.momentum * (civ ? 3.2 : 1.8) * (a.perk?.sprint || 1) : 4.4) * load * slow * mob; if (this.aiming && !a.bot) top *= 0.6; a.crouchK = lerp(a.crouchK || 0, a.crouch ? 1 : 0, 1 - Math.exp(-dt * 12)); if (a.crouch) top *= 0.5;
+    if (!sprint) top *= fwdK >= 0 ? lerp(0.88, 1, fwdK) : lerp(0.88, 0.74, -fwdK);
+    a.landK = Math.max(0, (a.landK || 0) - dt); if (a.landK > 0) top *= 1 - 0.4 * Math.min(1, a.landK / 0.25); // réception : on encaisse avant de repartir
+    a.jumpFat = Math.max(0, (a.jumpFat || 0) - dt * 0.7);
     // glissade (accroupi en sprint) / roulade (accroupi sinon)
     if (a.wantCrouch && a.onGround && a.slideT <= 0 && a.rollT <= 0) {
       const sp = this.feetSpeed(a);
@@ -990,7 +998,9 @@ export class Game {
     if (a.slideT > 0) { a.slideT -= dt; const sp = Math.hypot(a.vel.x, a.vel.z); const ns = Math.max(0, sp - dt * (civ ? 3.5 : 5)); a.vel.x = a.slideDir.x * ns; a.vel.z = a.slideDir.z * ns; if (ns < 2.5) a.slideT = 0; }
     else if (a.rollT > 0) { a.rollT -= dt; }
     else {
-      const acc = a.onGround ? (wl > 0.1 ? 34 : 22) : 7;
+      // poids : départ franc puis l'accélération s'essouffle près de la vitesse de pointe ; freiner ou repartir à contresens prend un instant
+      const spd = Math.hypot(a.vel.x, a.vel.z), along = wl > 0.1 && spd > 0.5 ? (a.vel.x * wish.x + a.vel.z * wish.z) / (spd * wl) : 1;
+      const acc = !a.onGround ? 6 : wl > 0.1 ? (along < 0 ? 26 : lerp(30, 17, clamp(spd / 8, 0, 1))) : 17 + spd * 1.3;
       const dvx = target.x - a.vel.x, dvz = target.z - a.vel.z, dl = Math.hypot(dvx, dvz), mx = acc * dt;
       if (dl > mx) { a.vel.x += dvx / dl * mx; a.vel.z += dvz / dl * mx; } else { a.vel.x = target.x; a.vel.z = target.z; }
     }
@@ -998,7 +1008,7 @@ export class Game {
     if (a.wantJump && a.onGround) {
       const cl = this.findClimb(a);
       if (cl) { a.climb = cl; a.wantJump = 0; this.audio.play('cloth', a.pos, 0.8); if (!a.bot) { this.cam.dip -= 0.08; this.input.rumble(0.2, 0.4, 80); } }
-      else { a.vel.y = civ ? 6.6 : 6.0; a.onGround = false; a.wantJump = 0; a.slideT = 0;  }
+      else { a.vel.y = (civ ? 6.6 : 6.0) * (1 - 0.16 * Math.min(1, a.jumpFat)); a.jumpFat += 0.7; a.onGround = false; a.wantJump = 0; a.slideT = 0; } // sauts enchaînés : de moins en moins hauts
     }
     a.vel.y -= GRAV * dt;
     const prevY = a.pos.y, sw = a.swim ? 0.45 : 1;
@@ -1014,6 +1024,7 @@ export class Game {
       if (!a.onGround && a.vel.y < -10.5 && a.ch.actions.MX_HardLand && !a.climb) a.landT = 0.62; // grosse chute : roulade de réception
       if (!a.onGround && a.vel.y < -6 && (a === this.player || a.pos.distanceToSquared(this.player.pos) < 900)) this.fx.dust(a.pos, a.vel.y < -10 ? 10 : 5, a.vel.y < -10 ? 1.4 : 0.9);
       if (!a.onGround && a.vel.y < -7 && a === this.player) { this.cam.dip -= Math.min(0.3, -a.vel.y * 0.025); this.audio.play('land', null, 0.6); this.input.rumble(0.3, 0.2, 80); if (a.vel.y < -13 && !a.swim) this.damage(a, (-a.vel.y - 13) * 6, null); }
+      if (!a.onGround && a.vel.y < -5) a.landK = Math.min(0.4, -a.vel.y * 0.035);
       a.pos.y = gy; a.vel.y = 0; a.onGround = true;
     } else if (a.pos.y > gy + 0.25) a.onGround = false;
     else if (a.vel.y <= 0) { a.pos.y = lerp(a.pos.y, gy, 1 - Math.exp(-dt * 20)); a.onGround = true; a.vel.y = 0; }
@@ -1140,8 +1151,8 @@ export class Game {
     for (const n of Object.keys(want)) L.acts.add(n);
     for (const n of L.acts) {
       const act = A[n], w = (want[n] || 0) * L.w;
-      if (w <= 0.001) { if (act.isRunning()) act.stop(); if (!want[n]) L.acts.delete(n); continue; }
-      if (!act.isRunning()) act.play(); act.enabled = true; act.timeScale = 0; act.setEffectiveWeight(w);
+      if (w <= 0.001) { if (act.isScheduled()) act.stop(); if (!want[n]) L.acts.delete(n); continue; } // (isRunning() est toujours faux ici, la vitesse des clips est à 0 : sans isScheduled() les allures restaient mêlées à la mort, au saut, à la roulade)
+      if (!act.isScheduled()) act.play(); act.enabled = true; act.timeScale = 0; act.setEffectiveWeight(w);
       act.time = /Idle/.test(n) ? (this.time % act.getClip().duration) : L.phase * act.getClip().duration;
     }
   }
@@ -1227,7 +1238,7 @@ export class Game {
     if (ai.target && ai.los) {
       const t = ai.target; lookAt = t.pos.clone().add(V(0, 1.2, 0)); ai.react -= dt;
       const dist = t.pos.distanceTo(b.pos);
-      if (ai.react <= 0 && dist < D.range * 0.9 && b.reloadT <= 0) {
+      if (ai.react <= 0 && dist < D.range * 0.9 && b.reloadT <= 0 && (ai.facing ?? 0) < 0.6) { // il faut avoir tourné l'arme vers la cible
         if (W.mag <= 0) this.startReload(b);
         else {
           const o = b.pos.clone().add(V(0, 1.45, 0)); const aimP = t.pos.clone().add(V(0, rnd(0.9, 1.6), 0));
@@ -1256,7 +1267,9 @@ export class Game {
     if (!ai.combatMove && !ai.flee) this.followPath(b, dt);
     // regard
     if (!lookAt && b.wish.lengthSq() > 0.01) lookAt = b.pos.clone().addScaledVector(b.wish, 5).add(V(0, 1.4, 0));
-    if (lookAt) { const d = V(lookAt.x - b.pos.x, 0, lookAt.z - b.pos.z); if (d.lengthSq() > 0.01) b.yaw = lerp_angle(b.yaw, Math.atan2(d.x, d.z), 1 - Math.exp(-dt * 10)); b.pitch = Math.atan2(lookAt.y - b.pos.y - 1.5, Math.hypot(d.x, d.z)); }
+    if (lookAt) { const d = V(lookAt.x - b.pos.x, 0, lookAt.z - b.pos.z); if (d.lengthSq() > 0.01) { // la rotation prend de l'élan puis se pose, plafonnée (plus vive au combat) : plus de demi-tour instantané
+        const diff = lerp_angle(0, Math.atan2(d.x, d.z) - b.yaw, 1), fight = !!(ai.target && ai.los), maxR = fight ? 7.5 : 4.6;
+        ai.yawV = lerp(ai.yawV || 0, clamp(diff * (fight ? 9 : 6), -maxR, maxR), 1 - Math.exp(-dt * 14)); b.yaw += ai.yawV * dt; ai.facing = Math.abs(diff); } b.pitch = Math.atan2(lookAt.y - b.pos.y - 1.5, Math.hypot(d.x, d.z)); }
     // tâches à l'arrivée
     this.botTaskTick(b, dt);
     // coincé ?
