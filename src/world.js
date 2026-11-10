@@ -9,11 +9,19 @@ export function setupScene(renderer) {
   const scene = new THREE.Scene();
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { top: { value: new THREE.Color('#4f86c9') }, mid: { value: new THREE.Color('#a9c8e6') }, hor: { value: new THREE.Color('#f6d7b0') }, sunDir: { value: new THREE.Vector3() } },
+    uniforms: { top: { value: new THREE.Color('#4f86c9') }, mid: { value: new THREE.Color('#a9c8e6') }, hor: { value: new THREE.Color('#f6d7b0') }, sunDir: { value: new THREE.Vector3() }, night: { value: 0 } },
     vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); gl_Position.z = gl_Position.w; }',
-    fragmentShader: `uniform vec3 top, mid, hor, sunDir; varying vec3 vP;
-      void main(){ float h = max(vP.y, 0.0); vec3 c = mix(hor, mid, smoothstep(0.0, 0.18, h)); c = mix(c, top, smoothstep(0.18, 0.8, h));
-        float s = max(dot(normalize(vP), sunDir), 0.0); c += vec3(1.0,0.75,0.45) * (pow(s, 8.0) * 0.35 + pow(s, 600.0) * 4.0);
+    fragmentShader: `uniform vec3 top, mid, hor, sunDir; uniform float night; varying vec3 vP;
+      float hash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+      void main(){ vec3 d = normalize(vP); float h = max(d.y, 0.0); vec3 c = mix(hor, mid, smoothstep(0.0, 0.18, h)); c = mix(c, top, smoothstep(0.18, 0.8, h));
+        float s = max(dot(d, sunDir), 0.0);
+        if (night < 0.5) c += vec3(1.0,0.75,0.45) * (pow(s, 8.0) * 0.35 + pow(s, 600.0) * 4.0);
+        else {
+          // nuit : lune nette avec halo froid, étoiles discrètes qui s'effacent dans la lueur de la ville
+          c += vec3(0.55, 0.65, 0.9) * (pow(s, 40.0) * 0.18 + pow(s, 3.0) * 0.04) + vec3(0.95, 0.97, 1.0) * smoothstep(0.99955, 0.9997, s) * 1.6;
+          vec3 g = floor(d * 260.0); float st = hash(g); float tw = 0.75 + 0.25 * sin(st * 90.0);
+          c += vec3(0.85, 0.9, 1.0) * step(0.9965, st) * smoothstep(0.12, 0.5, h) * tw * (1.0 - step(0.995, s)) * 0.9;
+        }
         if (vP.y < 0.0) c = hor * 0.9; gl_FragColor = vec4(c, 1.0); }`,
   });
   const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 16), skyMat); sky.frustumCulled = false; scene.add(sky);
@@ -294,13 +302,15 @@ export class World {
   }
   _cellBlocked(x, z) {
     const q = { x, z };
+    const gy0 = this.H ? this.groundY(x, z) : 0;
     if (this.H && this.groundY(x, z) < -1) return true; // trémies, quai bas, Seine
-    if (this.inWater?.(x, z)) return true;
+    if (this.inWater?.(x, z) && this.groundY(x, z) < 0) return true; // l'eau bloque, pas le tablier du pont
     for (const R of this.ramps || []) if (R.lo < -1) { const px = x - R.r.a[0], pz = z - R.r.a[2]; const along = px * R.ux + pz * R.uz, side = Math.abs(-px * R.uz + pz * R.ux); if (along >= -1.5 && along <= R.L + 1.5 && side <= R.r.largeur / 2 + 0.6) return true; }
     // barricades posées pendant la partie : les bots les contournent
     for (const c of this.dynamic) { if (!c.wall) continue; const dx = q.x - c.x, dz = q.z - c.z, lx = dx * c.cs - dz * c.sn, lz = dx * c.sn + dz * c.cs; if (Math.abs(lx) < c.hx + 0.55 && Math.abs(lz) < c.hz + 0.55) return true; }
     for (const c of this.near(x, z, 1.2, this._navA || (this._navA = []))) {
       if (c.off || c.car || c.metro || c.wall || (c.y0 || 0) + c.h < -0.5) continue;
+      if (c.type === 'box' && c.y0 < -1 && c.y0 + c.h < gy0 + 0.4) continue; // mur enterré dont le sommet affleure le sol (mur de quai sous le pont)
       if (c.type === 'poly' && c.tag === 'terrasse') { if (q.x > c.bb[0] - 0.6 && q.x < c.bb[2] + 0.6 && q.z > c.bb[1] - 0.6 && q.z < c.bb[3] + 0.6 && this._polyDist(q, c.poly) < 0.6 && !this._onRamp(q.x, q.z)) return true; continue; }
       if (c.type === 'poly') { if (q.x > c.bb[0] - 0.6 && q.x < c.bb[2] + 0.6 && q.z > c.bb[1] - 0.6 && q.z < c.bb[3] + 0.6) { if (pointInPoly(q.x, q.z, c.poly) || this._polyDist(q, c.poly) < 0.6) return true; } }
       else if (c.type === 'circle') { if (c.h > 0.6 && Math.hypot(q.x - c.x, q.z - c.z) < c.r + 0.55) return true; }
@@ -342,7 +352,7 @@ export class World {
     const h = (k) => { const i = k % N.nx, j = (k / N.nx) | 0; const dx = Math.abs(i - ti), dz = Math.abs(j - tj); return Math.max(dx, dz) + 0.414 * Math.min(dx, dz); };
     stamp[start] = st; gS[start] = 0; from[start] = -1; push(start, h(start));
     let found = false, iter = 0;
-    while (heap.length && iter++ < 30000) {
+    while (heap.length && iter++ < 90000) {
       const k = pop(); if (closed[k] === st) continue; closed[k] = st; if (k === goal) { found = true; break; }
       const i = k % N.nx, j = (k / N.nx) | 0;
       for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {

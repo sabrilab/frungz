@@ -58,20 +58,33 @@ export const WEAPON_CATS = { pistolet: 'Pistolets', pm: 'Pistolets-mitrailleurs'
 // kg (charge du sac), sprint (élan en course), souffle (lunette tenue plus longtemps)
 export const CLASSES = {
   ordre: {
-    intervention: { name: 'Intervention', role: 'Assaut', ico: 'rifle', primary: 'carabine', secondary: 'pistol', armor: 50, speed: 1, nades: 2, frags: 1, perk: { cap: 1.35 }, perkName: 'Prise de zone', perkDesc: 'capture les zones 35 % plus vite' },
-    breche: { name: 'Brèche', role: 'Choc', ico: 'shotgun', primary: 'pompe_court', secondary: 'pistolet_lourd', armor: 100, speed: 0.93, nades: 1, frags: 2, perk: { casse: 2.5 }, perkName: 'Bélier', perkDesc: 'barricades, vitrines et véhicules cèdent bien plus vite' },
-    precision: { name: "Tireur d'élite", role: 'Précision', ico: 'sniper', primary: 'dmr', secondary: 'pistol', bots: 0.4, armor: 25, speed: 1, nades: 1, frags: 1, perk: { spot: 8, souffle: 1.6 }, perkName: 'Repérage', perkDesc: 'tout ennemi touché reste marqué 8 s pour ton camp' },
-    appui: { name: 'Appui', role: 'Soutien', ico: 'lmg', primary: 'mitrailleuse', secondary: 'pistol', armor: 75, speed: 0.92, nades: 3, frags: 1, perk: { reload: 0.75 }, perkName: 'Ravitaillement', perkDesc: 'recharge 25 % plus vite, une lacrymo de plus' },
+    intervention: { name: 'Intervention', role: 'Assaut', ico: 'rifle', primary: 'carabine', primaries: ['carabine', 'rifle', 'rafale', 'pm', 'smg'], secondary: 'pistol', armor: 50, speed: 1, nades: 2, frags: 1, perk: { cap: 1.35 }, perkName: 'Prise de zone', perkDesc: 'capture les zones 35 % plus vite' },
+    breche: { name: 'Brèche', role: 'Choc', ico: 'shotgun', primary: 'pompe_court', primaries: ['pompe_court', 'shotgun', 'semi_auto', 'pm'], secondary: 'pistolet_lourd', armor: 100, speed: 0.93, nades: 1, frags: 2, perk: { casse: 2.5 }, perkName: 'Bélier', perkDesc: 'barricades, vitrines et véhicules cèdent bien plus vite' },
+    precision: { name: "Tireur d'élite", role: 'Précision', ico: 'sniper', primary: 'dmr', primaries: ['dmr', 'sniper', 'calibre50'], secondary: 'pistol', bots: 0.4, armor: 25, speed: 1, nades: 1, frags: 1, perk: { spot: 8, souffle: 1.6 }, perkName: 'Repérage', perkDesc: 'tout ennemi touché reste marqué 8 s pour ton camp' },
+    appui: { name: 'Appui', role: 'Soutien', ico: 'lmg', primary: 'mitrailleuse', primaries: ['mitrailleuse', 'fusil_lourd', 'rifle'], secondary: 'pistol', armor: 75, speed: 0.92, nades: 3, frags: 1, perk: { reload: 0.75 }, perkName: 'Ravitaillement', perkDesc: 'recharge 25 % plus vite, une lacrymo de plus' },
   },
   civils: {
-    casseur: { name: 'Casseur', role: 'Assaut', ico: 'rifle', primary: 'fusil_lourd', secondary: 'pistol', armor: 25, speed: 1, nades: 2, frags: 1, perk: { casse: 2 }, perkName: 'Masse', perkDesc: 'vitrines, mobilier et barricades cèdent deux fois plus vite' },
-    voltigeur: { name: 'Voltigeur', role: 'Mobilité', ico: 'smg', primary: 'compact', secondary: 'pistolet_auto', armor: 0, speed: 1.1, nades: 2, frags: 0, perk: { sprint: 1.35, cap: 1.15 }, perkName: 'Parkour', perkDesc: 'court plus vite et garde son élan plus longtemps' },
-    braqueur: { name: 'Braqueur', role: 'Choc', ico: 'shotgun', primary: 'canon_scie', secondary: 'pistolet_lourd', armor: 50, speed: 0.97, nades: 1, frags: 2, perk: { kg: 14 }, perkName: 'Gros bras', perkDesc: 'porte 14 kg de plus sans ralentir' },
-    guetteur: { name: 'Guetteur', role: 'Précision', ico: 'sniper', primary: 'sniper', secondary: 'pistol', bots: 0.4, armor: 25, speed: 1, nades: 1, frags: 1, perk: { spot: 8, souffle: 1.6 }, perkName: 'Œil du toit', perkDesc: 'tout ennemi touché reste marqué 8 s pour ton camp' },
+    casseur: { name: 'Casseur', role: 'Assaut', ico: 'rifle', primary: 'fusil_lourd', primaries: ['fusil_lourd', 'rifle', 'rafale', 'smg'], secondary: 'pistol', armor: 25, speed: 1, nades: 2, frags: 1, perk: { casse: 2 }, perkName: 'Masse', perkDesc: 'vitrines, mobilier et barricades cèdent deux fois plus vite' },
+    voltigeur: { name: 'Voltigeur', role: 'Mobilité', ico: 'smg', primary: 'compact', primaries: ['compact', 'smg', 'pm', 'canon_scie'], secondary: 'pistolet_auto', armor: 0, speed: 1.1, nades: 2, frags: 0, perk: { sprint: 1.35, cap: 1.15 }, perkName: 'Parkour', perkDesc: 'court plus vite et garde son élan plus longtemps' },
+    braqueur: { name: 'Braqueur', role: 'Choc', ico: 'shotgun', primary: 'canon_scie', primaries: ['canon_scie', 'shotgun', 'semi_auto', 'compact'], secondary: 'pistolet_lourd', armor: 50, speed: 0.97, nades: 1, frags: 2, perk: { kg: 14 }, perkName: 'Gros bras', perkDesc: 'porte 14 kg de plus sans ralentir' },
+    guetteur: { name: 'Guetteur', role: 'Précision', ico: 'sniper', primary: 'sniper', primaries: ['sniper', 'dmr', 'calibre50'], secondary: 'pistol', bots: 0.4, armor: 25, speed: 1, nades: 1, frags: 1, perk: { spot: 8, souffle: 1.6 }, perkName: 'Œil du toit', perkDesc: 'tout ennemi touché reste marqué 8 s pour ton camp' },
   },
 };
 for (const t of Object.values(CLASSES)) for (const [id, C] of Object.entries(t)) C.id = id;
 export function classOf(team, id) { const T = CLASSES[team]; return T[id] || Object.values(T)[0]; }
+// armes de poing que toute classe peut prendre (le revolver « Le Frungz » s'achète)
+export const SECONDARIES = ['pistol', 'pistolet_lourd', 'pistolet_auto'];
+// armes proposées pour une classe : celles de la classe (gratuites), plus celles achetées à l'armurerie
+export function classWeapons(K, owned = []) {
+  const prim = [...K.primaries], sec = [...SECONDARIES];
+  for (const id of owned) { const W = WEAPONS[id]; if (!W) continue; if (W.cat === 'pistolet') { if (!sec.includes(id)) sec.push(id); } else if (!prim.includes(id)) prim.push(id); }
+  return { prim, sec };
+}
+// équipement choisi pour une classe (save.kit['camp:classe'] = { p, s }), ramené à des armes permises
+export function kitOf(save, team, K) {
+  const { prim, sec } = classWeapons(K, save.unlocked || []); const k = save.kit?.[team + ':' + K.id] || {};
+  return { p: prim.includes(k.p) ? k.p : K.primary, s: sec.includes(k.s) ? k.s : K.secondary };
+}
 
 // butin des boutiques : type → icône, nom, valeur de base (€), poids (kg)
 export const LOOT = {

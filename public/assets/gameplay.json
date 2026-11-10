@@ -1,5 +1,5 @@
 {
- "version": 9,
+ "version": 10,
  "joueurs": "50 contre 50 (50 spawns par camp)",
  "unite": "mètre",
  "axes": "x est, y haut, z sud",
@@ -16,13 +16,73 @@
   "galeries": "deux passages couverts d'une verrière (y 0,17) : les toits vitrés n'ont pas de collision ; emprises dans 'galeries' (poly au sol).",
   "spawns": "50 par camp : les 20 premiers sur la base surélevée (y 1,6), les 30 suivants dans la rue de la base. Prendre les N premiers pour N joueurs. Chaque base a deux bouches de métro vitrées juste devant (à 10 m).",
   "horizon": "nœud glTF 'horizon' : silhouettes lointaines (mer de toits, monuments), décor seul, sans collision ; matériau 'horizon' sans brouillard.",
+  "extension": "v10 : la rive droite est jouable. limites.z0 passe de -160 à -342 (plus de barrage sur le pont). Dans l'axe du pont : Tour Eiffel (extension.tour : centre x,z, hauteur 165 m, on passe dessous, colliders 'tour-eiffel' = les quatre pieds), jardins avec bassin (extension.bassin, collider 'bassin' h 0,56), parvis du Trocadéro (terrasse 'trocadero' à y 6, rampes troca_centre / troca_ouest / troca_est, belvédère face à la tour). Zones I (Tour Eiffel, sous la tour) et J (Trocadéro, y 6) marquées optionnelle + extension : à activer pour donner une raison de traverser le pont. Les côtés (|x| > 78) et le fond (z < -338) sont fermés par des colliders 'limite'.",
   "revente": "prix de rachat = valeur × prix[rarete] × (1 + bonus[type])."
  },
  "limites": {
   "x0": -124,
   "x1": 124,
-  "z0": -160,
+  "z0": -342,
   "z1": 118
+ },
+ "extension": {
+  "tour": {
+   "x": 0,
+   "z": -219,
+   "hauteur": 165,
+   "etages": [
+    28.5,
+    57.5,
+    138
+   ],
+   "base": 62
+  },
+  "bassin": {
+   "poly": [
+    [
+     -9,
+     -288
+    ],
+    [
+     9,
+     -288
+    ],
+    [
+     9,
+     -256
+    ],
+    [
+     -9,
+     -256
+    ]
+   ],
+   "y": 0.51
+  },
+  "parvis": {
+   "y": 6,
+   "belvedere": [
+    0,
+    -305.5
+   ],
+   "poly": [
+    [
+     -46,
+     -338
+    ],
+    [
+     46,
+     -338
+    ],
+    [
+     46,
+     -304
+    ],
+    [
+     -46,
+     -304
+    ]
+   ]
+  }
  },
  "metro": {
   "ligne": "F",
@@ -5350,6 +5410,126 @@
    "points": 60
   },
   {
+   "id": "CASSABLE_lampadaire_164",
+   "type": "lampadaire",
+   "pos": [
+    -12.6,
+    0.17,
+    -286
+   ],
+   "yaw": 0,
+   "pv": 120,
+   "points": 40
+  },
+  {
+   "id": "CASSABLE_lampadaire_165",
+   "type": "lampadaire",
+   "pos": [
+    -12.6,
+    0.17,
+    -270.5
+   ],
+   "yaw": 0,
+   "pv": 120,
+   "points": 40
+  },
+  {
+   "id": "CASSABLE_lampadaire_166",
+   "type": "lampadaire",
+   "pos": [
+    -12.6,
+    0.17,
+    -255
+   ],
+   "yaw": 0,
+   "pv": 120,
+   "points": 40
+  },
+  {
+   "id": "CASSABLE_lampadaire_167",
+   "type": "lampadaire",
+   "pos": [
+    -40,
+    0.17,
+    -250
+   ],
+   "yaw": 0,
+   "pv": 120,
+   "points": 40
+  },
+  {
+   "id": "CASSABLE_lampadaire_168",
+   "type": "lampadaire",
+   "pos": [
+    -40,
+    0.17,
+    -190
+   ],
+   "yaw": 0,
+   "pv": 120,
+   "points": 40
+  },
+  {
+   "id": "CASSABLE_lampadaire_169",
+   "type": "lampadaire",
+   "pos": [
+    12.6,
+    0.17,
+    -286
+   ],
+   "yaw": 0,
+   "pv": 120,
+   "points": 40
+  },
+  {
+   "id": "CASSABLE_lampadaire_170",
+   "type": "lampadaire",
+   "pos": [
+    12.6,
+    0.17,
+    -270.5
+   ],
+   "yaw": 0,
+   "pv": 120,
+   "points": 40
+  },
+  {
+   "id": "CASSABLE_lampadaire_171",
+   "type": "lampadaire",
+   "pos": [
+    12.6,
+    0.17,
+    -255
+   ],
+   "yaw": 0,
+   "pv": 120,
+   "points": 40
+  },
+  {
+   "id": "CASSABLE_lampadaire_172",
+   "type": "lampadaire",
+   "pos": [
+    40,
+    0.17,
+    -250
+   ],
+   "yaw": 0,
+   "pv": 120,
+   "points": 40
+  },
+  {
+   "id": "CASSABLE_lampadaire_173",
+   "type": "lampadaire",
+   "pos": [
+    40,
+    0.17,
+    -190
+   ],
+   "yaw": 0,
+   "pv": 120,
+   "points": 40
+  },
+  {
    "id": "CASSABLE_vauban_1",
    "type": "vauban",
    "pos": [
@@ -7417,7 +7597,7 @@
    "id": "CASSABLE_velos_3",
    "type": "velos",
    "pos": [
-    -91.28,
+    -91.26,
     0.17,
     -55.6
    ],
@@ -7429,7 +7609,7 @@
    "id": "CASSABLE_velos_4",
    "type": "velos",
    "pos": [
-    33.22,
+    33.24,
     0.15,
     10.78
    ],
@@ -7441,7 +7621,7 @@
    "id": "CASSABLE_velos_5",
    "type": "velos",
    "pos": [
-    -35.78,
+    -36.02,
     4.6,
     57.2
    ],
@@ -7515,7 +7695,7 @@
    "pos": [
     -47.69,
     0.15,
-    -53.23
+    -53.28
    ],
    "yaw": 0.011,
    "pv": 30,
@@ -7585,9 +7765,9 @@
    "id": "CASSABLE_terrasse_87",
    "type": "terrasse",
    "pos": [
-    -12.5,
+    -12.62,
     0.15,
-    -53.63
+    -53.65
    ],
    "yaw": 0.011,
    "pv": 30,
@@ -8170,7 +8350,7 @@
    }
   },
   {
-   "id": "CASSABLE_lampadaire_164",
+   "id": "CASSABLE_lampadaire_174",
    "type": "lampadaire",
    "pos": [
     -107.5,
@@ -8182,7 +8362,7 @@
    "points": 40
   },
   {
-   "id": "CASSABLE_lampadaire_165",
+   "id": "CASSABLE_lampadaire_175",
    "type": "lampadaire",
    "pos": [
     -89.5,
@@ -8194,7 +8374,7 @@
    "points": 40
   },
   {
-   "id": "CASSABLE_lampadaire_166",
+   "id": "CASSABLE_lampadaire_176",
    "type": "lampadaire",
    "pos": [
     -71.5,
@@ -8206,7 +8386,7 @@
    "points": 40
   },
   {
-   "id": "CASSABLE_lampadaire_167",
+   "id": "CASSABLE_lampadaire_177",
    "type": "lampadaire",
    "pos": [
     -53.5,
@@ -8218,7 +8398,7 @@
    "points": 40
   },
   {
-   "id": "CASSABLE_lampadaire_168",
+   "id": "CASSABLE_lampadaire_178",
    "type": "lampadaire",
    "pos": [
     -35.5,
@@ -8230,7 +8410,7 @@
    "points": 40
   },
   {
-   "id": "CASSABLE_lampadaire_169",
+   "id": "CASSABLE_lampadaire_179",
    "type": "lampadaire",
    "pos": [
     -17.5,
@@ -8242,7 +8422,7 @@
    "points": 40
   },
   {
-   "id": "CASSABLE_lampadaire_170",
+   "id": "CASSABLE_lampadaire_180",
    "type": "lampadaire",
    "pos": [
     18.5,
@@ -8254,7 +8434,7 @@
    "points": 40
   },
   {
-   "id": "CASSABLE_lampadaire_171",
+   "id": "CASSABLE_lampadaire_181",
    "type": "lampadaire",
    "pos": [
     36.5,
@@ -8266,7 +8446,7 @@
    "points": 40
   },
   {
-   "id": "CASSABLE_lampadaire_172",
+   "id": "CASSABLE_lampadaire_182",
    "type": "lampadaire",
    "pos": [
     54.5,
@@ -8278,7 +8458,7 @@
    "points": 40
   },
   {
-   "id": "CASSABLE_lampadaire_173",
+   "id": "CASSABLE_lampadaire_183",
    "type": "lampadaire",
    "pos": [
     72.5,
@@ -8290,7 +8470,7 @@
    "points": 40
   },
   {
-   "id": "CASSABLE_lampadaire_174",
+   "id": "CASSABLE_lampadaire_184",
    "type": "lampadaire",
    "pos": [
     90.5,
@@ -8302,7 +8482,7 @@
    "points": 40
   },
   {
-   "id": "CASSABLE_lampadaire_175",
+   "id": "CASSABLE_lampadaire_185",
    "type": "lampadaire",
    "pos": [
     108.5,
@@ -8397,7 +8577,7 @@
    "id": "CASSABLE_bouquiniste_6",
    "type": "bouquiniste",
    "pos": [
-    -96.35,
+    -98.7,
     1.19,
     -121.59
    ],
@@ -8413,7 +8593,7 @@
    "id": "CASSABLE_bouquiniste_7",
    "type": "bouquiniste",
    "pos": [
-    -94,
+    -96.35,
     1.19,
     -121.59
    ],
@@ -8429,7 +8609,7 @@
    "id": "CASSABLE_bouquiniste_8",
    "type": "bouquiniste",
    "pos": [
-    -79.9,
+    -94,
     1.19,
     -121.59
    ],
@@ -8445,7 +8625,7 @@
    "id": "CASSABLE_bouquiniste_9",
    "type": "bouquiniste",
    "pos": [
-    -77.55,
+    -89.3,
     1.19,
     -121.59
    ],
@@ -8461,7 +8641,7 @@
    "id": "CASSABLE_bouquiniste_10",
    "type": "bouquiniste",
    "pos": [
-    -75.2,
+    -86.95,
     1.19,
     -121.59
    ],
@@ -8477,7 +8657,7 @@
    "id": "CASSABLE_bouquiniste_11",
    "type": "bouquiniste",
    "pos": [
-    -70.5,
+    -84.6,
     1.19,
     -121.59
    ],
@@ -8493,7 +8673,7 @@
    "id": "CASSABLE_bouquiniste_12",
    "type": "bouquiniste",
    "pos": [
-    -68.15,
+    -82.25,
     1.19,
     -121.59
    ],
@@ -8509,7 +8689,7 @@
    "id": "CASSABLE_bouquiniste_13",
    "type": "bouquiniste",
    "pos": [
-    -65.8,
+    -79.9,
     1.19,
     -121.59
    ],
@@ -8525,7 +8705,7 @@
    "id": "CASSABLE_bouquiniste_14",
    "type": "bouquiniste",
    "pos": [
-    -63.45,
+    -75.2,
     1.19,
     -121.59
    ],
@@ -8541,7 +8721,7 @@
    "id": "CASSABLE_bouquiniste_15",
    "type": "bouquiniste",
    "pos": [
-    -34.8,
+    -72.85,
     1.19,
     -121.59
    ],
@@ -8557,7 +8737,7 @@
    "id": "CASSABLE_bouquiniste_16",
    "type": "bouquiniste",
    "pos": [
-    -32.45,
+    -70.5,
     1.19,
     -121.59
    ],
@@ -8573,7 +8753,7 @@
    "id": "CASSABLE_bouquiniste_17",
    "type": "bouquiniste",
    "pos": [
-    -27.75,
+    -63.45,
     1.19,
     -121.59
    ],
@@ -8589,7 +8769,7 @@
    "id": "CASSABLE_bouquiniste_18",
    "type": "bouquiniste",
    "pos": [
-    -25.4,
+    -34.8,
     1.19,
     -121.59
    ],
@@ -8605,7 +8785,7 @@
    "id": "CASSABLE_bouquiniste_19",
    "type": "bouquiniste",
    "pos": [
-    -20.7,
+    -32.45,
     1.19,
     -121.59
    ],
@@ -8621,7 +8801,7 @@
    "id": "CASSABLE_bouquiniste_20",
    "type": "bouquiniste",
    "pos": [
-    -18.35,
+    -30.1,
     1.19,
     -121.59
    ],
@@ -8637,7 +8817,7 @@
    "id": "CASSABLE_bouquiniste_21",
    "type": "bouquiniste",
    "pos": [
-    -16,
+    -25.4,
     1.19,
     -121.59
    ],
@@ -8653,7 +8833,7 @@
    "id": "CASSABLE_bouquiniste_22",
    "type": "bouquiniste",
    "pos": [
-    17.55,
+    -23.05,
     1.19,
     -121.59
    ],
@@ -8669,7 +8849,7 @@
    "id": "CASSABLE_bouquiniste_23",
    "type": "bouquiniste",
    "pos": [
-    19.9,
+    -20.7,
     1.19,
     -121.59
    ],
@@ -8685,7 +8865,7 @@
    "id": "CASSABLE_bouquiniste_24",
    "type": "bouquiniste",
    "pos": [
-    24.6,
+    -16,
     1.19,
     -121.59
    ],
@@ -8701,7 +8881,7 @@
    "id": "CASSABLE_bouquiniste_25",
    "type": "bouquiniste",
    "pos": [
-    26.95,
+    15.2,
     1.19,
     -121.59
    ],
@@ -8717,7 +8897,7 @@
    "id": "CASSABLE_bouquiniste_26",
    "type": "bouquiniste",
    "pos": [
-    29.3,
+    17.55,
     1.19,
     -121.59
    ],
@@ -8733,7 +8913,7 @@
    "id": "CASSABLE_bouquiniste_27",
    "type": "bouquiniste",
    "pos": [
-    31.65,
+    19.9,
     1.19,
     -121.59
    ],
@@ -8749,7 +8929,7 @@
    "id": "CASSABLE_bouquiniste_28",
    "type": "bouquiniste",
    "pos": [
-    34,
+    26.95,
     1.19,
     -121.59
    ],
@@ -8765,7 +8945,7 @@
    "id": "CASSABLE_bouquiniste_29",
    "type": "bouquiniste",
    "pos": [
-    63.2,
+    31.65,
     1.19,
     -121.59
    ],
@@ -8781,7 +8961,7 @@
    "id": "CASSABLE_bouquiniste_30",
    "type": "bouquiniste",
    "pos": [
-    65.55,
+    34,
     1.19,
     -121.59
    ],
@@ -8797,7 +8977,7 @@
    "id": "CASSABLE_bouquiniste_31",
    "type": "bouquiniste",
    "pos": [
-    67.9,
+    63.2,
     1.19,
     -121.59
    ],
@@ -8813,7 +8993,7 @@
    "id": "CASSABLE_bouquiniste_32",
    "type": "bouquiniste",
    "pos": [
-    72.6,
+    65.55,
     1.19,
     -121.59
    ],
@@ -8829,7 +9009,7 @@
    "id": "CASSABLE_bouquiniste_33",
    "type": "bouquiniste",
    "pos": [
-    74.95,
+    67.9,
     1.19,
     -121.59
    ],
@@ -8845,7 +9025,7 @@
    "id": "CASSABLE_bouquiniste_34",
    "type": "bouquiniste",
    "pos": [
-    79.65,
+    72.6,
     1.19,
     -121.59
    ],
@@ -8861,7 +9041,7 @@
    "id": "CASSABLE_bouquiniste_35",
    "type": "bouquiniste",
    "pos": [
-    82,
+    79.65,
     1.19,
     -121.59
    ],
@@ -8877,7 +9057,7 @@
    "id": "CASSABLE_bouquiniste_36",
    "type": "bouquiniste",
    "pos": [
-    86.7,
+    82,
     1.19,
     -121.59
    ],
@@ -8893,7 +9073,7 @@
    "id": "CASSABLE_bouquiniste_37",
    "type": "bouquiniste",
    "pos": [
-    89.05,
+    86.7,
     1.19,
     -121.59
    ],
@@ -8909,7 +9089,7 @@
    "id": "CASSABLE_bouquiniste_38",
    "type": "bouquiniste",
    "pos": [
-    91.4,
+    89.05,
     1.19,
     -121.59
    ],
@@ -8925,7 +9105,7 @@
    "id": "CASSABLE_bouquiniste_39",
    "type": "bouquiniste",
    "pos": [
-    93.75,
+    91.4,
     1.19,
     -121.59
    ],
@@ -8941,7 +9121,7 @@
    "id": "CASSABLE_bouquiniste_40",
    "type": "bouquiniste",
    "pos": [
-    96.1,
+    93.75,
     1.19,
     -121.59
    ],
@@ -8957,7 +9137,7 @@
    "id": "CASSABLE_bouquiniste_41",
    "type": "bouquiniste",
    "pos": [
-    98.45,
+    96.1,
     1.19,
     -121.59
    ],
@@ -9249,9 +9429,9 @@
    "id": "CASSABLE_barricade_1",
    "type": "barricade",
    "pos": [
-    101.98,
+    101.67,
     0,
-    -26.57
+    -26.39
    ],
    "yaw": 0.2,
    "pv": 150,
@@ -9261,9 +9441,9 @@
    "id": "CASSABLE_barricade_2",
    "type": "barricade",
    "pos": [
-    103.19,
+    103.18,
     0,
-    29.45
+    29.56
    ],
    "yaw": -0.15,
    "pv": 150,
@@ -9887,6 +10067,29 @@
    "radius": 6,
    "y": -8,
    "souterraine": true
+  },
+  {
+   "id": "I",
+   "name": "Tour Eiffel",
+   "center": [
+    0,
+    -219
+   ],
+   "radius": 9,
+   "optionnelle": true,
+   "extension": true
+  },
+  {
+   "id": "J",
+   "name": "Trocadéro",
+   "center": [
+    0,
+    -316
+   ],
+   "radius": 8,
+   "y": 6,
+   "optionnelle": true,
+   "extension": true
   },
   {
    "id": "F",
@@ -16726,6 +16929,65 @@
   },
   {
    "type": "poly",
+   "id": "trocadero",
+   "tag": "terrasse",
+   "poly": [
+    [
+     -46,
+     -338
+    ],
+    [
+     46,
+     -338
+    ],
+    [
+     46,
+     -304
+    ],
+    [
+     -46,
+     -304
+    ]
+   ],
+   "y0": 0,
+   "h": 6,
+   "sol_y": 6
+  },
+  {
+   "type": "box",
+   "x": 0,
+   "z": -337.85,
+   "hx": 0.06,
+   "hz": 46,
+   "yaw": 1.571,
+   "y0": 6.04,
+   "h": 1.05,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": 45.85,
+   "z": -321,
+   "hx": 0.06,
+   "hz": 17,
+   "yaw": 0,
+   "y0": 6.04,
+   "h": 1.05,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "box",
+   "x": -45.85,
+   "z": -321,
+   "hx": 0.06,
+   "hz": 17,
+   "yaw": 3.142,
+   "y0": 6.04,
+   "h": 1.05,
+   "tag": "garde-corps"
+  },
+  {
+   "type": "poly",
    "id": "base_ordre",
    "tag": "terrasse",
    "poly": [
@@ -23380,6 +23642,783 @@
   },
   {
    "type": "box",
+   "x": -25,
+   "z": -244,
+   "hx": 6.8,
+   "hz": 6.8,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 7,
+   "tag": "tour-eiffel"
+  },
+  {
+   "type": "box",
+   "x": -25,
+   "z": -194,
+   "hx": 6.8,
+   "hz": 6.8,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 7,
+   "tag": "tour-eiffel"
+  },
+  {
+   "type": "box",
+   "x": 25,
+   "z": -244,
+   "hx": 6.8,
+   "hz": 6.8,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 7,
+   "tag": "tour-eiffel"
+  },
+  {
+   "type": "box",
+   "x": 25,
+   "z": -194,
+   "hx": 6.8,
+   "hz": 6.8,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 7,
+   "tag": "tour-eiffel"
+  },
+  {
+   "type": "box",
+   "x": 0,
+   "z": -272,
+   "hx": 9.5,
+   "hz": 16.5,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 0.56,
+   "tag": "bassin"
+  },
+  {
+   "type": "box",
+   "x": -27,
+   "z": -280,
+   "hx": 13,
+   "hz": 8,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 0.6,
+   "tag": "haie"
+  },
+  {
+   "type": "circle",
+   "x": -34.207,
+   "z": -281.869,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "box",
+   "x": -27,
+   "z": -262,
+   "hx": 13,
+   "hz": 6,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 0.6,
+   "tag": "haie"
+  },
+  {
+   "type": "box",
+   "x": -59,
+   "z": -275,
+   "hx": 13,
+   "hz": 13,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 0.6,
+   "tag": "haie"
+  },
+  {
+   "type": "circle",
+   "x": -60.886,
+   "z": -280.378,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "box",
+   "x": -58,
+   "z": -236,
+   "hx": 14,
+   "hz": 10,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 0.6,
+   "tag": "haie"
+  },
+  {
+   "type": "circle",
+   "x": -61.204,
+   "z": -242.518,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": -66.374,
+   "z": -234.75,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "box",
+   "x": -58,
+   "z": -205,
+   "hx": 14,
+   "hz": 9,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 0.6,
+   "tag": "haie"
+  },
+  {
+   "type": "circle",
+   "x": -51.048,
+   "z": -208.685,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": -63.868,
+   "z": -204.534,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": -75.2,
+   "z": -330,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": -75.2,
+   "z": -315,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": -75.2,
+   "z": -300,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": -75.2,
+   "z": -285,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": -75.2,
+   "z": -270,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": -75.2,
+   "z": -255,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": -75.2,
+   "z": -240,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": -75.2,
+   "z": -225,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": -75.2,
+   "z": -210,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": -75.2,
+   "z": -195,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "box",
+   "x": -12.6,
+   "z": -286,
+   "hx": 0.5,
+   "hz": 0.5,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 5.78,
+   "tag": "candelabre",
+   "cassable": "CASSABLE_lampadaire_164"
+  },
+  {
+   "type": "box",
+   "x": -12.6,
+   "z": -270.5,
+   "hx": 0.5,
+   "hz": 0.5,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 5.78,
+   "tag": "candelabre",
+   "cassable": "CASSABLE_lampadaire_165"
+  },
+  {
+   "type": "box",
+   "x": -12.6,
+   "z": -255,
+   "hx": 0.5,
+   "hz": 0.5,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 5.78,
+   "tag": "candelabre",
+   "cassable": "CASSABLE_lampadaire_166"
+  },
+  {
+   "type": "box",
+   "x": -11.2,
+   "z": -280,
+   "hx": 1,
+   "hz": 0.32,
+   "yaw": 1.571,
+   "y0": 0.17,
+   "h": 0.9,
+   "tag": "banc"
+  },
+  {
+   "type": "box",
+   "x": -11.2,
+   "z": -272,
+   "hx": 1,
+   "hz": 0.32,
+   "yaw": 1.571,
+   "y0": 0.17,
+   "h": 0.9,
+   "tag": "banc"
+  },
+  {
+   "type": "box",
+   "x": -11.2,
+   "z": -264,
+   "hx": 1,
+   "hz": 0.32,
+   "yaw": 1.571,
+   "y0": 0.17,
+   "h": 0.9,
+   "tag": "banc"
+  },
+  {
+   "type": "box",
+   "x": -40,
+   "z": -250,
+   "hx": 0.5,
+   "hz": 0.5,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 5.78,
+   "tag": "candelabre",
+   "cassable": "CASSABLE_lampadaire_167"
+  },
+  {
+   "type": "box",
+   "x": -40,
+   "z": -190,
+   "hx": 0.5,
+   "hz": 0.5,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 5.78,
+   "tag": "candelabre",
+   "cassable": "CASSABLE_lampadaire_168"
+  },
+  {
+   "type": "box",
+   "x": 27,
+   "z": -280,
+   "hx": 13,
+   "hz": 8,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 0.6,
+   "tag": "haie"
+  },
+  {
+   "type": "circle",
+   "x": 26.505,
+   "z": -284.253,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "box",
+   "x": 27,
+   "z": -262,
+   "hx": 13,
+   "hz": 6,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 0.6,
+   "tag": "haie"
+  },
+  {
+   "type": "circle",
+   "x": 28.836,
+   "z": -263.08,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "box",
+   "x": 59,
+   "z": -275,
+   "hx": 13,
+   "hz": 13,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 0.6,
+   "tag": "haie"
+  },
+  {
+   "type": "circle",
+   "x": 67.596,
+   "z": -265.805,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": 52.654,
+   "z": -267.731,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "box",
+   "x": 58,
+   "z": -236,
+   "hx": 14,
+   "hz": 10,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 0.6,
+   "tag": "haie"
+  },
+  {
+   "type": "circle",
+   "x": 54.141,
+   "z": -229.223,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "box",
+   "x": 58,
+   "z": -205,
+   "hx": 14,
+   "hz": 9,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 0.6,
+   "tag": "haie"
+  },
+  {
+   "type": "circle",
+   "x": 56.214,
+   "z": -204.742,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": 75.2,
+   "z": -330,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": 75.2,
+   "z": -315,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": 75.2,
+   "z": -300,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": 75.2,
+   "z": -285,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": 75.2,
+   "z": -270,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": 75.2,
+   "z": -255,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": 75.2,
+   "z": -240,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": 75.2,
+   "z": -225,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": 75.2,
+   "z": -210,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": 75.2,
+   "z": -195,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "box",
+   "x": 12.6,
+   "z": -286,
+   "hx": 0.5,
+   "hz": 0.5,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 5.78,
+   "tag": "candelabre",
+   "cassable": "CASSABLE_lampadaire_169"
+  },
+  {
+   "type": "box",
+   "x": 12.6,
+   "z": -270.5,
+   "hx": 0.5,
+   "hz": 0.5,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 5.78,
+   "tag": "candelabre",
+   "cassable": "CASSABLE_lampadaire_170"
+  },
+  {
+   "type": "box",
+   "x": 12.6,
+   "z": -255,
+   "hx": 0.5,
+   "hz": 0.5,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 5.78,
+   "tag": "candelabre",
+   "cassable": "CASSABLE_lampadaire_171"
+  },
+  {
+   "type": "box",
+   "x": 11.2,
+   "z": -280,
+   "hx": 1,
+   "hz": 0.32,
+   "yaw": -1.571,
+   "y0": 0.17,
+   "h": 0.9,
+   "tag": "banc"
+  },
+  {
+   "type": "box",
+   "x": 11.2,
+   "z": -272,
+   "hx": 1,
+   "hz": 0.32,
+   "yaw": -1.571,
+   "y0": 0.17,
+   "h": 0.9,
+   "tag": "banc"
+  },
+  {
+   "type": "box",
+   "x": 11.2,
+   "z": -264,
+   "hx": 1,
+   "hz": 0.32,
+   "yaw": -1.571,
+   "y0": 0.17,
+   "h": 0.9,
+   "tag": "banc"
+  },
+  {
+   "type": "box",
+   "x": 40,
+   "z": -250,
+   "hx": 0.5,
+   "hz": 0.5,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 5.78,
+   "tag": "candelabre",
+   "cassable": "CASSABLE_lampadaire_172"
+  },
+  {
+   "type": "box",
+   "x": 40,
+   "z": -190,
+   "hx": 0.5,
+   "hz": 0.5,
+   "yaw": 0,
+   "y0": 0.17,
+   "h": 5.78,
+   "tag": "candelabre",
+   "cassable": "CASSABLE_lampadaire_173"
+  },
+  {
+   "type": "box",
+   "x": -103,
+   "z": -263.5,
+   "hx": 24.6,
+   "hz": 78.5,
+   "yaw": 0,
+   "y0": 0,
+   "h": 40,
+   "tag": "limite"
+  },
+  {
+   "type": "box",
+   "x": 103,
+   "z": -263.5,
+   "hx": 24.6,
+   "hz": 78.5,
+   "yaw": 0,
+   "y0": 0,
+   "h": 40,
+   "tag": "limite"
+  },
+  {
+   "type": "box",
+   "x": 0,
+   "z": -344,
+   "hx": 130,
+   "hz": 6,
+   "yaw": 0,
+   "y0": 0,
+   "h": 40,
+   "tag": "limite"
+  },
+  {
+   "type": "box",
+   "x": -32,
+   "z": -329.5,
+   "hx": 14,
+   "hz": 8.5,
+   "yaw": 0,
+   "y0": 6,
+   "h": 15,
+   "tag": "palais"
+  },
+  {
+   "type": "circle",
+   "x": -16.5,
+   "z": -318,
+   "r": 0.75,
+   "y0": 6,
+   "h": 3.7,
+   "tag": "statue"
+  },
+  {
+   "type": "circle",
+   "x": -16.5,
+   "z": -313.8,
+   "r": 0.75,
+   "y0": 6,
+   "h": 3.7,
+   "tag": "statue"
+  },
+  {
+   "type": "circle",
+   "x": -16.5,
+   "z": -309.6,
+   "r": 0.75,
+   "y0": 6,
+   "h": 3.7,
+   "tag": "statue"
+  },
+  {
+   "type": "circle",
+   "x": -16.5,
+   "z": -305.4,
+   "r": 0.75,
+   "y0": 6,
+   "h": 3.7,
+   "tag": "statue"
+  },
+  {
+   "type": "box",
+   "x": 32,
+   "z": -329.5,
+   "hx": 14,
+   "hz": 8.5,
+   "yaw": 0,
+   "y0": 6,
+   "h": 15,
+   "tag": "palais"
+  },
+  {
+   "type": "circle",
+   "x": 16.5,
+   "z": -318,
+   "r": 0.75,
+   "y0": 6,
+   "h": 3.7,
+   "tag": "statue"
+  },
+  {
+   "type": "circle",
+   "x": 16.5,
+   "z": -313.8,
+   "r": 0.75,
+   "y0": 6,
+   "h": 3.7,
+   "tag": "statue"
+  },
+  {
+   "type": "circle",
+   "x": 16.5,
+   "z": -309.6,
+   "r": 0.75,
+   "y0": 6,
+   "h": 3.7,
+   "tag": "statue"
+  },
+  {
+   "type": "circle",
+   "x": 16.5,
+   "z": -305.4,
+   "r": 0.75,
+   "y0": 6,
+   "h": 3.7,
+   "tag": "statue"
+  },
+  {
+   "type": "box",
+   "x": 0,
+   "z": -334,
+   "hx": 2.2,
+   "hz": 1.5,
+   "yaw": 0,
+   "y0": 6,
+   "h": 2.4,
+   "tag": "statue"
+  },
+  {
+   "type": "box",
    "x": -53.598,
    "z": 117.6,
    "hx": 1.023,
@@ -25216,9 +26255,9 @@
   },
   {
    "type": "box",
-   "x": -91.28,
+   "x": -91.263,
    "z": -55.6,
-   "hx": 1.88,
+   "hx": 1.862,
    "hz": 0.843,
    "yaw": 0,
    "y0": 0.17,
@@ -25228,9 +26267,9 @@
   },
   {
    "type": "box",
-   "x": 33.219,
-   "z": 10.778,
-   "hx": 2.28,
+   "x": 33.236,
+   "z": 10.776,
+   "hx": 2.263,
    "hz": 0.843,
    "yaw": 0.1,
    "y0": 0.15,
@@ -25240,9 +26279,9 @@
   },
   {
    "type": "box",
-   "x": -35.78,
+   "x": -36.017,
    "z": 57.2,
-   "hx": 1.48,
+   "hx": 1.242,
    "hz": 0.843,
    "yaw": 0,
    "y0": 4.6,
@@ -25312,10 +26351,10 @@
   },
   {
    "type": "box",
-   "x": -47.694,
-   "z": -53.231,
-   "hx": 0.79,
-   "hz": 0.337,
+   "x": -47.692,
+   "z": -53.279,
+   "hx": 0.793,
+   "hz": 0.32,
    "yaw": 0.011,
    "y0": 0.15,
    "h": 0.94,
@@ -25372,10 +26411,10 @@
   },
   {
    "type": "box",
-   "x": -12.504,
-   "z": -53.629,
-   "hx": 0.779,
-   "hz": 0.324,
+   "x": -12.624,
+   "z": -53.649,
+   "hx": 0.776,
+   "hz": 0.306,
    "yaw": 0.011,
    "y0": 0.15,
    "h": 0.94,
@@ -25856,9 +26895,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.035,
+   "yaw": 0.318,
    "y0": 0,
-   "h": 8.63,
+   "h": 8.06,
    "tag": "arbre"
   },
   {
@@ -25867,9 +26906,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.66,
+   "yaw": 0.227,
    "y0": 0,
-   "h": 8.38,
+   "h": 9.03,
    "tag": "arbre"
   },
   {
@@ -25878,9 +26917,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.319,
+   "yaw": 3.21,
    "y0": 0,
-   "h": 9.26,
+   "h": 9.01,
    "tag": "arbre"
   },
   {
@@ -25889,9 +26928,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.904,
+   "yaw": 4.624,
    "y0": 0,
-   "h": 8.88,
+   "h": 9.23,
    "tag": "arbre"
   },
   {
@@ -25900,9 +26939,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.329,
+   "yaw": 2.535,
    "y0": 0,
-   "h": 9.29,
+   "h": 7.99,
    "tag": "arbre"
   },
   {
@@ -25911,9 +26950,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.716,
+   "yaw": 3.239,
    "y0": 0,
-   "h": 8.64,
+   "h": 8.91,
    "tag": "arbre"
   },
   {
@@ -25922,9 +26961,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.212,
+   "yaw": 5.397,
    "y0": 0,
-   "h": 9.05,
+   "h": 9.14,
    "tag": "arbre"
   },
   {
@@ -25933,9 +26972,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.799,
+   "yaw": 5.269,
    "y0": 0,
-   "h": 8.07,
+   "h": 8.53,
    "tag": "arbre"
   },
   {
@@ -25944,9 +26983,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.3,
+   "yaw": 1.741,
    "y0": 0,
-   "h": 8.91,
+   "h": 8.8,
    "tag": "arbre"
   },
   {
@@ -25955,9 +26994,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.241,
+   "yaw": 0.294,
    "y0": 0,
-   "h": 9.16,
+   "h": 8.23,
    "tag": "arbre"
   },
   {
@@ -25966,9 +27005,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.288,
+   "yaw": 5.045,
    "y0": 0,
-   "h": 9.32,
+   "h": 9.08,
    "tag": "arbre"
   },
   {
@@ -25977,9 +27016,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.57,
+   "yaw": 0.654,
    "y0": 0,
-   "h": 9.02,
+   "h": 8.36,
    "tag": "arbre"
   },
   {
@@ -25988,9 +27027,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.62,
+   "yaw": 0.417,
    "y0": 0,
-   "h": 9.09,
+   "h": 8.9,
    "tag": "arbre"
   },
   {
@@ -25999,9 +27038,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.935,
+   "yaw": 0.621,
    "y0": 0,
-   "h": 8.84,
+   "h": 8.66,
    "tag": "arbre"
   },
   {
@@ -26010,7 +27049,7 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.604,
+   "yaw": 2.161,
    "y0": 0,
    "h": 8.71,
    "tag": "arbre"
@@ -26021,9 +27060,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.407,
+   "yaw": 2.733,
    "y0": 0,
-   "h": 8.88,
+   "h": 8.84,
    "tag": "arbre"
   },
   {
@@ -26032,9 +27071,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.316,
+   "yaw": 4.854,
    "y0": 0,
-   "h": 9.11,
+   "h": 8.53,
    "tag": "arbre"
   },
   {
@@ -26043,9 +27082,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.625,
+   "yaw": 1.308,
    "y0": 0,
-   "h": 8.65,
+   "h": 8.57,
    "tag": "arbre"
   },
   {
@@ -26054,9 +27093,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.619,
+   "yaw": 4.959,
    "y0": 0,
-   "h": 9.06,
+   "h": 8.69,
    "tag": "arbre"
   },
   {
@@ -26065,9 +27104,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.882,
+   "yaw": 1.048,
    "y0": 0,
-   "h": 8.68,
+   "h": 9.3,
    "tag": "arbre"
   },
   {
@@ -26076,9 +27115,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.53,
+   "yaw": 2.092,
    "y0": 0,
-   "h": 9.17,
+   "h": 8.86,
    "tag": "arbre"
   },
   {
@@ -26091,7 +27130,7 @@
    "y0": 0.17,
    "h": 5.69,
    "tag": "lampadaire",
-   "cassable": "CASSABLE_lampadaire_164"
+   "cassable": "CASSABLE_lampadaire_174"
   },
   {
    "type": "box",
@@ -26103,7 +27142,7 @@
    "y0": 0.17,
    "h": 5.69,
    "tag": "lampadaire",
-   "cassable": "CASSABLE_lampadaire_165"
+   "cassable": "CASSABLE_lampadaire_175"
   },
   {
    "type": "box",
@@ -26115,7 +27154,7 @@
    "y0": 0.17,
    "h": 5.69,
    "tag": "lampadaire",
-   "cassable": "CASSABLE_lampadaire_166"
+   "cassable": "CASSABLE_lampadaire_176"
   },
   {
    "type": "box",
@@ -26127,7 +27166,7 @@
    "y0": 0.17,
    "h": 5.69,
    "tag": "lampadaire",
-   "cassable": "CASSABLE_lampadaire_167"
+   "cassable": "CASSABLE_lampadaire_177"
   },
   {
    "type": "box",
@@ -26139,7 +27178,7 @@
    "y0": 0.17,
    "h": 5.69,
    "tag": "lampadaire",
-   "cassable": "CASSABLE_lampadaire_168"
+   "cassable": "CASSABLE_lampadaire_178"
   },
   {
    "type": "box",
@@ -26151,7 +27190,7 @@
    "y0": 0.17,
    "h": 5.69,
    "tag": "lampadaire",
-   "cassable": "CASSABLE_lampadaire_169"
+   "cassable": "CASSABLE_lampadaire_179"
   },
   {
    "type": "box",
@@ -26163,7 +27202,7 @@
    "y0": 0.17,
    "h": 5.69,
    "tag": "lampadaire",
-   "cassable": "CASSABLE_lampadaire_170"
+   "cassable": "CASSABLE_lampadaire_180"
   },
   {
    "type": "box",
@@ -26175,7 +27214,7 @@
    "y0": 0.17,
    "h": 5.69,
    "tag": "lampadaire",
-   "cassable": "CASSABLE_lampadaire_171"
+   "cassable": "CASSABLE_lampadaire_181"
   },
   {
    "type": "box",
@@ -26187,7 +27226,7 @@
    "y0": 0.17,
    "h": 5.69,
    "tag": "lampadaire",
-   "cassable": "CASSABLE_lampadaire_172"
+   "cassable": "CASSABLE_lampadaire_182"
   },
   {
    "type": "box",
@@ -26199,7 +27238,7 @@
    "y0": 0.17,
    "h": 5.69,
    "tag": "lampadaire",
-   "cassable": "CASSABLE_lampadaire_173"
+   "cassable": "CASSABLE_lampadaire_183"
   },
   {
    "type": "box",
@@ -26211,7 +27250,7 @@
    "y0": 0.17,
    "h": 5.69,
    "tag": "lampadaire",
-   "cassable": "CASSABLE_lampadaire_174"
+   "cassable": "CASSABLE_lampadaire_184"
   },
   {
    "type": "box",
@@ -26223,7 +27262,7 @@
    "y0": 0.17,
    "h": 5.69,
    "tag": "lampadaire",
-   "cassable": "CASSABLE_lampadaire_175"
+   "cassable": "CASSABLE_lampadaire_185"
   },
   {
    "type": "box",
@@ -26320,7 +27359,7 @@
   },
   {
    "type": "box",
-   "x": -96.35,
+   "x": -98.7,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26332,7 +27371,7 @@
   },
   {
    "type": "box",
-   "x": -94,
+   "x": -96.35,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26344,7 +27383,7 @@
   },
   {
    "type": "box",
-   "x": -79.9,
+   "x": -94,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26356,7 +27395,7 @@
   },
   {
    "type": "box",
-   "x": -77.55,
+   "x": -89.3,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26368,7 +27407,7 @@
   },
   {
    "type": "box",
-   "x": -75.2,
+   "x": -86.95,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26380,7 +27419,7 @@
   },
   {
    "type": "box",
-   "x": -70.5,
+   "x": -84.6,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26392,7 +27431,7 @@
   },
   {
    "type": "box",
-   "x": -68.15,
+   "x": -82.25,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26404,7 +27443,7 @@
   },
   {
    "type": "box",
-   "x": -65.8,
+   "x": -79.9,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26416,7 +27455,7 @@
   },
   {
    "type": "box",
-   "x": -63.45,
+   "x": -75.2,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26428,7 +27467,7 @@
   },
   {
    "type": "box",
-   "x": -34.8,
+   "x": -72.85,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26440,7 +27479,7 @@
   },
   {
    "type": "box",
-   "x": -32.45,
+   "x": -70.5,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26452,7 +27491,7 @@
   },
   {
    "type": "box",
-   "x": -27.75,
+   "x": -63.45,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26464,7 +27503,7 @@
   },
   {
    "type": "box",
-   "x": -25.4,
+   "x": -34.8,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26476,7 +27515,7 @@
   },
   {
    "type": "box",
-   "x": -20.7,
+   "x": -32.45,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26488,7 +27527,7 @@
   },
   {
    "type": "box",
-   "x": -18.35,
+   "x": -30.1,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26500,7 +27539,7 @@
   },
   {
    "type": "box",
-   "x": -16,
+   "x": -25.4,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26512,7 +27551,7 @@
   },
   {
    "type": "box",
-   "x": 17.55,
+   "x": -23.05,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26524,7 +27563,7 @@
   },
   {
    "type": "box",
-   "x": 19.9,
+   "x": -20.7,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26536,7 +27575,7 @@
   },
   {
    "type": "box",
-   "x": 24.6,
+   "x": -16,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26548,7 +27587,7 @@
   },
   {
    "type": "box",
-   "x": 26.95,
+   "x": 15.2,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26560,7 +27599,7 @@
   },
   {
    "type": "box",
-   "x": 29.3,
+   "x": 17.55,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26572,7 +27611,7 @@
   },
   {
    "type": "box",
-   "x": 31.65,
+   "x": 19.9,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26584,7 +27623,7 @@
   },
   {
    "type": "box",
-   "x": 34,
+   "x": 26.95,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26596,7 +27635,7 @@
   },
   {
    "type": "box",
-   "x": 63.2,
+   "x": 31.65,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26608,7 +27647,7 @@
   },
   {
    "type": "box",
-   "x": 65.55,
+   "x": 34,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26620,7 +27659,7 @@
   },
   {
    "type": "box",
-   "x": 67.9,
+   "x": 63.2,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26632,7 +27671,7 @@
   },
   {
    "type": "box",
-   "x": 72.6,
+   "x": 65.55,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26644,7 +27683,7 @@
   },
   {
    "type": "box",
-   "x": 74.95,
+   "x": 67.9,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26656,7 +27695,7 @@
   },
   {
    "type": "box",
-   "x": 79.65,
+   "x": 72.6,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26668,7 +27707,7 @@
   },
   {
    "type": "box",
-   "x": 82,
+   "x": 79.65,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26680,7 +27719,7 @@
   },
   {
    "type": "box",
-   "x": 86.7,
+   "x": 82,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26692,7 +27731,7 @@
   },
   {
    "type": "box",
-   "x": 89.05,
+   "x": 86.7,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26704,7 +27743,7 @@
   },
   {
    "type": "box",
-   "x": 91.4,
+   "x": 89.05,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26716,7 +27755,7 @@
   },
   {
    "type": "box",
-   "x": 93.75,
+   "x": 91.4,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26728,7 +27767,7 @@
   },
   {
    "type": "box",
-   "x": 96.1,
+   "x": 93.75,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26740,7 +27779,7 @@
   },
   {
    "type": "box",
-   "x": 98.45,
+   "x": 96.1,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -26980,10 +28019,10 @@
   },
   {
    "type": "box",
-   "x": 101.978,
-   "z": -26.568,
-   "hx": 2.151,
-   "hz": 4.039,
+   "x": 101.672,
+   "z": -26.393,
+   "hx": 2.492,
+   "hz": 4.15,
    "yaw": 0.2,
    "y0": 0,
    "h": 1.07,
@@ -26992,10 +28031,10 @@
   },
   {
    "type": "box",
-   "x": 103.193,
-   "z": 29.451,
-   "hx": 2.14,
-   "hz": 4.028,
+   "x": 103.181,
+   "z": 29.557,
+   "hx": 2.135,
+   "hz": 4.134,
    "yaw": -0.15,
    "y0": 0,
    "h": 1.07,
@@ -27058,7 +28097,7 @@
    "hz": 0.304,
    "yaw": 0,
    "y0": 1.6,
-   "h": 1.48,
+   "h": 1.41,
    "tag": "brasero",
    "cassable": "CASSABLE_brasero_1"
   },
@@ -29495,6 +30534,31 @@
    "tag": "terrasse"
   },
   {
+   "id": "trocadero",
+   "nom": "Parvis du Trocadéro",
+   "poly": [
+    [
+     -46,
+     -338
+    ],
+    [
+     46,
+     -338
+    ],
+    [
+     46,
+     -304
+    ],
+    [
+     -46,
+     -304
+    ]
+   ],
+   "y": 6,
+   "escaladable": false,
+   "tag": "terrasse"
+  },
+  {
    "id": "base_ordre",
    "nom": "Parvis de l'Ordre",
    "poly": [
@@ -30535,6 +31599,57 @@
     74,
     75.6
    ]
+  },
+  {
+   "id": "troca_centre",
+   "a": [
+    0,
+    6,
+    -304
+   ],
+   "b": [
+    0,
+    0.17,
+    -292.4
+   ],
+   "largeur": 30,
+   "marches": 35,
+   "palier": [
+    -299,
+    -297.4
+   ]
+  },
+  {
+   "id": "troca_ouest",
+   "a": [
+    -39,
+    6,
+    -304
+   ],
+   "b": [
+    -39,
+    0.17,
+    -293.4
+   ],
+   "largeur": 6,
+   "marches": 35,
+   "palier": null
+  },
+  {
+   "id": "troca_est",
+   "a": [
+    39,
+    6,
+    -304
+   ],
+   "b": [
+    39,
+    0.17,
+    -293.4
+   ],
+   "largeur": 6,
+   "marches": 35,
+   "palier": null
   },
   {
    "id": "ordre_est",
@@ -32982,5 +34097,5 @@
    }
   }
  ],
- "triangles": 1521638
+ "triangles": 1624216
 }

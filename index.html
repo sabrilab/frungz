@@ -54,24 +54,73 @@
 </div>
 
 <!-- écrans -->
-<div id="menu" class="screen">
-  <div class="logo">FRUNGZ</div>
-  <div class="tag">Place Frungz · Domination · Casse · Revente</div>
-  <div class="pick">
-    <button class="side ordre" data-team="ordre"><b>LA BRIGADE</b><span>Tiens les zones, saisis le butin, coffre les casseurs.</span></button>
-    <button class="side civils" data-team="civils"><b>LES FRUNGZ</b><span>Casse les vitrines, remplis ta planque, revends au receleur.</span></button>
+<div id="menu" class="screen lobby">
+  <div id="plates"></div>
+  <header class="lb-top">
+    <!-- logo : assets/logo.svg ; tant qu'il n'est pas livré, le titre en texte reste affiché -->
+    <div id="logoSlot" class="lb-logo"><img class="logo-img" src="assets/logo.svg" alt="Frungz" onerror="this.remove()"><div class="logo">FRUNGZ</div></div>
+    <nav class="lb-nav">
+      <button class="tab on" id="tabSalon">Salon</button>
+      <button class="tab" id="openShop">Armurerie</button>
+      <button class="tab" id="openSettings">Réglages</button>
+    </nav>
+    <div class="lb-wallet">
+      <div class="chip cash" title="Banque"><span class="eur">€</span><b id="bank">0</b></div>
+      <div class="chip lvl" title="Niveau"><span class="lv">NIV.</span><b id="lvl">1</b><i class="xp"><i id="xpbar"></i></i></div>
+    </div>
+  </header>
+
+  <aside class="lb-left">
+    <section class="lb-card">
+      <h3 class="sticker">Ton camp</h3>
+      <div class="pick">
+        <button class="side ordre" data-team="ordre"><b>LA BRIGADE</b><span>Tiens les zones, coffre les casseurs.</span></button>
+        <button class="side civils" data-team="civils"><b>LES FRUNGZ</b><span>Casse, remplis ta planque, revends.</span></button>
+      </div>
+    </section>
+    <section class="lb-card">
+      <h3 class="sticker">Classe</h3>
+      <div class="classes" id="classes"></div>
+      <div class="clsinfo" id="clsInfo"></div>
+    </section>
+    <section class="lb-card">
+      <h3 class="sticker">Tenue</h3>
+      <div class="skins" id="skins"></div>
+    </section>
+  </aside>
+
+  <aside class="lb-right">
+    <div class="plaque"><small>Carte</small><b>PLACE FRUNGZ</b><span id="modeLine">Domination · 50 c. 50</span></div>
+    <button id="nightBtn" class="toggle"><span class="sun">Jour</span><span class="moon">Nuit d'émeute</span></button>
+    <div class="squadline"><b id="squadN">1/4</b><span>dans ton équipe</span><button id="openInvite" class="mini">Inviter</button></div>
+    <button id="play" class="big mega"><span>JOUER</span></button>
+    <div id="loading"><div class="bar"><i id="loadbar"></i></div><span id="loadtxt">Chargement du quartier…</span></div>
+  </aside>
+
+  <div class="help"><kbd>ZQSD</kbd>/<kbd>WASD</kbd> se déplacer · <kbd>Clic</kbd> tirer · <kbd>Clic droit</kbd> viser · <kbd>G</kbd> lancer · <kbd>Échap</kbd> toutes les commandes · manette PS4 / Xbox reconnue · glisse sur ton perso pour le tourner</div>
+</div>
+
+<div id="invite" class="screen panel hidden">
+  <div class="inv-box">
+    <h2>TON ÉQUIPE</h2>
+    <div class="inv-grid">
+      <section class="lb-card">
+        <h3 class="sticker">Inviter un ami <i class="soon">en ligne : bientôt</i></h3>
+        <label class="field">Ton pseudo <input id="pseudo" maxlength="16" spellcheck="false"></label>
+        <div class="code"><small>Code d'équipe</small><b id="teamCode">FRZ-0000</b></div>
+        <div class="row-btns"><button class="chunky" id="copyLink">Copier le lien</button><button class="chunky alt" id="shareLink">Partager</button></div>
+        <label class="field">Code d'un ami <input id="joinCode" placeholder="FRZ-XXXX" maxlength="8" spellcheck="false"></label>
+        <button class="chunky alt" id="joinBtn">Rejoindre</button>
+        <p class="note" id="inviteNote">Le lien et le code sont prêts, mais les parties entre amis en ligne ne sont pas encore branchées : pour l'instant, complète ton équipe avec des équipiers IA.</p>
+      </section>
+      <section class="lb-card">
+        <h3 class="sticker">Places</h3>
+        <div id="slotList"></div>
+        <button class="chunky" id="fillBots">Compléter avec des équipiers IA</button>
+      </section>
+    </div>
+    <button class="ghost" id="closeInvite">Fermer (B)</button>
   </div>
-  <div class="skins" id="skins"></div>
-  <div class="classes" id="classes"></div>
-  <div class="clsinfo" id="clsInfo"></div>
-  <div class="row-btns">
-    <button id="play" class="big">JOUER</button>
-    <button id="openShop" class="ghost">Armurerie</button>
-    <button id="nightBtn" class="ghost">Mode nuit</button>
-  </div>
-  <div class="bank">Banque : <b id="bank">0</b> € · Niveau <b id="lvl">1</b></div>
-  <div class="help"><kbd>ZQSD</kbd>/<kbd>WASD</kbd> se déplacer · <kbd>Clic</kbd> tirer · <kbd>Clic droit</kbd> viser · <kbd>G</kbd> lancer · <kbd>Échap</kbd> toutes les commandes · manette PS4 / Xbox reconnue</div>
-  <div id="loading"><div class="bar"><i id="loadbar"></i></div><span id="loadtxt">Chargement…</span></div>
 </div>
 
 <div id="shop" class="screen panel hidden">
