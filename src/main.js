@@ -12,6 +12,7 @@ import { Game } from './game.js';
 import { createPreview } from './preview.js';
 import { applyRealism, skyEnvironment, realismUniforms } from './realisme.js';
 import { TEAMS, WEAPONS, UPGRADES, SKIN_NAMES } from './data.js';
+import { svg } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Math.round(n).toLocaleString('fr-FR');
@@ -119,7 +120,7 @@ function renderMenu() {
   document.querySelectorAll('.side').forEach((b) => b.classList.toggle('on', b.dataset.team === save.team));
   const skins = TEAMS[save.team].skins; if (!skins.includes(save.skin)) save.skin = skins[0];
   $('skins').innerHTML = skins.map((s) => `<button data-skin="${s}" class="${s === save.skin ? 'on' : ''}">${SKIN_NAMES[s] || s}</button>`).join('');
-  $('nightBtn').textContent = save.settings.night ? '☀️ Jour' : '🌙 Nuit (émeute)';
+  $('nightBtn').textContent = save.settings.night ? 'Mode jour' : 'Mode nuit (émeute)';
   $('bank').textContent = fmt(save.bank); $('lvl').textContent = save.lvl || 1;
 }
 document.querySelectorAll('.side').forEach((b) => b.addEventListener('click', () => { save.team = b.dataset.team; persist(); renderMenu(); audio.init(); audio.play('uiSelect'); }));
@@ -144,7 +145,7 @@ function showPv(k, id) {
   if (k === 'w') {
     const W = WEAPONS[id], owned = save.unlocked.includes(id) || id === 'pistol';
     pv.show('w', id);
-    $('pvinfo').innerHTML = `<h3>${W.icon} ${W.name}</h3><p class="pvtag">${owned ? (save.primary === id || id === 'pistol' ? 'Équipée' : 'Dans ta planque') : fmt(W.price) + ' €'}${W.scope ? ' · lunette ×4 / ×8' : ''}${W.auto ? ' · automatique' : ''}</p>`
+    $('pvinfo').innerHTML = `<h3>${svg(W.ico)} ${W.name}</h3><p class="pvtag">${owned ? (save.primary === id || id === 'pistol' ? 'Équipée' : 'Dans ta planque') : fmt(W.price) + ' €'}${W.scope ? ' · lunette ×4 / ×8' : ''}${W.auto ? ' · automatique' : ''}</p>`
       + stat('Dégâts', (W.dmg * W.pellets) / 120, W.dmg + (W.pellets > 1 ? '×' + W.pellets : ''))
       + stat('Cadence', W.rps / 12, W.rps + ' coups/s')
       + stat('Précision', 1 - Math.sqrt(W.spread / 0.08), '')
@@ -156,7 +157,7 @@ function showPv(k, id) {
     pv.show('u', id, id === 'gilet' ? Math.max(1, Math.min(U.max, l + 1)) : 0);
     const pips = Array.from({ length: U.max }, (_, i) => `<b class="${i < l ? 'on' : ''}"></b>`).join('');
     const next = id === 'gilet' ? `Armure au départ : ${25 * l} → ${25 * Math.min(U.max, l + 1)}` : U.desc;
-    $('pvinfo').innerHTML = `<h3>${U.icon} ${U.name}</h3><p class="pvtag">${l >= U.max ? 'Niveau maximum' : 'Niveau ' + (l + 1) + ' : ' + fmt(U.price(l)) + ' €'}</p><div class="pips">${pips}</div><p class="pvdesc">${next}</p>${id === 'gilet' ? stat('Protection', (25 * l) / 100, 25 * l + ' / 100') : ''}`;
+    $('pvinfo').innerHTML = `<h3>${svg(U.ico)} ${U.name}</h3><p class="pvtag">${l >= U.max ? 'Niveau maximum' : 'Niveau ' + (l + 1) + ' : ' + fmt(U.price(l)) + ' €'}</p><div class="pips">${pips}</div><p class="pvdesc">${next}</p>${id === 'gilet' ? stat('Protection', (25 * l) / 100, 25 * l + ' / 100') : ''}`;
   }
 }
 function renderShop() {
@@ -165,9 +166,9 @@ function renderShop() {
   const th = (k, id, l) => { const u = pv?.thumb(k, id, l); return u ? `<img class="th" src="${u}" alt="">` : ''; };
   const w = Object.entries(WEAPONS).filter(([id]) => id !== 'pistol').map(([id, W]) => {
     const owned = save.unlocked.includes(id), eq = save.primary === id;
-    return `<div class="card ${owned ? 'owned' : ''}" data-k="w" data-id="${id}" style="--c:${owned ? '#2f6' : '#777'}">${th('w', id, 0)}<b>${W.icon} ${W.name}</b><small>Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.rps} coups/s · chargeur ${W.mag}</small><button data-w="${id}" ${!owned && save.bank < W.price ? 'disabled' : ''}>${owned ? (eq ? 'Équipée ✓' : 'Équiper') : fmt(W.price) + ' €'}</button></div>`;
+    return `<div class="card ${owned ? 'owned' : ''}" data-k="w" data-id="${id}" style="--c:${owned ? '#2f6' : '#777'}">${th('w', id, 0)}<b>${svg(W.ico)} ${W.name}</b><small>Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.rps} coups/s · chargeur ${W.mag}</small><button data-w="${id}" ${!owned && save.bank < W.price ? 'disabled' : ''}>${owned ? (eq ? 'Équipée ' + svg('check') : 'Équiper') : fmt(W.price) + ' €'}</button></div>`;
   });
-  const u = Object.entries(UPGRADES).map(([id, U]) => { const l = save.upgrades[id] || 0; const max = l >= U.max; const p = U.price(l); return `<div class="card" data-k="u" data-id="${id}" style="--c:#57b6ff">${th('u', id, id === 'gilet' ? Math.max(1, l) : 0)}<b>${U.icon} ${U.name} · niv. ${l}/${U.max}</b><small>${U.desc}</small><button data-u="${id}" ${max || save.bank < p ? 'disabled' : ''}>${max ? 'Maximum' : fmt(p) + ' €'}</button></div>`; });
+  const u = Object.entries(UPGRADES).map(([id, U]) => { const l = save.upgrades[id] || 0; const max = l >= U.max; const p = U.price(l); return `<div class="card" data-k="u" data-id="${id}" style="--c:#57b6ff">${th('u', id, id === 'gilet' ? Math.max(1, l) : 0)}<b>${svg(U.ico)} ${U.name} · niv. ${l}/${U.max}</b><small>${U.desc}</small><button data-u="${id}" ${max || save.bank < p ? 'disabled' : ''}>${max ? 'Maximum' : fmt(p) + ' €'}</button></div>`; });
   $('shopList').innerHTML = w.join('') + u.join('');
   const sel = pvSel || ['w', save.primary && save.primary !== 'pistol' ? save.primary : 'rifle'];
   showPv(sel[0], sel[1]); markSel();
@@ -187,7 +188,7 @@ $('shopList').addEventListener('click', (e) => {
 
 
 // ---------- navigation manette dans les menus ----------
-// croix / stick : déplacer le focus vers le contrôle le plus proche dans la direction ; ✕ valider ; ○ retour ; ⬅ ➡ régler curseurs et listes
+// croix / stick : déplacer le focus vers le contrôle le plus proche dans la direction ; ✕ valider ; ○ retour ; ← → régler curseurs et listes
 let padFocus = null, navRep = 0;
 function activeScreen() { for (const id of ['pause', 'shop', 'end', 'menu']) { const el = $(id); if (el && !el.classList.contains('hidden')) return el; } return null; }
 function focusables(scr) { return [...scr.querySelectorAll('button, input, select')].filter((e) => !e.disabled && e.offsetParent !== null); }
@@ -229,14 +230,23 @@ pause.innerHTML = `<h2>PAUSE</h2>
 <label>Qualité graphique <select id="s-quality"><option value="auto">Auto</option><option value="bas">Basse (PC modestes)</option><option value="moyen">Moyenne</option><option value="haut">Haute</option></select></label>
 <label><input type="checkbox" id="s-dynres"> Résolution adaptée aux images/s</label>
 <label>Images/s <b id="s-fpsn">–</b></label>
-<label>Joueurs par camp (prochaine partie) <select id="s-team"><option value="5">5 contre 5</option><option value="10">10 contre 10</option><option value="15">15 contre 15</option><option value="20">20 contre 20</option><option value="35">35 contre 35</option><option value="50">50 contre 50</option></select></label>
+<label>Joueurs par camp (prochaine partie) <select id="s-team"><option value="5">5 contre 5</option><option value="10">10 contre 10</option><option value="15">15 contre 15</option><option value="20">20 contre 20</option><option value="25">25 contre 25</option><option value="35">35 contre 35</option><option value="50">50 contre 50</option></select></label>
 </div>
 <div class="row-btns"><button class="big" id="resume">REPRENDRE</button><button class="ghost" id="quit">Quitter la partie</button></div>
-<div class="controls"><div><h3>🎮 Manette</h3>
+<div class="controls"><div><h3>Manette</h3>
 <p><kbd>L</kbd> se déplacer · <kbd>R</kbd> regarder</p><p><kbd>R2</kbd> tirer · <kbd>L2</kbd> viser</p><p><kbd>✕</kbd> sauter / escalader · <kbd>○</kbd> roulade / glissade</p>
-<p><kbd>L1</kbd> s'accroupir · <kbd>R1</kbd> grenade</p><p><kbd>□</kbd> agir, ramasser, voler une voiture · <kbd>△</kbd> changer d'arme</p>
-<p><kbd>L3</kbd> sprint · <kbd>R3</kbd> vue FPS / TPS</p><p><kbd>⬅</kbd> recharger · <kbd>⬆</kbd> armurerie · <kbd>⬇</kbd> barricade · <kbd>➡</kbd> série</p><p><kbd>PAVÉ</kbd> carte · <kbd>SHARE</kbd> sac · <kbd>OPTIONS</kbd> pause</p><p>Menus : croix ou stick pour choisir, <kbd>✕</kbd> valider, <kbd>○</kbd> retour, <kbd>⬅</kbd><kbd>➡</kbd> régler</p></div>
-<div><h3>⌨️ Clavier</h3><p><kbd>ZQSD</kbd>/<kbd>WASD</kbd> · souris pour regarder</p><p><kbd>Clic</kbd> tirer · <kbd>Clic droit</kbd> viser</p><p><kbd>Espace</kbd> saut · <kbd>Ctrl</kbd> roulade / glissade</p><p><kbd>C</kbd> accroupi · <kbd>G</kbd> grenade · <kbd>Maj</kbd> sprint</p><p><kbd>E</kbd> agir · <kbd>F</kbd> voiture · <kbd>R</kbd> recharger</p><p><kbd>1-4</kbd> armes · <kbd>Q</kbd> barricade · <kbd>B</kbd> armurerie · <kbd>X</kbd> série</p><p><kbd>M</kbd> carte · <kbd>Tab</kbd> sac · <kbd>V</kbd> vue · <kbd>Échap</kbd> pause</p></div></div>`;
+<p><kbd>L1</kbd> s'accroupir · <kbd>L3</kbd> sprint · <kbd>R3</kbd> vue FPS / TPS</p><p><kbd>□</kbd> agir, ramasser, monter dans un véhicule · <kbd>△</kbd> changer d'arme</p>
+<p><kbd>R1</kbd> maintenir pour viser un lancer, lâcher pour lancer · <kbd>↑</kbd><kbd>↓</kbd> force · <kbd>←</kbd> changer · <kbd>L2</kbd> annuler</p>
+<p><kbd>→</kbd> préparer l'atout de série, <kbd>R2</kbd> pour le lancer</p>
+<p>Lunette : <kbd>R3</kbd> zoom ×4 / ×8 · <kbd>L3</kbd> retenir son souffle</p>
+<p>Véhicule : <kbd>R2</kbd> gaz · <kbd>L2</kbd> frein · <kbd>✕</kbd> frein à main / ollie · <kbd>↓</kbd> klaxon</p>
+<p><kbd>←</kbd> recharger · <kbd>↑</kbd> armurerie (à la base) · <kbd>↓</kbd> barricade</p><p><kbd>PAVÉ</kbd> carte · <kbd>SHARE</kbd> sac · <kbd>OPTIONS</kbd> pause</p><p>Menus : croix ou stick pour choisir, <kbd>✕</kbd> valider, <kbd>○</kbd> retour, <kbd>←</kbd><kbd>→</kbd> régler</p></div>
+<div><h3>Clavier et souris</h3><p><kbd>ZQSD</kbd>/<kbd>WASD</kbd> · souris pour regarder</p><p><kbd>Clic</kbd> tirer · <kbd>Clic droit</kbd> viser</p><p><kbd>Espace</kbd> saut · <kbd>Ctrl</kbd> roulade / glissade</p><p><kbd>C</kbd> accroupi · <kbd>Maj</kbd> sprint · <kbd>V</kbd> vue FPS / TPS</p><p><kbd>E</kbd> agir · <kbd>F</kbd> monter / descendre d'un véhicule · <kbd>R</kbd> recharger</p>
+<p><kbd>G</kbd> maintenir pour viser un lancer, lâcher pour lancer · <kbd>Molette</kbd> force · <kbd>R</kbd> changer · <kbd>Clic droit</kbd> annuler</p>
+<p><kbd>X</kbd> préparer l'atout de série, <kbd>Clic</kbd> pour le lancer</p>
+<p>Lunette : <kbd>Molette</kbd> zoom ×4 / ×8 · <kbd>Maj</kbd> retenir son souffle</p>
+<p>Véhicule : <kbd>Espace</kbd> frein à main / ollie · <kbd>H</kbd> klaxon</p>
+<p><kbd>1-4</kbd> armes · <kbd>Q</kbd> barricade · <kbd>B</kbd> armurerie (à la base)</p><p><kbd>M</kbd> carte · <kbd>Tab</kbd> sac · <kbd>Échap</kbd> pause</p></div></div>`;
 document.body.appendChild(pause);
 const st = document.createElement('style'); st.textContent = `.padfocus{outline:3px solid #ffcc3d!important;outline-offset:3px;box-shadow:0 0 0 7px rgba(255,204,61,.22)!important}.settings{display:grid;gap:10px;text-align:left;background:rgba(255,255,255,.06);padding:16px;border-radius:12px;min-width:min(420px,100%)}.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left;margin-top:10px;font-size:13px}.controls h3{margin:0 0 6px;font:800 14px Inter}.controls p{margin:3px 0}@media(max-width:760px){.controls{grid-template-columns:1fr}}.settings label{display:flex;justify-content:space-between;gap:12px;align-items:center;font-weight:700}#minimap.big{width:min(700px,90vw);height:min(350px,45vw);left:50%;top:50%;transform:translate(-50%,-50%)}body.scoped #app canvas{}body.scoped::after{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 30vh,#000 30.5vh);z-index:1}body.scoped::before{content:'';position:fixed;left:50%;top:0;bottom:0;width:1px;background:#000;z-index:2;box-shadow:0 0 0 0 #000}`;
 document.head.appendChild(st);

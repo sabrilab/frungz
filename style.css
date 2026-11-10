@@ -49,7 +49,7 @@ kbd { display: inline-block; padding: 0 6px; border-radius: 5px; background: rgb
 #feed .o { color: var(--ordre); } #feed .c { color: var(--civils); } #feed .me { outline: 1px solid var(--gold); }
 @keyframes slidein { from { transform: translateX(30px); opacity: 0; } }
 
-#toasts { position: absolute; left: 16px; top: 40%; display: flex; flex-direction: column; gap: 6px; }
+#toasts { position: absolute; left: 16px; top: 352px; max-width: 320px; display: flex; flex-direction: column; gap: 6px; }
 #toasts div { background: var(--panel); padding: 6px 12px; border-radius: 8px; font-weight: 700; border-left: 4px solid var(--c, #fff); animation: slidein2 .25s; }
 @keyframes slidein2 { from { transform: translateX(-30px); opacity: 0; } }
 #center { position: absolute; top: 22%; left: 0; right: 0; text-align: center; font: 34px Bungee, Inter; letter-spacing: .03em; opacity: 0; transition: opacity .3s; }
@@ -187,8 +187,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 #rank tr.o .nm { color: var(--ordre); } #rank tr.c .nm { color: var(--civils); }
 #rank tr.me { background: rgba(255,204,61,.18); box-shadow: inset 3px 0 0 var(--gold); } #rank tr.me td { color: #fff; font-weight: 900; }
 #rank .streak { margin-top: 7px; font: 700 11px Inter; color: #cfd6e0; border-top: 1px solid rgba(255,255,255,.1); padding-top: 6px; }
-#rank .streak .rdy { display: inline-block; background: var(--gold); color: #111; border-radius: 6px; padding: 1px 6px; font-weight: 900; animation: pulse 1s infinite alternate; }
-@keyframes pulse { to { transform: scale(1.06); } }
+#rank .streak .rdy { display: inline-block; background: var(--gold); color: #111; border-radius: 6px; padding: 1px 6px; font-weight: 900; animation: rdypulse 1s infinite alternate; }
+@keyframes rdypulse { to { transform: scale(1.06); } }
 @media (max-width: 760px) { #rank { width: 190px; top: 92px; } #rank table { display: none; } #rank .kills { font-size: 30px; } }
 #inv .invh { font: 900 12px Inter; letter-spacing: .1em; color: var(--dim); text-transform: uppercase; margin: 12px 0 6px; text-align: left; }
 #inv .invrow { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
@@ -213,32 +213,31 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; }
 /* séries : barre au-dessus de la vie */
 #streakbar { position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); display: flex; gap: 8px; align-items: flex-end; pointer-events: none; }
 #streakbar .sk { position: relative; width: 112px; padding: 5px 8px 6px; border-radius: 10px; background: var(--panel); border: 2px solid rgba(255,255,255,.12); text-align: center; transition: transform .25s cubic-bezier(.3,1.8,.5,1), border-color .2s; }
-#streakbar .sk .ic { font-size: 20px; line-height: 1; filter: grayscale(1) opacity(.55); }
-#streakbar .sk .nm { font: 900 10px Inter; letter-spacing: .06em; color: var(--dim); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#streakbar .sk .ic { font-size: 20px; line-height: 1; color: var(--dim); opacity: .7; }
+#streakbar .sk .nm { font: 900 9.5px/1.15 Inter; letter-spacing: .05em; color: var(--dim); text-transform: uppercase; min-height: 2.3em; display: flex; align-items: center; justify-content: center; text-wrap: balance; }
 #streakbar .sk .pips { display: flex; gap: 3px; justify-content: center; margin-top: 4px; }
 #streakbar .sk .pips i { width: 9px; height: 9px; border-radius: 3px; background: rgba(255,255,255,.14); transform: rotate(45deg); }
 #streakbar .sk .pips i.f { background: #9ff59f; box-shadow: 0 0 6px #9ff59f; }
-#streakbar .sk.next { border-color: rgba(159,245,159,.5); } #streakbar .sk.next .ic { filter: none; }
-#streakbar .sk.ready { border-color: var(--gold); background: linear-gradient(180deg, rgba(255,204,61,.35), rgba(20,20,20,.75)); transform: translateY(-10px) scale(1.12); animation: skready .6s ease-in-out infinite alternate; }
-#streakbar .sk.ready .ic { filter: none; font-size: 26px; animation: skwob .5s ease-in-out infinite alternate; }
+#streakbar .sk.next { border-color: rgba(159,245,159,.5); } #streakbar .sk.next .ic { color: #fff; opacity: 1; }
+#streakbar .sk.ready { border-color: var(--gold); background: linear-gradient(180deg, rgba(255,204,61,.35), rgba(20,20,20,.75)); transform: translateY(-8px) scale(1.06); animation: skready .9s ease-in-out infinite alternate; }
+#streakbar .sk.ready .ic { color: var(--gold); opacity: 1; font-size: 24px; }
 #streakbar .sk.ready .nm { color: #fff; }
 #streakbar .sk .key { position: absolute; left: 50%; top: -24px; transform: translateX(-50%); background: var(--gold); color: #111; font: 900 12px Inter; padding: 2px 8px; border-radius: 6px; white-space: nowrap; box-shadow: 0 3px 0 #a37a00; }
 #streakbar .sk.used { animation: skused .6s ease-out; }
 @keyframes skready { to { box-shadow: 0 0 22px rgba(255,204,61,.8); } }
-@keyframes skwob { from { transform: rotate(-12deg) scale(1); } to { transform: rotate(12deg) scale(1.15); } }
-@keyframes skused { 0% { transform: translateY(-10px) scale(1.4); filter: brightness(3); } 100% { transform: none; } }
+@keyframes skused { 0% { transform: translateY(-8px) scale(1.15); filter: brightness(2); } 100% { transform: none; } }
 #streakbar .count { font: 26px Bungee, Inter; color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,.5); min-width: 44px; text-align: center; padding-bottom: 6px; }
 #streakbar .count small { display: block; font: 900 9px Inter; letter-spacing: .1em; color: var(--dim); }
 #streakbar .count.bump { animation: cbump .35s cubic-bezier(.3,2,.5,1); }
-@keyframes cbump { from { transform: scale(1.8) rotate(-10deg); color: #9ff59f; } }
+@keyframes cbump { from { transform: scale(1.35); color: #9ff59f; } }
 
-/* multi-éliminations : grosses lettres qui rebondissent */
-#multik { position: absolute; left: 0; right: 0; top: 30%; text-align: center; pointer-events: none; font: 54px Bungee, Inter; color: #fff; opacity: 0; -webkit-text-stroke: 2px #111; text-shadow: 0 6px 0 #111, 0 0 30px rgba(255,204,61,.5); }
-#multik small { display: block; font: 900 16px Inter; letter-spacing: .14em; -webkit-text-stroke: 0; text-shadow: 0 2px 4px #000; color: #ffe9a8; }
-#multik.on { animation: mk 1.7s cubic-bezier(.2,1.6,.4,1) forwards; }
-#multik span { display: inline-block; animation: mkl .5s cubic-bezier(.3,2.2,.5,1) both; }
-@keyframes mk { 0% { opacity: 0; transform: scale(2.6) rotate(-8deg); } 12% { opacity: 1; transform: scale(.9) rotate(3deg); } 22% { transform: scale(1.06) rotate(-2deg); } 30%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-40px) scale(.8) rotate(4deg); } }
-@keyframes mkl { from { transform: translateY(-60px) scaleY(1.6) scaleX(.6); opacity: 0; } 60% { transform: translateY(6px) scaleY(.7) scaleX(1.3); } }
+/* grand titre (multi-éliminations, série prête, atout lancé) : un bloc qui claque puis se fige */
+#multik { position: absolute; left: 0; right: 0; top: 30%; text-align: center; pointer-events: none; font: 40px Bungee, Inter; letter-spacing: .03em; color: #fff; opacity: 0; text-shadow: 0 3px 0 rgba(0,0,0,.75), 0 0 18px rgba(0,0,0,.45); }
+#multik span { display: inline-block; padding: 2px 18px 4px; border-top: 2px solid currentColor; border-bottom: 2px solid currentColor; background: linear-gradient(90deg, transparent, rgba(8,10,16,.55) 18%, rgba(8,10,16,.55) 82%, transparent); }
+#multik small { display: block; margin-top: 6px; font: 800 13px Inter; letter-spacing: .16em; text-transform: uppercase; text-shadow: 0 1px 3px #000; color: #e9edf3; }
+#multik .ico { stroke-width: 2.4; }
+#multik.on { animation: mk 1.8s cubic-bezier(.2,.9,.3,1) forwards; }
+@keyframes mk { 0% { opacity: 0; transform: scale(1.35); filter: blur(3px); } 9% { opacity: 1; transform: scale(.98); filter: none; } 14%, 82% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-14px); } }
 
 /* flash plein écran (série prête, activation, gros tir) */
 #flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
@@ -294,3 +293,23 @@ body.scoped #cross, body.scoped #streakbar { visibility: hidden; }
 #throwhud .pw i { width: 12px; height: 9px; border-radius: 2px; background: rgba(255,255,255,.2); transform: skewX(-12deg); } #throwhud .pw i.on { background: var(--c); box-shadow: 0 0 6px var(--c); }
 #throwhud small { font-size: 11px; color: #eee; text-shadow: 0 1px 2px #000; background: rgba(0,0,0,.35); padding: 3px 8px; border-radius: 6px; }
 #throwhud kbd { font-size: 10px; }
+
+/* pictogrammes au trait (src/icons.js) */
+.ico { width: 1.15em; height: 1.15em; vertical-align: -.2em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ico circle[r="1.7"], .ico circle[r=".6"] { fill: currentColor; }
+#feed .ico { margin: 0 2px; } #feed .ico.hs { color: #ffcc3d; }
+#rank .kills .ico { width: 34px; height: 34px; stroke-width: 2.2; filter: drop-shadow(0 2px 0 #000); }
+#mats .ico-b { display: inline-flex; color: #e7b77a; margin-right: 4px; }
+#medal b .ico { color: inherit; }
+#weapons div em { display: flex; align-items: center; justify-content: center; gap: 2px; height: 20px; }
+#weapons div em .ico { width: 22px; height: 22px; }
+#weapons div.thr { width: 92px; } #weapons div.thr em .ico { width: 17px; height: 17px; } #weapons div.thr em small { font: 800 11px Inter; margin-right: 4px; }
+#throwhud b .ico { width: 20px; height: 20px; }
+#toasts .ico { margin-right: 2px; }
+
+/* pause : tout tient à l'écran (on fait défiler si la fenêtre est basse), réglages et commandes côte à côte */
+#pause { justify-content: safe center; overflow-y: auto; }
+#pause .controls { width: min(1100px, 100%); font-size: 12px; background: rgba(255,255,255,.04); padding: 12px 16px; border-radius: 12px; }
+#pause .controls kbd { font-size: 10px; }
+@media (max-height: 820px) { #toasts { top: 330px; } }
+@media (max-height: 620px) { #toasts { top: 200px; } }
