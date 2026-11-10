@@ -1,5 +1,5 @@
 {
- "version": 6,
+ "version": 7,
  "joueurs": "50 contre 50 (50 spawns par camp)",
  "unite": "mètre",
  "axes": "x est, y haut, z sud",
@@ -32956,5 +32956,5 @@
    }
   }
  ],
- "triangles": 2099528
+ "triangles": 1535174
 }

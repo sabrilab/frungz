@@ -10,6 +10,7 @@ import { createCassables } from './cassables.js';
 import { createMetro } from './metro.js';
 import { Game } from './game.js';
 import { createPreview } from './preview.js';
+import { applyRealism, skyEnvironment, realismUniforms } from './realisme.js';
 import { TEAMS, WEAPONS, UPGRADES, SKIN_NAMES } from './data.js';
 
 const $ = (id) => document.getElementById(id);
@@ -54,7 +55,8 @@ $('app').appendChild(renderer.domElement);
 const { scene, sun, hemi, followShadow } = setupScene(renderer);
 sun.shadow.mapSize.set(QS.shadowSize, QS.shadowSize); sun.castShadow = QS.shadows; scene.fog.near = QS.fog[0]; scene.fog.far = QS.fog[1];
 const pm = new THREE.PMREMGenerator(renderer);
-import('three/examples/jsm/environments/RoomEnvironment.js').then(({ RoomEnvironment }) => { scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.35; });
+// reflets : un vrai ciel (dégradé + soleil) plutôt qu'une pièce d'intérieur
+try { scene.environment = skyEnvironment(renderer, { sunDir: sun.position.clone().normalize().toArray() }); scene.environmentIntensity = 0.6; } catch (e) { console.warn('ciel de reflets indisponible', e); }
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, QS.far); scene.add(camera);
 // post-traitement : bloom léger (éclairs de bouche, néons, soleil), étalonnage et vignette dans un seul passage final
 let composer = null;
@@ -94,6 +96,8 @@ async function loadAll() {
   ]);
   $('loadtxt').textContent = 'Préparation du quartier…'; await new Promise((r) => setTimeout(r, 30));
   mapRoot = root; scene.add(root);
+  // matières réalistes (grain, salissures, coulures, chaussée mouillée par plaques) : sauf en qualité basse
+  if (QN !== 'bas' && !Q.has('noreal')) { try { applyRealism(root, { wet: 0.4 }); window.__real = realismUniforms; } catch (e) { console.warn('réalisme indisponible', e); } }
   // allègements selon la qualité : pas d'ombre des feuillages en moyenne, pas de décor lointain en basse (caché par le brouillard)
   root.traverse((o) => { if (!o.isMesh) return; const n = o.name || ''; if (QN !== 'haut' && /leaf/.test(n)) o.castShadow = false; if (QN === 'bas' && /decor_lointain/.test(n)) o.visible = false; });
   const tw = performance.now(); world = new World(gp, ground); console.log('monde prêt en', (performance.now() - tw).toFixed(0), 'ms'); window.__world = world; window.__ground = ground;
