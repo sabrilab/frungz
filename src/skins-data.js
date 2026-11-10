@@ -25,12 +25,12 @@ export const PIECES = {
   haut: [
     { id: 'aucun', label: 'Aucun' },
     { id: 'tshirt', label: 'T-shirt', c: '#1b1b1e' },
-    { id: 'sweat', label: 'Sweat à capuche', c: '#18181b', c2: null, hood: true },
-    { id: 'sweat_zip', label: 'Sweat zippé', c: '#2b2d33', c2: '#bfc3c9', c2label: 'Zip', hood: true },
-    { id: 'doudoune', label: 'Doudoune', c: '#151517' },
-    { id: 'kway', label: 'Coupe-vent', c: '#20242c', c2: '#0f1115', c2label: 'Zip', hood: true },
+    { id: 'sweat', label: 'Sweat à capuche', c: '#18181b', c2: null, c3: '#3a3b40', c3label: 'T-shirt dessous', hood: true },
+    { id: 'sweat_zip', label: 'Sweat zippé', c: '#2b2d33', c2: '#bfc3c9', c2label: 'Zip', c3: '#d9d7d0', c3label: 'T-shirt dessous', hood: true },
+    { id: 'doudoune', label: 'Doudoune', c: '#151517', c3: '#2c2e33', c3label: 'Sweat à capuche dessous' },
+    { id: 'kway', label: 'Coupe-vent', c: '#20242c', c2: '#0f1115', c2label: 'Zip', c3: '#2a2b30', c3label: 'Sweat dessous', hood: true },
     { id: 'polo', label: 'Polo d\'uniforme', c: '#1e2b4a', c2: '#2b3c63', c2label: 'Épaules' },
-    { id: 'veste_mo', label: 'Veste de maintien de l\'ordre', c: '#1a2338', c2: '#121828', c2label: 'Renforts' },
+    { id: 'veste_mo', label: 'Veste de maintien de l\'ordre', c: '#1a2338', c2: '#121828', c2label: 'Renforts', c3: '#0f1422', c3label: 'Sous-pull' },
   ],
   gilet: [
     { id: 'aucun', label: 'Aucun' },
@@ -111,5 +111,5 @@ export function saveUserSkins(list) { try { localStorage.setItem(STORE, JSON.str
 export function allSkins() { return BUILTIN_SKINS.concat(userSkins()); }
 export function skinById(id) { return allSkins().find((s) => s.id === id) || null; }
 // pièce effective d'un emplacement (défauts du catalogue complétés)
-export function piece(def, slot) { const p = def[slot] || { id: 'aucun' }; const cat = PIECES[slot].find((x) => x.id === p.id) || PIECES[slot][0]; return { ...cat, ...p, c: p.c || cat.c, c2: p.c2 || cat.c2 }; }
+export function piece(def, slot) { const p = def[slot] || { id: 'aucun' }; const cat = PIECES[slot].find((x) => x.id === p.id) || PIECES[slot][0]; return { ...cat, ...p, c: p.c || cat.c, c2: p.c2 || cat.c2, c3: p.c3 || cat.c3 }; }
 

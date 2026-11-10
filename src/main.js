@@ -109,7 +109,7 @@ async function loadAll() {
   const gp = await fetch('assets/gameplay.json').then((r) => r.json());
   const [{ root, ground, cassables, rame }] = await Promise.all([
     loadMap('assets/map.glb', (p) => { progress.map = p; showProgress(); }),
-    Promise.all([loadSkinBases(), loadMx()]).then(([, mx]) => { for (const d of ALL_SKINS) { try { registerSkin(chars, d, mx); } catch (e) { console.warn('skin', d.id, e); } progress.chars++; showProgress(); } }),
+    Promise.all([loadSkinBases(), loadMx()]).then(([, mx]) => { for (const d of ALL_SKINS) { try { registerSkin(chars, d, mx, 1.8, { tex: 512 }); } catch (e) { console.warn('skin', d.id, e); } progress.chars++; showProgress(); } }),
     loadGuns(() => { progress.guns++; showProgress(); }),
     Promise.all(CARS.map(async ([f, classe, nom]) => { try { const g = await loadGLB(`assets/cars/${f}.glb`); const s = g.scene; const box = new THREE.Box3().setFromObject(s); const sz = s.userData.size || [box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z]; carDefs.push({ scene: s, classe, nom, size: sz }); } catch (e) { console.warn('voiture', f, e); } progress.cars++; showProgress(); })),
   ]);

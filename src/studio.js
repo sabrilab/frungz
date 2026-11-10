@@ -40,7 +40,7 @@ function newSkin(team = 'civils') { return { id: uid(), name: team === 'ordre' ?
 // ---------------------------------------------------------------- personnage
 function show(def) {
   if (ch) { scene.remove(ch.root); ch.model.traverse((o) => { if (o.isSkinnedMesh) o.geometry.dispose(); }); }
-  registerSkin(chars, def, clips);
+  registerSkin(chars, def, clips, 1.8, { tex: 1024 });
   ch = makeCharacter(def.id); ch.root.traverse((o) => { if (o.isMesh) { o.castShadow = true; } }); scene.add(ch.root);
   ch.model.position.y = -chars[def.id].minY * chars[def.id].k;
   if (def.team === 'ordre') teamMarkings(ch, def.id);
@@ -87,7 +87,8 @@ function renderEditor() {
     const p = piece(d, S.id), cat = PIECES[S.id].find((x) => x.id === p.id) || PIECES[S.id][0];
     const c1 = cat.c !== undefined && p.id !== 'aucun' ? colorInput(`${S.id}.c`, p.c || (S.id === 'tete' && p.id === 'capuche' ? piece(d, 'haut').c : '#222222'), 'Couleur') : '<span></span>';
     const c2 = cat.c2 ? colorInput(`${S.id}.c2`, p.c2, cat.c2label || 'Seconde couleur') : '<span></span>';
-    h += `<div class="row"><label>${S.label}</label><div class="piece"><select data-path="${S.id}.id">${PIECES[S.id].map((x) => `<option value="${x.id}" ${x.id === p.id ? 'selected' : ''}>${x.label}</option>`).join('')}</select>${c1}${c2}</div></div>`;
+    const c3 = cat.c3 ? colorInput(`${S.id}.c3`, p.c3, cat.c3label || 'Dessous') : '<span></span>';
+    h += `<div class="row"><label>${S.label}</label><div class="piece"><select data-path="${S.id}.id">${PIECES[S.id].map((x) => `<option value="${x.id}" ${x.id === p.id ? 'selected' : ''}>${x.label}</option>`).join('')}</select>${c1}${c2}${c3}</div></div>`;
   }
   h += '<h2>Accessoires</h2><div class="extras">';
   for (const X of EXTRAS) { if ((X.id === 'dos' || X.id === 'brassard') && d.team !== 'ordre') continue; const on = (d.extras || []).includes(X.id);
