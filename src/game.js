@@ -1122,6 +1122,7 @@ export class Game {
     a.aimW = lerp(a.aimW ?? 0, wantW, 1 - Math.exp(-dt * 14));
     if (spine && ch.gun && a.aimW > 0.02 && !far) this.aimSpine(a, spine);
     if (rigPost) Anim.post(a);
+    if (!Anim.sane(a)) (this.nanHeals = (this.nanHeals || 0) + 1);
   }
 
   // espace de mélange de la marche/course (animations Mixamo) : avant, arrière, gauche, droite pondérés par la direction réelle du déplacement
@@ -1542,6 +1543,8 @@ export class Game {
     { const o = cam.position, d = V(); cam.getWorldDirection(d); const R = scope ? 400 : 120; const h = this.world.ray(o, d, R); const ha = scope ? this.rayActors(o, d, h ? h.t : R, a) : null; const t = ha ? ha.t : h ? Math.max(h.t, 4) : R; this.aimHit = !!(h || ha); this.aimPt = o.clone().addScaledVector(d, t); }
     a.ch.root.visible = a.alive || a.respawnT > 0 ? (fps ? false : !a.inCar || !!a.inCar.kind) : false;
     if (this.vgun) { this.vgun.visible = fps && a.alive && !scope; this.updateViewGun(dt, sp, bobA); }
+    // garde-fou : une caméra invalide rendrait toute l'image noire et fausserait le son
+    if (!Number.isFinite(cam.position.x + cam.position.y + cam.position.z + cam.quaternion.x + cam.quaternion.y + cam.quaternion.z + cam.quaternion.w)) { cam.position.set(a.pos.x, a.pos.y + 1.7, a.pos.z); cam.quaternion.identity(); cam.updateMatrixWorld(); this.nanHeals = (this.nanHeals || 0) + 1; }
     this.audio.listener.x = cam.position.x; this.audio.listener.y = cam.position.y; this.audio.listener.z = cam.position.z; this.audio.listener.yaw = -C.yaw + Math.PI;
     this.followShadow(a.pos);
     // effets d'écran
