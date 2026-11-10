@@ -105,6 +105,12 @@ kbd { display: inline-block; padding: 0 6px; border-radius: 5px; background: rgb
 #car { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); background: var(--panel); padding: 6px 16px; border-radius: 10px; font-weight: 700; display: none; text-align: center; width: 160px; }
 #car b { font: 26px Bungee; } #car .bar i { background: #ff9d3d; }
 #car.on { display: block; }
+#car.heli { width: 200px; bottom: 150px; }
+#heliui .alt { font-size: 12px; opacity: 0.85; margin-top: 4px; } #heliui .alt b { font: 15px Bungee; }
+#heliui .heat { height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; margin: 4px 0; overflow: hidden; } #heliui .heat i { display: block; height: 100%; background: #ffd23d; } #heliui .heat.over i { background: #ff4a3d; }
+#heliui .ars { display: flex; gap: 6px; justify-content: center; font-size: 13px; }
+#heliui .ars span { display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px; border-radius: 6px; border: 1px solid transparent; } #heliui .ars span.sel { border-color: #ffcc3d; color: #ffcc3d; } #heliui .ars span.vide { opacity: 0.35; }
+#heliui svg { width: 15px; height: 15px; }
 #keys { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); font-size: 11px; color: var(--dim); white-space: nowrap; padding: 2px; }
 #keys kbd { font-size: 10px; }
 

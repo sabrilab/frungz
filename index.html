@@ -49,7 +49,7 @@
   </div>
   <div id="weapons"></div>
   <div id="ammo"><b id="mag">12</b><span id="reserve">/ ∞</span><div id="wname"></div></div>
-  <div id="car"><b id="kmh">0</b> km/h<div class="bar"><i id="carhp"></i></div></div>
+  <div id="car"><b id="kmh">0</b> km/h<div class="bar"><i id="carhp"></i></div><div id="heliui"></div></div>
   <div id="keys"></div>
 </div>
 
@@ -105,13 +105,14 @@
     <h2>TON ÉQUIPE</h2>
     <div class="inv-grid">
       <section class="lb-card">
-        <h3 class="sticker">Inviter un ami <i class="soon">en ligne : bientôt</i></h3>
+        <h3 class="sticker">Inviter un ami <i class="soon">hors ligne</i></h3>
         <label class="field">Ton pseudo <input id="pseudo" maxlength="16" spellcheck="false"></label>
         <div class="code"><small>Code d'équipe</small><b id="teamCode">FRZ-0000</b></div>
         <div class="row-btns"><button class="chunky" id="copyLink">Copier le lien</button><button class="chunky alt" id="shareLink">Partager</button></div>
         <label class="field">Code d'un ami <input id="joinCode" placeholder="FRZ-XXXX" maxlength="8" spellcheck="false"></label>
         <button class="chunky alt" id="joinBtn">Rejoindre</button>
-        <p class="note" id="inviteNote">Le lien et le code sont prêts, mais les parties entre amis en ligne ne sont pas encore branchées : pour l'instant, complète ton équipe avec des équipiers IA.</p>
+        <button class="ghost hidden" id="netLeave">Quitter ce salon</button>
+        <p class="note" id="inviteNote">Ouvre ton salon pour inviter des amis, ou complète ton équipe avec des équipiers IA.</p>
       </section>
       <section class="lb-card">
         <h3 class="sticker">Places</h3>

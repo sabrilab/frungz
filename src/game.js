@@ -8,6 +8,7 @@ import { shopCase, lootMesh, beam, socle, baseSign, receleur, barricade, BARRICA
 import { pointInPoly } from './world.js';
 import * as Anim from './anim.js';
 import { rideMethods } from './deuxroues.js';
+import { heliMethods } from './helico.js';
 import { installThrows, THROWS, solveThrow } from './throws.js';
 import { svg, iconize } from './icons.js';
 import { installSeries } from './series.js';
@@ -46,6 +47,14 @@ const STREAKS = {
 const STREAK_BY_ID = Object.fromEntries(Object.values(STREAKS).flat().map((r) => [r.id, r]));
 export { STREAKS };
 const TIER_COLS = ['#ffcc3d', '#ffcc3d', '#ff9d3d', '#57b6ff', '#ff7ad9', '#ff4a3d', '#c27bff'];
+// séries sans fin : après le dernier palier, un bonus tous les 5 éliminations en reprenant les gros atouts (10, 14, 18, 25) en boucle
+function streakTiers(team, upto) {
+  const L = STREAKS[team]; const last = L[L.length - 1].n; if (upto < last) return L;
+  const big = L.slice(3), out = L.slice(); for (let n = last + 5, j = 0; n <= upto + 15; n += 5, j++) { const b = big[j % big.length]; out.push({ ...b, n, loop: true, tier: L.indexOf(b) }); }
+  return out;
+}
+const LEGENDS = ['FRUNGZ IMMORTEL', 'FRUNGZ TITANESQUE', 'FRUNGZ COSMIQUE', 'FRUNGZ ABSOLU', 'FRUNGZ INFINI', 'FRUNGZ MYTHIQUE', 'FRUNGZ DE LÉGENDE'];
+const LEGEND_COLS = ['#ffcc3d', '#57b6ff', '#ff7ad9', '#ff4a3d', '#c27bff', '#9ff59f'];
 const LOOT_PTS = { commun: 2, rare: 4, epique: 6, legendaire: 10 };
 // contribution à la partie (classement)
 const V2 = new THREE.Vector2(); const BULLET_V = 380; const BULLET_GEO = new THREE.CylinderGeometry(0.012, 0.02, 0.09, 6).rotateX(Math.PI / 2); const BULLET_MAT = new THREE.MeshStandardMaterial({ color: '#d9a441', metalness: 0.9, roughness: 0.25, emissive: '#5a3a00' });
@@ -68,25 +77,81 @@ export class Game {
     this.root = new THREE.Group(); this.scene.add(this.root);
     this.cam = { yaw: 0, pitch: 0, dist: 3, fps: !!this.save.settings?.fps, trauma: 0, bob: 0, dip: 0, roll: 0, kickP: 0, kickY: 0, fov: 70, shake: V() };
     this.ui = {}; this.nextUi = 0; this.feed = []; this.specialT = 75; this.stats = { kills: 0, deaths: 0, earned: 0, captures: 0, broken: 0, stolen: 0 };
-    this.fb = createFeedback(this); this.losQueue = 0; this.drone = { ordre: 0, civils: 0 }; this.strikes = []; this.streakCd = { ordre: 0, civils: 0 };
+    this.net = this.opts.net || null; this.fb = createFeedback(this); this.losQueue = 0; this.drone = { ordre: 0, civils: 0 }; this.strikes = []; this.streakCd = { ordre: 0, civils: 0 };
   }
 
   // ---------------------------------------------------------------- mise en place
   build() {
-    this.fx.setGround((x, z, y) => this.world.groundY(x, z, y), (p, big) => this.audio.tink(p, big)); this.buildBases(); this.buildShops(); this.buildReceleur(); this.buildCars(); this.buildRides(); this.buildZones();
+    this.fx.setGround((x, z, y) => this.world.groundY(x, z, y), (p, big) => this.audio.tink(p, big)); this.buildBases(); this.buildShops(); this.buildReceleur(); this.buildCars(); this.buildRides(); this.buildHelis(); this.buildZones();
     // nouvelle manche : mobilier réparé, rame sur la voie
     const W = this.world; if (W.cass) for (const e of W.cass.list) if (e.broken) W.cass.repair(e);
     if (W.metro) W.dynamic.push(...W.metro.cols);
     const T = this.save.team; const N = this.opts.teamSize;
+    if (this.opts.roster) return this.buildFromRoster(this.opts.roster);
     this.player = this.spawnActor(T, this.save.skin, false, this.opts.pseudo || 'Toi');
+    // en ligne (chef d'équipe) : les amis connectés prennent les premières places de l'équipe ; leur perso est piloté par leur navigateur
+    for (const f of (this.opts.friends || []).slice(0, Math.max(0, N - 1))) { const sk = TEAMS[T].skins.includes(f.skin) ? f.skin : TEAMS[T].skins[0]; const b = this.spawnActor(T, sk, true, f.pseudo || 'Ami'); b.squad = true; b.puppet = true; b.owner = f.id; if (f.cls && CLASSES[T][f.cls]) { b.cls = f.cls; b.perk = classOf(T, f.cls).perk; } }
     // équipe du salon : les premiers alliés prennent le nom et la tenue des équipiers choisis
-    const squad = (this.opts.squad || []).slice(0, Math.max(0, N - 1)); for (const m of squad) { const b = this.spawnActor(T, m.skin, true, m.name); b.squad = true; }
-    for (const t of ['ordre', 'civils']) { const n = t === T ? N - 1 - squad.length : N; for (let i = 0; i < n; i++) this.spawnActor(t, pick(TEAMS[t].skins), true, BOT_NAMES[t][i % 20] + (i >= 20 ? ' ' + (i / 20 | 0) : '')); }
+    const nf = this.actors.length - 1; const squad = (this.opts.squad || []).slice(0, Math.max(0, Math.min(3 - nf, N - 1 - nf))); for (const m of squad) { const b = this.spawnActor(T, m.skin, true, m.name); b.squad = true; }
+    for (const t of ['ordre', 'civils']) { const n = t === T ? N - 1 - nf - squad.length : N; for (let i = 0; i < n; i++) this.spawnActor(t, pick(TEAMS[t].skins), true, BOT_NAMES[t][i % 20] + (i >= 20 ? ' ' + (i / 20 | 0) : '')); }
     for (const a of this.actors) this.respawn(a, true);
     this.cam.yaw = this.player.yaw;
     this.minimapInit(); this.hudInit();
     this.announce('DOMINATION', 'Tiens A · B · C — casse, vole, revends', '#fff');
   }
+
+  // invité en ligne : on recrée exactement la distribution du chef (mêmes persos, même ordre, donc mêmes numéros)
+  buildFromRoster(roster) {
+    const me = this.net.id, host = this.net.hostId;
+    for (const [team, skin, name, cls, owner, squad] of roster) {
+      const mine = owner === me; const a = this.spawnActor(team, skin, !mine, mine ? (this.opts.pseudo || name) : name);
+      if (cls && CLASSES[team][cls]) { a.cls = cls; a.perk = classOf(team, cls).perk; }
+      if (mine) this.player = a; else { a.puppet = true; a.owner = owner || host; }
+      if (squad) a.squad = true;
+    }
+    for (const a of this.actors) this.respawn(a, true);
+    for (const a of this.actors) if (a.marker) a.marker.visible = a.team === this.player.team;
+    this.cam.yaw = this.player.yaw;
+    this.minimapInit(); this.hudInit();
+    this.announce('DOMINATION', 'En ligne avec ton équipe · tiens A · B · C', '#fff');
+  }
+  // ---------------------------------------------------------------- en ligne
+  // ce navigateur décide-t-il pour ce perso ? (son propre joueur ; et tous les bots chez le chef)
+  netOwns(a) { return !this.net || a === this.player || !a.puppet; }
+  // un perso piloté à distance : on rejoint en douceur la dernière position reçue (prolongée par la vitesse), puis on l'anime comme les autres
+  updatePuppet(a, dt) {
+    if (a.gone) return; const n = a.net;
+    if (n && (n.fl & 1) && !a.alive && performance.now() / 1000 - n.at < 1) { this.respawn(a); a.pos.set(n.x, n.y, n.z); a.ch.root.visible = true; }
+    if (!a.alive) { a.respawnT = 99; this.updateActor(a, dt); return; }
+    a.spawnProt = Math.max(0, (a.spawnProt || 0) - dt); a.fireT -= dt;
+    if (n) {
+      const age = Math.min(0.3, performance.now() / 1000 - n.at);
+      const tx = n.x + n.vx * age, tz = n.z + n.vz * age, ty = n.y + ((n.fl & 2) ? 0 : n.vy * age);
+      const d2 = (a.pos.x - tx) ** 2 + (a.pos.z - tz) ** 2 + (a.pos.y - ty) ** 2;
+      if (d2 > 25) a.pos.set(tx, ty, tz); else { const k = 1 - Math.exp(-dt * 14); a.pos.x += (tx - a.pos.x) * k; a.pos.y += (ty - a.pos.y) * k; a.pos.z += (tz - a.pos.z) * k; }
+      a.vel.set(n.vx, n.vy, n.vz); a.onGround = !!(n.fl & 2); a.crouch = !!(n.fl & 4);
+      a.yaw = lerp_angle(a.yaw, n.yaw, 1 - Math.exp(-dt * 16)); a.pitch = n.pitch;
+      const hd = V(n.vx, 0, n.vz); if (hd.lengthSq() > 0.01) hd.normalize(); else hd.set(Math.sin(a.yaw), 0, Math.cos(a.yaw));
+      if (n.fl & 8) { if (!(a.slideT > 0)) a.slideDir = hd.clone(); a.slideT = 0.3; } else a.slideT = 0;
+      if (n.fl & 16) { if (!(a.rollT > 0)) a.rollDir = hd.clone(); a.rollT = 0.3; } else a.rollT = 0;
+      if (n.gun && a.slots[a.cur]?.id !== n.gun && WEAPONS[n.gun]) { a.slots = [{ id: n.gun, rarity: 'commun', mag: WEAPONS[n.gun].mag }]; this.equip(a, 0, true); }
+      if (n.hp != null) a.hp = n.hp;
+    }
+    a.crouchK = lerp(a.crouchK || 0, a.crouch ? 1 : 0, 1 - Math.exp(-dt * 12));
+    this.animate(a, dt);
+  }
+  // tir d'un perso distant : éclair, son, traceur dans la direction de son regard (les dégâts, eux, sont décidés chez le tireur)
+  netShot(a, k) {
+    a.lastShot = this.time; const W = WEAPONS[a.slots[a.cur]?.id]; if (!W) return;
+    const muzzle = V(); (a.ch.gun?.userData.muzzle || a.ch.root).getWorldPosition(muzzle);
+    this.audio.gun(W.sound, a.pos, 1); this.fx.muzzle(muzzle, W.pellets > 1 ? 1.4 : 1);
+    const c = Math.cos(a.pitch || 0), d = V(Math.sin(a.yaw) * c, Math.sin(a.pitch || 0), Math.cos(a.yaw) * c);
+    const o = a.pos.clone().add(V(0, 1.45, 0)); const hw = this.world.ray(o, d, W.range || 120); const end = o.clone().addScaledVector(d, hw ? hw.t : (W.range || 120));
+    if (a.pos.distanceToSquared(this.player.pos) < 90 * 90) { for (let i = 0; i < Math.min(k, 2); i++) this.fx.tracer(muzzle, end); if (hw) this.fx.impact(end, hw.n, 'world'); }
+    if (a !== this.player) this.notePing(a, muzzle);
+  }
+  // un ami a quitté le salon : son perso disparaît
+  netGone(a) { a.alive = false; a.gone = true; a.ch.root.visible = false; if (a.bag.length) { this.dropPile(a.pos, a.bag.splice(0)); this.carryMesh(a); } this.toast(`${a.name} a quitté la partie`, '#ccc'); }
 
   buildZones() {
     for (const z of this.zoneState) {
@@ -223,6 +288,8 @@ export class Game {
   // ---------------------------------------------------------------- dégâts
   damage(t, amount, by, opts = {}) {
     if (!t.alive || this.over) return;
+    // en ligne : la cible appartient à un autre navigateur, on lui envoie le coup (et on affiche le retour de touche tout de suite)
+    if (this.net && !this.netOwns(t)) { if (by && by.team === t.team && by !== t) return; if (by && !this.netOwns(by)) return; this.net.hit(t, amount, by, opts); if (by === this.player) { this.flashBody(t); this.fb.dealt(t, amount, opts, 0, false, false); t.spotted = this.time; } return; }
     if (t.spawnProt > 0) amount *= 0.2;
     if (t.rollT > 0) amount *= 0.5; // roulade : on esquive à moitié
     if (by && by.team === t.team && by !== t) return;
@@ -239,7 +306,7 @@ export class Game {
   }
   kill(t, by, opts) {
     t.alive = false; t.hp = 0; t.respawnT = t.bot ? 6 : 5; t.stats.d++; t.channel = null;
-    if (t.inCar) this.exitCar(t, true);
+    if (t.inCar) { t.lastBy = by; this.exitCar(t, true); }
     t.overs = null; { const dn = this.deathAnim(t, by, opts); this.setAnim(t, dn, 0.1, /^MX_Death[FBLR]$/.test(dn) ? 1.2 : 1); } this.audio.play('voxDie', t.pos, 0.9);
     // le sac tombe au sol (et l'arme principale, parfois)
     if (by && by !== t && by.team === 'ordre' && t.bag.length) this.scoreEvent('ordre', 4, 'Interpellation', by);
@@ -248,13 +315,14 @@ export class Game {
     if (t.hitBy) { for (const [h, at] of t.hitBy) if (h !== by && h !== t && h.team !== t.team && this.time - at < 8) { h.stats.a++; if (h === this.player) this.toast('+ Assistance', '#cfe3ff'); } t.hitBy.clear(); }
     const w = t.slots[t.cur]; if (w && WEAPONS[w.id].cat !== 'pistolet' && (Math.random() < 0.6 || !t.bot)) this.dropPile(t.pos.clone().add(V(rnd(-0.6, 0.6), 0, rnd(-0.6, 0.6))), [], { id: w.id, rarity: w.rarity });
     if (by && by !== t) {
-      by.stats.k++; this.addStreak(by); if (by.bot && by.alive && Math.random() < 0.12) this.overlay(by, 'U_FistPump', 1.2, { busy: true });
+      by.stats.k++; this.addStreak(by); if (by.inCar?.kind === 'heli') this.heliKill(by); if (by.bot && by.alive && Math.random() < 0.12) this.overlay(by, 'U_FistPump', 1.2, { busy: true });
       if (by === this.player) this.maybeKillcam(t, opts);
       if (by === this.player) { this.multiKill(opts); this.streakDirty = 1; }
       if (by === this.player) { this.medal(opts.head ? (opts.dist > 80 ? "TIR D'ÉLITE" : 'TIR À LA TÊTE') : 'ÉLIMINÉ', t.name + (by.streak >= 2 ? ` · série ${by.streak}` : ''), opts.head); this.stats.kills++; this.earn(50 + (opts.head ? 25 : 0), opts.head ? 'Tir à la tête' : 'Élimination'); this.audio.kill(); this.input.rumble(0.9, 0.6, 160); }
     }
     if (t === this.player) { this.stats.deaths++; this.announce('ÉLIMINÉ', by ? `par ${by.name}` : '', '#ff4a4a', 2.5); }
     this.killFeed(by, t, opts);
+    if (this.net && this.netOwns(t) && !opts?.fromNet) this.net.kill(t, by, opts);
   }
   // mort : projeté en arrière (explosion, métro, fusil à pompe à bout portant), emporté par l'élan en pleine course, ou chute selon le côté de l'impact
   deathAnim(t, by, opts = {}) {
@@ -282,16 +350,38 @@ export class Game {
   }
   pistolStance(a) { const id = this.weapon(a)?.id; return WEAPONS[id]?.hand === 'pistol' && !!a.ch.actions.MXP_Idle; }
   scoreEvent(team, pts, why, by) {
-    if (this.over || !pts) return; this.score[team] += pts; if (by) by.stats.sac += pts;
+    if (this.over || !pts) return;
+    if (this.net?.guest && !this._netScore) { this.net.score(team, pts, why, by); if (by === this.player) this.toast(`+${pts} pts équipe · ${why}`, TEAMS[team].color); return; } // le chef tient le score
+    this.score[team] += pts; if (by) by.stats.sac += pts;
     if (by === this.player) this.toast(`+${pts} pts équipe · ${why}`, TEAMS[team].color);
   }
   // ---------------------------------------------------------------- séries
   addStreak(a) {
-    a.streak++; const r = STREAKS[a.team].find((x) => x.n === a.streak); if (!r) return;
-    a.rewards.push(r.id); const tier = STREAKS[a.team].indexOf(r); const col = TIER_COLS[tier] || '#ffcc3d';
+    a.streak++; this.streakVitality(a);
+    const L = streakTiers(a.team, a.streak), r = L.find((x) => x.n === a.streak); if (a.streak >= 30 && a.streak % 10 === 0) this.streakLegend(a, !!r); if (!r) return;
+    a.rewards.push(r.id); const tier = r.loop ? r.tier : STREAKS[a.team].indexOf(r); const col = TIER_COLS[tier] || '#ffcc3d';
+    if (a === this.player && r.loop && a.streak % 10 === 0) { this.streakDirty = 1; this.audio.streakReady(tier); return; } // le titre légendaire annonce déjà ce bonus
     if (a === this.player) { this.bigText(`${svg(r.ico)} ${r.nom.toUpperCase()} !${tier >= 3 ? '!' : ''}${tier >= 5 ? '!' : ''}`, `série de ${a.streak} · ${this.input.label('streak')} pour l'activer`, col, `t${tier}`); this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,0) ${40 - tier * 4}%, ${col}${tier >= 3 ? 'cc' : '99'})`); this.audio.streakReady(tier); this.input.rumble(1, 0.8, 300 + tier * 80); this.cam.trauma = Math.min(1, this.cam.trauma + 0.35 + tier * 0.08); this.streakDirty = 1; if (tier >= 3) { $('hud').classList.remove('shake'); void $('hud').offsetWidth; $('hud').classList.add('shake'); } }
     else if (r.n >= 14) this.toast(`${a.name} : série de ${a.streak} · ${r.nom} !`, a.team === this.player.team ? TEAMS[a.team].color : '#ff4a4a');
     else if (a.bot) a.ai.streakT = rnd(1.5, 5);
+  }
+  // vitalité : chaque élimination de la série soigne, puis renforce le gilet ; plus la série est longue, plus ça remonte
+  streakVitality(a) {
+    if (!a.alive || a.streak < 2) return; const k = Math.min(3, 1 + a.streak / 15);
+    const heal = 12 * k; const over = Math.max(0, a.hp + heal - 100); a.hp = Math.min(100, a.hp + heal); a.regenT = 0;
+    if (over > 0 || a.streak % 5 === 0) a.armor = Math.min(150, (a.armor || 0) + over + (a.streak % 5 === 0 ? 40 : 0));
+    if (a === this.player && a.streak % 5 === 0) this.toast(`Série ${a.streak} : vitalité au max, gilet +40`, '#9ff59f');
+  }
+  // tous les 10 au-delà de 25 : un titre Frungz qui monte, une prime qui grossit, et tout le quartier l'apprend
+  streakLegend(a, withReward) {
+    const i = a.streak / 10 - 3; const name = LEGENDS[i] || `FRUNGZ ×${a.streak / 10}`; const col = LEGEND_COLS[i % LEGEND_COLS.length];
+    if (a === this.player) {
+      const r = withReward ? streakTiers(a.team, a.streak).find((x) => x.n === a.streak) : null;
+      this.bigText(`${name} !!!`, `série de ${a.streak} sans mourir${r ? ` · ${r.nom} prêt (${this.input.label('streak')})` : ''}`, col, 't6');
+      this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,.25), ${col}cc)`); this.cam.trauma = 1; this.input.rumble(1, 1, 700);
+      $('hud').classList.remove('shake'); void $('hud').offsetWidth; $('hud').classList.add('shake');
+      this.earn(250 * a.streak / 10 * (i + 1), name.charAt(0) + name.slice(1).toLowerCase(), true);
+    } else this.toast(`${a.name} : ${name} (série de ${a.streak})`, a.team === this.player.team ? TEAMS[a.team].color : '#ff4a4a');
   }
   streakDef(a, id) { return STREAKS[a.team].find((r) => r.id === id) || STREAK_BY_ID[id]; }
   useStreak(a) {
@@ -362,7 +452,7 @@ export class Game {
     const W = this.weapon(a); const D = WEAPONS[W.id]; const mult = RARITY[W.rarity].mult;
     if (a.reloadT > 0 || a.fireT > 0) return false;
     if (W.mag <= 0) { this.startReload(a); if (!a.bot) this.audio.click(); return false; }
-    W.mag--; a.fireT = 1 / D.rps; if (D.burst) { a.burstLeft = a.burstLeft > 0 ? a.burstLeft - 1 : D.burst - 1; if (a.burstLeft <= 0 || W.mag <= 0) { a.burstLeft = 0; a.fireT += D.burstPause || 0.25; } } a.lastShot = this.time; Anim.kick(a, W.id); { const heavy = D.pellets > 1 || D.dmg > 50; this.overlay(a, 'A_Recoil', heavy ? 0.32 : 0.14, { add: true, w: heavy ? 0.8 : 0.3 }); }
+    W.mag--; a.netShots = (a.netShots || 0) + 1; a.fireT = 1 / D.rps; if (D.burst) { a.burstLeft = a.burstLeft > 0 ? a.burstLeft - 1 : D.burst - 1; if (a.burstLeft <= 0 || W.mag <= 0) { a.burstLeft = 0; a.fireT += D.burstPause || 0.25; } } a.lastShot = this.time; Anim.kick(a, W.id); { const heavy = D.pellets > 1 || D.dmg > 50; this.overlay(a, 'A_Recoil', heavy ? 0.32 : 0.14, { add: true, w: heavy ? 0.8 : 0.3 }); }
     const muzzle = V(); (a.ch.gun?.userData.muzzle || a.ch.root).getWorldPosition(muzzle);
     if (!a.bot && this.cam.fps && this.vgun) this.vgun.userData.muzzle.getWorldPosition(muzzle);
     const moving = this.feetSpeed(a) > 2 ? 1.6 : 1; const aiming = !a.bot && this.aiming ? (this.cam.fps ? 0.1 : 0.18) : 1; const air = a.onGround ? 1 : 1.8;
@@ -671,12 +761,13 @@ export class Game {
   }
   nearestCar(a, r = 3.2) { let best = null, bd = r; for (const c of this.cars) { if (c.dead || c.driver || c.flipped) continue; const d = c.pos.distanceTo(a.pos); if (d < bd) { bd = d; best = c; } } return best; }
   enterCar(a, c) {
+    if (c.kind === 'heli') return this.heliEnter(a, c); // mini-hélico (helico.js)
     if (c.kind) return this.rideEnter(a, c); // moto, skate (deuxroues.js)
     c.driver = a; a.inCar = c; a.ch.root.visible = false; a.vel.set(0, 0, 0);
     if (a === this.player) { this.announce('', c.def.nom || 'Voiture volée', '#fff', 1.5); this.audio.play('slam', c.pos, 0.6); this.cam.carYaw = c.yaw; }
   }
   exitCar(a, dead) {
-    const c = a.inCar; if (!c) return; if (c.kind) return this.rideExit(a, c, dead); c.driver = null; a.inCar = null; a.ch.root.visible = true;
+    const c = a.inCar; if (!c) return; if (c.kind === 'heli') return this.heliExit(a, c, dead); if (c.kind) return this.rideExit(a, c, dead); c.driver = null; a.inCar = null; a.ch.root.visible = true;
     const side = V(Math.cos(c.yaw), 0, -Math.sin(c.yaw)); const p = c.pos.clone().addScaledVector(side, c.W / 2 + 0.7);
     a.pos.copy(p); this.world.pushOut(a.pos, 0.35, a.pos.y); a.pos.y = this.world.groundY(a.pos.x, a.pos.z, c.pos.y + 0.5); a.yaw = c.yaw;
     if (a === this.player) { this.audio.engine(false); this.audio.play('slam', c.pos, 0.6); this.cam.yaw = c.yaw; }
@@ -693,6 +784,7 @@ export class Game {
     c.obj.visible = false; const j = this.world.dynamic.indexOf(c.col); if (j >= 0) this.world.dynamic.splice(j, 1);
   }
   updateCar(c, dt) {
+    if (c.kind === 'heli') return this.updateHeli(c, dt);
     if (c.kind) return this.updateRide(c, dt);
     if (c.dead) { c.dead -= dt; if (c.dead <= 0) { c.dead = 0; c.sunk = false; c.fallV = 0; [c.pos.x, c.pos.z, c.yaw] = c.spawn; c.pos.y = this.world.groundY(c.pos.x, c.pos.z); c.hp = c.maxHp; c.speed = 0; c.vel = null; c.obj.visible = true; this.world.dynamic.push(c.col); this.syncCar(c); } return; }
     const drv = c.driver;
@@ -785,15 +877,18 @@ export class Game {
   }
 
   // ---------------------------------------------------------------- boucle
-  update(dt) {
-    if (this.paused) return;
-    this.time += dt; this.input.poll(); this.pathBudget = 4;
+  // bg : en ligne, la partie continue derrière un menu (pause, armurerie) sans lire les commandes du joueur
+  update(dt, bg = false) {
+    if (this.paused && !bg) return;
+    this.time += dt; if (!bg) this.input.poll(); this.pathBudget = 4;
     this.lodT = (this.lodT || 0) - dt; if (this.lodT <= 0) { this.lodT = 0.4; this.updateLod(); }
-    if (!this.over) { this.updatePlayer(dt); }
+    if (!this.over && !bg) { this.updatePlayer(dt); }
     this.cullActors();
-    for (const a of this.actors) if (a.bot) this.updateBot(a, dt);
-    for (const a of this.actors) this.updateActor(a, dt);
+    for (const a of this.actors) if (a.bot && !a.puppet) this.updateBot(a, dt);
+    for (const a of this.actors) if (a.puppet) this.updatePuppet(a, dt); else this.updateActor(a, dt);
+    this.net?.tick(dt);
     for (const c of this.cars) this.updateCar(c, dt);
+    this.updateHeliShots(dt);
     this.updateMetro(dt); this.world.cass?.update(dt); this.world.flushNav();
     // 51 voitures : on n'affiche que celles assez proches (et l'ombre seulement de près)
     if ((this.carCullT = (this.carCullT || 0) - dt) <= 0) { this.carCullT = 0.3; const cp = this.camera.position;
@@ -811,7 +906,7 @@ export class Game {
     this.fx.update(dt);
     if (this.time > this.nextUi) { this.nextUi = this.time + 0.1; this.updateHud(); }
     this.mmT = (this.mmT || 0) - dt; if (this.mmT <= 0) { this.mmT = 1 / 20; this.drawMinimap(); } // minimap à 20 i/s
-    this.input.endFrame();
+    if (!bg) this.input.endFrame();
   }
 
   // ---------------------------------------------------------------- joueur
@@ -830,10 +925,11 @@ export class Game {
     if (I.pressed('view') && !scopedNow) { C.fps = !C.fps; this.save.settings.fps = C.fps; this.persist(); this.viewGun(); }
     if (I.pressed('map')) $('minimap').classList.toggle('big');
     if (I.pressed('inv')) this.toggleInv();
-    if (I.pressed('streak') && !this.thr?.spell) { if (a.rewards.length) this.useStreak(a); else this.toast(`Série : ${a.streak} — prochain bonus à ${STREAKS[a.team].find((r) => r.n > a.streak)?.n ?? '—'} éliminations`, '#ccc'); }
+    if (I.pressed('streak') && !this.thr?.spell && !a.inCar) { if (a.rewards.length) this.useStreak(a); else this.toast(`Série : ${a.streak} — prochain bonus à ${streakTiers(a.team, a.streak).find((r) => r.n > a.streak)?.n ?? '—'} éliminations`, '#ccc'); }
     if (I.pressed('pause')) { this.onPause?.(); return; }
     if (!a.alive) { a.respawnT -= dt; this.aiming = false; if (a.respawnT <= 0) this.respawn(a); return; }
     a.spawnProt = Math.max(0, (a.spawnProt || 0) - dt);
+    if (a.inCar?.kind === 'heli') { this.heliPlayer(a, I, dt); return; }
     if (a.inCar) {
       if (I.pressed('car') || I.pressed('interact')) this.exitCar(a);
       this.aiming = false; return;
@@ -897,8 +993,8 @@ export class Game {
     }
     const car = this.nearestCar(a, 3.4);
     if (car) {
-      const R = car.kind ? this.ridePrompt(a, car) : null; const quick = R ? R.quick : car.police ? a.team === 'ordre' : false;
-      prompt = `<b>${I.label('car')}</b> ${R ? R.text : quick ? 'Prendre la voiture de service' : 'Voler'} <span class="r">${car.kind === 'skate' ? '' : car.def.nom || ''}</span>`;
+      const R = car.kind === 'heli' ? this.heliPrompt(a, car) : car.kind ? this.ridePrompt(a, car) : null; const quick = R ? R.quick : car.police ? a.team === 'ordre' : false;
+      prompt = `<b>${I.label('car')}</b> ${R ? R.text : quick ? 'Prendre la voiture de service' : 'Voler'} <span class="r">${car.kind === 'skate' || car.kind === 'heli' ? '' : car.def.nom || ''}</span>`;
       if ((I.pressed('car')) && !a.channel) { if (quick) this.enterCar(a, car); else this.startChannel(a, R?.label || 'Crochetage…', R?.dur || 0.9, () => car.pos.distanceTo(a.pos) < 4 && !car.driver, () => this.enterCar(a, car)); }
     }
     if (!prompt) {
@@ -1227,6 +1323,7 @@ export class Game {
   // ---------------------------------------------------------------- bots
   updateBot(b, dt) {
     if (!b.alive || this.over) return;
+    if (b.inCar) return; // pilote d'un mini-hélico : c'est l'engin qui décide (helico.js)
     b.spawnProt = Math.max(0, (b.spawnProt || 0) - dt);
     const ai = b.ai; ai.think -= dt; ai.losT -= dt; ai.strafeT -= dt; ai.nadeT -= dt;
     b.wantSprint = false; b.wish = V();
@@ -1237,7 +1334,7 @@ export class Game {
       ai.losT = rnd(0.25, 0.45);
       let best = null, bd = 55;
       for (const t of this.actors) { if (!t.alive || t.team === b.team) continue; const d = t.pos.distanceTo(b.pos); if (d < bd) { bd = d; best = t; } }
-      if (best) { const e = b.pos.clone().add(V(0, 1.6, 0)), tp = best.pos.clone().add(V(0, 1.3, 0)); const vis = this.world.los(e, tp) && !this.smokeBlocks(e, tp) && !(best.inCar && bd > 25); if (vis) { if (ai.target !== best) ai.react = rnd(0.25, 0.55) + (best.slideT > 0 || best.rollT > 0 ? 0.3 : 0); ai.target = best; ai.seeT = 2.5; ai.los = true; ai.lastSeen = best.pos.clone(); } else ai.los = ai.target === best ? false : ai.los; }
+      if (best) { const e = b.pos.clone().add(V(0, 1.6, 0)), tp = best.pos.clone().add(V(0, 1.3, 0)); const vis = this.world.los(e, tp) && !this.smokeBlocks(e, tp) && !(best.inCar && best.inCar.kind !== 'heli' && bd > 25); if (vis) { if (ai.target !== best) ai.react = rnd(0.25, 0.55) + (best.slideT > 0 || best.rollT > 0 ? 0.3 : 0); ai.target = best; ai.seeT = 2.5; ai.los = true; ai.lastSeen = best.pos.clone(); } else ai.los = ai.target === best ? false : ai.los; }
       if (ai.target && (!ai.target.alive || ai.target.pos.distanceTo(b.pos) > 70)) { ai.target = null; ai.los = false; }
     }
     ai.seeT -= dt; if (ai.seeT <= 0 && !ai.los) ai.target = null;
@@ -1387,7 +1484,8 @@ export class Game {
       const only = !z.contested ? (n.ordre ? 'ordre' : n.civils ? 'civils' : null) : null;
       const was = z.threat; z.threat = !!(only && z.owner && only !== z.owner) || (z.contested && !!z.owner);
       if (z.threat && !was && z.owner === this.player.team && this.time - (z.warnT || -99) > 8) { z.warnT = this.time; this.toast(`⚠ ${z.id} est attaquée`, '#ff8080'); }
-      if (only && z.owner !== only) {
+      if (this.net?.guest) {} // invité : captures et score viennent du chef
+      else if (only && z.owner !== only) {
         let pk = 1; for (const a of this.actors) if (a.alive && a.team === only && a.perk?.cap > pk && !a.inCar && this.inZone(a, z)) pk = a.perk.cap;
         const rate = dt / 10 * (1 + 0.4 * (Math.min(3, n[only]) - 1)) * pk; // 10 s seul, plus vite à plusieurs ; une zone ennemie se neutralise d'abord
         if (z.cap && z.cap !== only) { z.p -= rate; if (z.p <= 0) { z.p = 0; z.cap = only; } } else { z.cap = only; z.p += rate; if (z.p >= 1) this.captureZone(z, only); }
@@ -1396,7 +1494,7 @@ export class Game {
       for (const m of z.mats) m.color?.set(col); if (z.mats[2].uniforms) z.mats[2].uniforms.c.value.set(z.contested ? (this.time * 3 | 0) % 2 ? '#fff' : col : col);
       z.flag.position.y = 6 + Math.sin(this.time * 2 + z.center[0]) * 0.2; z.flag.material.color.set(col);
     }
-    if (this.zoneTick >= 1) { this.zoneTick -= 1; for (const z of this.zoneState) if (z.owner) this.score[z.owner] += 1; }
+    if (this.zoneTick >= 1 && !this.net?.guest) { this.zoneTick -= 1; for (const z of this.zoneState) if (z.owner) this.score[z.owner] += 1; }
   }
   captureZone(z, team) {
     const prev = z.owner; z.owner = team; z.p = 1; this.fx.ring(V(z.center[0], this.world.groundY(z.center[0], z.center[1], (z.y ?? 0.17) + 0.5), z.center[1]), TEAMS[team].color);
@@ -1529,11 +1627,11 @@ export class Game {
     const yaw = C.yaw + C.kickY + shY + sw[0], pitch = C.pitch + C.kickP + shP + sw[1];
     const dir = V(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
     if (a.inCar) {
-      const c = a.inCar; C.carYaw = lerp_angle(C.carYaw ?? c.yaw, c.yaw, 1 - Math.exp(-dt * 3));
-      // la caméra regarde où on pointe à la souris, puis revient derrière la voiture
-      const look = this.input.st.mx || this.input.st.lookX ? 1 : 0; C.freeT = look ? 1.2 : Math.max(0, (C.freeT || 0) - dt); if (!C.freeT) C.yaw = lerp_angle(C.yaw, C.carYaw, 1 - Math.exp(-dt * 2.5)), C.pitch = lerp(C.pitch, -0.2, 1 - Math.exp(-dt * 2));
-      const piv = c.pos.clone().add(V(0, c.camH ?? c.H + 0.6, 0)); const back = (c.camBack ?? 5.5) + Math.abs(c.speed) * (c.kind ? 0.03 : 0.06);
-      const want = piv.clone().addScaledVector(dir, -back); const hit = this.world.ray(piv, want.clone().sub(piv).normalize(), back); if (hit) want.copy(piv).addScaledVector(want.sub(piv).normalize(), Math.max(1, hit.t - 0.3));
+      const c = a.inCar, heli = c.kind === 'heli'; C.carYaw = lerp_angle(C.carYaw ?? c.yaw, c.yaw, 1 - Math.exp(-dt * 3));
+      // la caméra regarde où on pointe à la souris, puis revient derrière la voiture (en mini-hélico, c'est la caméra qui oriente l'engin)
+      const look = this.input.st.mx || this.input.st.lookX ? 1 : 0; C.freeT = look ? 1.2 : Math.max(0, (C.freeT || 0) - dt); if (!C.freeT && !heli) C.yaw = lerp_angle(C.yaw, C.carYaw, 1 - Math.exp(-dt * 2.5)), C.pitch = lerp(C.pitch, -0.2, 1 - Math.exp(-dt * 2));
+      const piv = c.pos.clone().add(V(0, c.camH ?? c.H + 0.6, 0)); const back = heli ? (this.aiming ? 3.8 : c.camBack) + c.speed * 0.05 : (c.camBack ?? 5.5) + Math.abs(c.speed) * (c.kind ? 0.03 : 0.06);
+      if (heli) c.col.off = true; const want = piv.clone().addScaledVector(dir, -back); const hit = this.world.ray(piv, want.clone().sub(piv).normalize(), back); if (heli) c.col.off = false; if (hit) want.copy(piv).addScaledVector(want.sub(piv).normalize(), Math.max(1, hit.t - 0.3));
       cam.position.copy(want); cam.position.y += bobY; cam.lookAt(piv.clone().addScaledVector(dir, 6)); cam.rotateZ(shR);
     } else if (fps) {
       const eye = a.pos.clone().add(V(0, (a.slideT > 0 ? 0.95 : a.rollT > 0 ? 0.9 : EYE - (a.crouchK || 0) * 0.55) + bobY + C.dip, 0));
@@ -1782,12 +1880,16 @@ export class Game {
   }
   // barre des séries : progression vers chaque bonus, bonus prêt mis en avant avec la touche à presser
   drawStreakbar() {
-    const a = this.player, el = $('streakbar'); if (!el) return; const L = STREAKS[a.team];
+    const a = this.player, el = $('streakbar'); if (!el) return; const L = streakTiers(a.team, a.streak);
     const key = `${a.streak}|${a.rewards.join(',')}|${this.input.st.usingPad}|${this.streakUsed || ''}`; if (key === this._sbKey) return; this._sbKey = key;
     // 7 paliers : on montre les bonus prêts et les 3 prochains (le reste se devine dans le sac)
-    const locked = L.filter((r) => r.n > a.streak).slice(0, 3); let prev = 0; const cards = L.map((r) => { const ready = a.rewards.includes(r.id); const seg = r.n - prev, got = Math.max(0, Math.min(seg, a.streak - prev)); prev = r.n;
+    let prev = 0;
+    const shown = new Set(); for (const id of new Set(a.rewards)) { const c = L.filter((r) => r.id === id && r.n <= a.streak).pop() || L.find((r) => r.id === id); if (c) shown.add(c); }
+    if (shown.size > 4) { const keep = [...shown].sort((p, q) => q.n - p.n).slice(0, 4); shown.clear(); keep.forEach((c) => shown.add(c)); } // les 4 plus gros bonus prêts ; les autres restent utilisables
+    const locked = L.filter((r) => r.n > a.streak).slice(0, shown.size >= 4 ? 1 : 3); const cnt = (id) => a.rewards.filter((x) => x === id).length; const cards = L.map((r) => { const ready = shown.has(r); // un bonus prêt = une seule carte
+      const seg = r.n - prev, got = Math.max(0, Math.min(seg, a.streak - prev)); prev = r.n;
       const next = !ready && a.streak < r.n && L.find((x) => x.n > a.streak) === r;
-      return `<div class="sk${ready ? ' ready' : next ? ' next' : ''}${this.streakUsed === r.id ? ' used' : ''}">${ready ? `<span class="key">${this.input.label('streak')} ACTIVER</span>` : ''}<div class="ic">${svg(r.ico)}</div><div class="nm">${r.nom}</div><div class="pips">${Array.from({ length: seg }, (_, i) => `<i class="${i < got || ready ? 'f' : ''}"></i>`).join('')}</div></div>`; }).filter((c, i) => { const r = L[i]; return a.rewards.includes(r.id) || locked.includes(r) || this.streakUsed === r.id; });
+      return `<div class="sk${ready ? ' ready' : next ? ' next' : ''}${this.streakUsed === r.id ? ' used' : ''}">${ready ? `<span class="key">${this.input.label('streak')} ACTIVER</span>` : ''}<div class="ic">${svg(r.ico)}</div><div class="nm">${r.nom}${ready && cnt(r.id) > 1 ? ` ×${cnt(r.id)}` : ''}</div><div class="pips">${Array.from({ length: seg }, (_, i) => `<i class="${i < got || ready ? 'f' : ''}"></i>`).join('')}</div></div>`; }).filter((c, i) => { const r = L[i]; return shown.has(r) || locked.includes(r) || (this.streakUsed === r.id && r.n <= a.streak && !shown.size); });
     el.innerHTML = `<div class="count">${a.streak}<small>SÉRIE</small></div>` + cards.join(''); this.streakUsed = null;
   }
   medal(big, small, gold) { const el = $('medal'); if (!el) return; el.innerHTML = `<b>${svg(gold ? 'target' : 'skull')} ${big}</b><small>${small}</small>`; el.className = gold ? 'gold' : ''; void el.offsetWidth; el.classList.add('on'); clearTimeout(this._medT); this._medT = setTimeout(() => el.classList.remove('on'), 1600); }
@@ -1824,15 +1926,18 @@ export class Game {
     const W = this.weapon(a); if (W) { $('mag').textContent = a.reloadT > 0 ? '…' : W.mag; $('reserve').textContent = `/ ${WEAPONS[W.id].mag}`; $('wname').textContent = `${WEAPONS[W.id].name.toUpperCase()} · ${RARITY[W.rarity].name.toUpperCase()}`; $('wname').style.color = RARITY[W.rarity].color; }
     const pr = $('prompt'); if (this.ui.prompt && a.alive) { pr.innerHTML = this.ui.prompt; pr.classList.add('on'); } else pr.classList.remove('on');
     const ch = $('channel'); if (a.channel) { ch.classList.add('on'); ch.querySelector('i').style.width = (a.channel.t / a.channel.dur * 100) + '%'; ch.querySelector('span').textContent = a.channel.label; } else ch.classList.remove('on');
-    const car = $('car'); if (a.inCar) { car.classList.add('on'); $('kmh').textContent = Math.round(Math.abs(a.inCar.speed) * 3.6); $('carhp').style.width = (a.inCar.hp / a.inCar.maxHp * 100) + '%'; } else car.classList.remove('on');
+    const car = $('car'); if (a.inCar) { car.classList.add('on'); $('kmh').textContent = Math.round(Math.abs(a.inCar.speed) * 3.6); $('carhp').style.width = (a.inCar.hp / a.inCar.maxHp * 100) + '%'; this.heliHud(a.inCar); } else car.classList.remove('on');
     // réticule : s'ouvre avec la dispersion
     const D = W ? WEAPONS[W.id] : null; const sp = this.feetSpeed(a);
     const gap = D ? 4 + D.spread * 260 * (sp > 2 ? 1.6 : 1) * (this.aiming ? (this.cam.fps ? 0.1 : 0.18) : 1) * (a.onGround ? 1 : 1.8) + (this.ui.crossKick || 0) * 8 : 6; this.ui.crossKick = 0;
-    $('cross').style.setProperty('--g', gap.toFixed(1) + 'px'); $('cross').style.display = (this.cam.fps && this.aiming && D?.scope) || a.inCar ? 'none' : '';
+    $('cross').style.setProperty('--g', gap.toFixed(1) + 'px'); $('cross').style.display = (this.cam.fps && this.aiming && D?.scope) || (a.inCar && a.inCar.kind !== 'heli') ? 'none' : '';
     // aide en bas de l'écran : selon le contexte (à pied, en véhicule, en visée) et le périphérique
     const kk = `${I.st.usingPad ? 1 : 0}|${a.inCar ? (a.inCar.kind || 'car') : ''}|${this.aiming && D?.scope ? 's' : ''}|${a.team}`;
     if (kk !== this._keysK) { this._keysK = kk; const P = I.st.usingPad, k = (x) => `<kbd>${x}</kbd>`;
-      $('keys').innerHTML = a.inCar
+      $('keys').innerHTML = a.inCar?.kind === 'heli'
+        ? (P ? `${k('✕')} monter · ${k('○')} descendre · ${k('L3')} turbo · ${k('R2')} mitrailleuse · ${k('R1')} arsenal · ${k('→')} changer · ${k('□')} sortir`
+          : `${k('Espace')} monter · ${k('Ctrl')}${k('C')} descendre · ${k('Maj')} turbo · ${k('Clic')} mitrailleuse · ${k('G')} arsenal · ${k('X')} changer · ${k('F')} sortir`)
+        : a.inCar
         ? (P ? `${k('R2')} accélérer · ${k('L2')} freiner · ${k('✕')} ${a.inCar.kind === 'skate' ? 'ollie' : 'frein à main'} · ${k('□')} descendre${a.inCar.kind === 'skate' ? '' : ` · ${k('↓')} klaxon`}`
           : `${k('Z')}${k('S')} avancer / freiner · ${k('Espace')} ${a.inCar.kind === 'skate' ? 'ollie' : 'frein à main'} · ${k('F')} descendre${a.inCar.kind === 'skate' ? '' : ` · ${k('H')} klaxon`}`)
         : this.aiming && D?.scope
@@ -1846,7 +1951,7 @@ export class Game {
     const all = this.actors.filter((x) => !x.temp || !x.gone).sort((p, q) => contrib(q) - contrib(p) || q.stats.k - p.stats.k || (p === a ? -1 : q === a ? 1 : 0));
     const i = all.indexOf(a), from = Math.max(0, Math.min(i - 3, all.length - 7)), rows = all.slice(from, from + 7);
     const esc = (t) => String(t).replace(/[<&]/g, '');
-    const next = STREAKS[a.team].find((r) => r.n > a.streak);
+    const next = streakTiers(a.team, a.streak).find((r) => r.n > a.streak);
     const ready = a.rewards.length ? `<span class="rdy">${svg(this.streakDef(a, a.rewards[a.rewards.length - 1]).ico)} ${this.streakDef(a, a.rewards[a.rewards.length - 1]).nom} · ${this.input.label('streak')}</span>` : '';
     el.innerHTML = `<div class="top"><div class="kills">${svg('skull')} ${a.stats.k}<small>ÉLIM.</small></div><div class="pos">#${i + 1}<small>SUR ${all.length}</small></div></div>`
       + `<div class="sub"><span>Assist. <b>${a.stats.a}</b></span><span>Captures <b>${a.stats.cap}</b></span><span>Saccage <b>${a.stats.sac}</b></span></div>`
@@ -1908,6 +2013,7 @@ export class Game {
   }
 }
 Object.assign(Game.prototype, rideMethods);
+Object.assign(Game.prototype, heliMethods);
 function lerp_angle(a, b, t) { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a + d * t; }
 installThrows(Game);
 installSeries(Game);
