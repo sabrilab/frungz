@@ -110,7 +110,7 @@ async function loadAll() {
   root.traverse((o) => { if (!o.isMesh) return; const n = o.name || ''; if (QN !== 'haut' && /leaf/.test(n)) o.castShadow = false; if (QN === 'bas' && /decor_lointain/.test(n)) o.visible = false; });
   const tw = performance.now(); world = new World(gp, ground); console.log('monde prêt en', (performance.now() - tw).toFixed(0), 'ms'); window.__world = world; window.__ground = ground;
   const tc = performance.now(); world.cass = createCassables({ nodes: cassables, scene, world, fx, audio }); world.metro = createMetro({ rame, gp, audio }); world.cass.onBreak((e, by, d) => game?.onCassable(e, by, d)); console.log('cassables', world.cass.list.length, 'fusionnés en', world.cass.merged.length, 'maillages,', (performance.now() - tc).toFixed(0), 'ms');
-  night = createNight({ scene, sun, hemi, renderer, world, mapRoot: root, fx, quality: QN }); night.set(!!save.settings.night);
+  night = createNight({ scene, sun, hemi, renderer, world, mapRoot: root, fx, quality: QN, getPost: () => composer }); night.set(!!save.settings.night); window.__night = night;
   try { lobby = createLobby({ scene, camera, world, Q }); lobby.show(!game); window.__lobby = lobby; $('menu').classList.add('ready'); } catch (e) { console.warn('salon 3D indisponible', e); }
   renderMenu();
   $('loading').classList.add('hidden'); $('play').disabled = false;

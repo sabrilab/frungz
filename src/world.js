@@ -9,11 +9,19 @@ export function setupScene(renderer) {
   const scene = new THREE.Scene();
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { top: { value: new THREE.Color('#4f86c9') }, mid: { value: new THREE.Color('#a9c8e6') }, hor: { value: new THREE.Color('#f6d7b0') }, sunDir: { value: new THREE.Vector3() } },
+    uniforms: { top: { value: new THREE.Color('#4f86c9') }, mid: { value: new THREE.Color('#a9c8e6') }, hor: { value: new THREE.Color('#f6d7b0') }, sunDir: { value: new THREE.Vector3() }, night: { value: 0 } },
     vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); gl_Position.z = gl_Position.w; }',
-    fragmentShader: `uniform vec3 top, mid, hor, sunDir; varying vec3 vP;
-      void main(){ float h = max(vP.y, 0.0); vec3 c = mix(hor, mid, smoothstep(0.0, 0.18, h)); c = mix(c, top, smoothstep(0.18, 0.8, h));
-        float s = max(dot(normalize(vP), sunDir), 0.0); c += vec3(1.0,0.75,0.45) * (pow(s, 8.0) * 0.35 + pow(s, 600.0) * 4.0);
+    fragmentShader: `uniform vec3 top, mid, hor, sunDir; uniform float night; varying vec3 vP;
+      float hash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+      void main(){ vec3 d = normalize(vP); float h = max(d.y, 0.0); vec3 c = mix(hor, mid, smoothstep(0.0, 0.18, h)); c = mix(c, top, smoothstep(0.18, 0.8, h));
+        float s = max(dot(d, sunDir), 0.0);
+        if (night < 0.5) c += vec3(1.0,0.75,0.45) * (pow(s, 8.0) * 0.35 + pow(s, 600.0) * 4.0);
+        else {
+          // nuit : lune nette avec halo froid, étoiles discrètes qui s'effacent dans la lueur de la ville
+          c += vec3(0.55, 0.65, 0.9) * (pow(s, 40.0) * 0.18 + pow(s, 3.0) * 0.04) + vec3(0.95, 0.97, 1.0) * smoothstep(0.99955, 0.9997, s) * 1.6;
+          vec3 g = floor(d * 260.0); float st = hash(g); float tw = 0.75 + 0.25 * sin(st * 90.0);
+          c += vec3(0.85, 0.9, 1.0) * step(0.9965, st) * smoothstep(0.12, 0.5, h) * tw * (1.0 - step(0.995, s)) * 0.9;
+        }
         if (vP.y < 0.0) c = hor * 0.9; gl_FragColor = vec4(c, 1.0); }`,
   });
   const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 16), skyMat); sky.frustumCulled = false; scene.add(sky);
