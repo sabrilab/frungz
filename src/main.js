@@ -10,6 +10,7 @@ import { createCassables } from './cassables.js';
 import { createMetro } from './metro.js';
 import { Game } from './game.js';
 import { createPreview } from './preview.js';
+import { applyRealism, skyEnvironment, realismUniforms } from './realisme.js';
 import { TEAMS, WEAPONS, UPGRADES, SKIN_NAMES } from './data.js';
 import { svg } from './icons.js';
 
@@ -55,7 +56,8 @@ $('app').appendChild(renderer.domElement);
 const { scene, sun, hemi, followShadow } = setupScene(renderer);
 sun.shadow.mapSize.set(QS.shadowSize, QS.shadowSize); sun.castShadow = QS.shadows; scene.fog.near = QS.fog[0]; scene.fog.far = QS.fog[1];
 const pm = new THREE.PMREMGenerator(renderer);
-import('three/examples/jsm/environments/RoomEnvironment.js').then(({ RoomEnvironment }) => { scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.35; });
+// reflets : un vrai ciel (dégradé + soleil) plutôt qu'une pièce d'intérieur
+try { scene.environment = skyEnvironment(renderer, { sunDir: sun.position.clone().normalize().toArray() }); scene.environmentIntensity = 0.6; } catch (e) { console.warn('ciel de reflets indisponible', e); }
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, QS.far); scene.add(camera);
 // post-traitement : bloom léger (éclairs de bouche, néons, soleil), étalonnage et vignette dans un seul passage final
 let composer = null;
@@ -64,6 +66,12 @@ async function setupPost() {
   const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }, { ShaderPass }] = await Promise.all([
     import('three/examples/jsm/postprocessing/EffectComposer.js'), import('three/examples/jsm/postprocessing/RenderPass.js'), import('three/examples/jsm/postprocessing/UnrealBloomPass.js'), import('three/examples/jsm/postprocessing/OutputPass.js'), import('three/examples/jsm/postprocessing/ShaderPass.js')]);
   composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, camera));
+  // garde-fou : un seul pixel invalide (NaN ou infini, par exemple un éclat trop fort près d'une explosion) est étalé par le flou du bloom
+  // et noircit un grand rectangle de l'écran pendant quelques images ; on les neutralise et on borne la luminosité avant le bloom
+  composer.addPass(new ShaderPass({ uniforms: { tDiffuse: { value: null } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+      void main(){ vec3 c = texture2D(tDiffuse, vUv).rgb; if (!(c.r >= 0.0 && c.r < 1e4)) c.r = c.r > 0.0 ? 16.0 : 0.0; if (!(c.g >= 0.0 && c.g < 1e4)) c.g = c.g > 0.0 ? 16.0 : 0.0; if (!(c.b >= 0.0 && c.b < 1e4)) c.b = c.b > 0.0 ? 16.0 : 0.0;
+        gl_FragColor = vec4(min(c, vec3(16.0)), 1.0); }` }));
   const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.35, 0.5, 0.92); composer.addPass(bloom);
   composer.addPass(new OutputPass());
   // étalonnage : légère courbe en S, ombres un peu froides, hautes lumières chaudes, vignette douce
@@ -95,6 +103,8 @@ async function loadAll() {
   ]);
   $('loadtxt').textContent = 'Préparation du quartier…'; await new Promise((r) => setTimeout(r, 30));
   mapRoot = root; scene.add(root);
+  // matières réalistes (grain, salissures, coulures, chaussée mouillée par plaques) : sauf en qualité basse
+  if (QN !== 'bas' && !Q.has('noreal')) { try { applyRealism(root, { wet: 0.4 }); window.__real = realismUniforms; } catch (e) { console.warn('réalisme indisponible', e); } }
   // allègements selon la qualité : pas d'ombre des feuillages en moyenne, pas de décor lointain en basse (caché par le brouillard)
   root.traverse((o) => { if (!o.isMesh) return; const n = o.name || ''; if (QN !== 'haut' && /leaf/.test(n)) o.castShadow = false; if (QN === 'bas' && /decor_lointain/.test(n)) o.visible = false; });
   const tw = performance.now(); world = new World(gp, ground); console.log('monde prêt en', (performance.now() - tw).toFixed(0), 'ms'); window.__world = world; window.__ground = ground;

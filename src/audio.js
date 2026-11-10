@@ -8,21 +8,38 @@ export function createAudio() {
   let hooked = false, lastT = -1, frozen = 0;
   // le navigateur suspend parfois le son (onglet caché, veille, casque débranché, Safari « interrupted ») : on le relance dès que possible
   const wake = () => { if (ctx && ctx.state !== 'running' && document.visibilityState === 'visible') ctx.resume().catch(() => {}); };
-  // chien de garde : contexte fermé, ou « running » mais horloge figée (sortie audio changée / perdue) → on reconstruit tout
+  // chien de garde, toutes les 1,5 s. Il écoute la vraie sortie (prise après le compresseur) et reconstruit tout le son si :
+  // contexte fermé, horloge figée (sortie audio changée / perdue), signal corrompu (NaN : un seul échantillon invalide
+  // rend le compresseur muet pour toujours) ou silence total alors que l'ambiance de rue tourne en boucle.
+  let tap = null, tapBuf = null, mute = 0, lastRebuild = 0, badge = null, off = 0; const journal = [];
+  const note = (m) => { journal.push(new Date().toISOString().slice(11, 19) + ' ' + m); if (journal.length > 40) journal.shift(); console.warn('[son]', m); };
   function watchdog() {
-    if (!ctx || document.visibilityState !== 'visible') { frozen = 0; return; }
-    if (ctx.state === 'closed') { rebuild(); return; }
-    if (ctx.state !== 'running') { frozen = 0; lastT = -1; return; }
-    if (ctx.currentTime === lastT) { if (++frozen >= 2) rebuild(); } else frozen = 0;
-    lastT = ctx.currentTime;
+    if (!ctx || document.visibilityState !== 'visible') { frozen = 0; mute = 0; off = 0; return; }
+    if (ctx.state === 'closed') { rebuild('contexte fermé'); return; }
+    if (ctx.state !== 'running') { frozen = 0; mute = 0; lastT = -1; if (++off >= 2) hint(true); return; }
+    off = 0; hint(false);
+    if (ctx.currentTime === lastT) { if (++frozen >= 2) rebuild('horloge figée'); return; } frozen = 0; lastT = ctx.currentTime;
+    if (!tap) return; tap.getFloatTimeDomainData(tapBuf); let bad = 0, peak = 0;
+    for (let i = 0; i < tapBuf.length; i++) { const v = tapBuf[i]; if (v !== v || v === Infinity || v === -Infinity) bad++; else if (v > peak) peak = v; else if (-v > peak) peak = -v; }
+    if (bad) { rebuild('signal corrompu'); return; }
+    if (peak === 0 && loops.town) { if (++mute >= 3) rebuild('silence total'); } else mute = 0;
   }
-  function rebuild() { const old = ctx; ctx = null; frozen = 0; lastT = -1; eng = null; for (const k in loops) delete loops[k]; active.length = 0; try { old.onstatechange = null; if (old.state !== 'closed') old.close().catch(() => {}); } catch {} init(); }
+  // le navigateur refuse parfois de relancer le son sans un vrai geste (clic, touche) : la manette ne compte pas. On le dit au joueur.
+  function hint(on) {
+    if (on && !badge) { badge = document.createElement('div'); badge.textContent = '🔇 Son en pause : clique dans le jeu ou appuie sur une touche du clavier'; badge.style.cssText = 'position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:9999;background:rgba(0,0,0,.78);color:#fff;font:600 14px system-ui,sans-serif;padding:8px 14px;border-radius:10px;pointer-events:none'; document.body.appendChild(badge); note('son suspendu par le navigateur (' + ctx.state + ')'); }
+    if (!on && badge) { badge.remove(); badge = null; note('son relancé'); }
+  }
+  function rebuild(why) {
+    const now = performance.now(); if (now - lastRebuild < 8000) return; lastRebuild = now; note('reconstruction : ' + why);
+    const old = ctx; ctx = null; tap = null; frozen = 0; mute = 0; lastT = -1; eng = null; rol = null; for (const k in loops) delete loops[k]; active.length = 0;
+    try { old.onstatechange = null; if (old.state !== 'closed') old.close().catch(() => {}); } catch {} init();
+  }
   function init() {
     if (ctx) { if (ctx.state !== 'running') ctx.resume().catch(() => {}); return; }
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     ctx.onstatechange = () => setTimeout(wake, 300);
     if (!hooked) { hooked = true; document.addEventListener('visibilitychange', wake); for (const ev of ['pointerdown', 'keydown', 'touchstart']) addEventListener(ev, wake, true); setInterval(() => { wake(); watchdog(); }, 1500); }
-    comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6; comp.connect(ctx.destination);
+    comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6; comp.connect(ctx.destination); tap = ctx.createAnalyser(); tap.fftSize = 2048; tapBuf = new Float32Array(2048); comp.connect(tap);
     master = ctx.createGain(); master.gain.value = 0.8; master.connect(comp);
     sfx = ctx.createGain(); sfx.connect(master);
     // réverbération de rue (réponse impulsionnelle générée : réflexions des façades)
@@ -150,5 +167,5 @@ export function createAudio() {
   function firework(pos) { if (!ctx) return; const out = spatial(pos, 1.2, 30); if (!out) return; const t = ctx.currentTime; noise(out, t, 0.5, 'lowpass', 1600, 100, 0.8, 1.2); tone(out, t, 0.35, 160, 40, 0.9); for (let i = 0; i < 9; i++) noise(out, t + 0.25 + Math.random() * 0.8, 0.04, 'highpass', 5000, 3000, 1, 0.35); }
   // drone : bourdonnement
   function buzz(pos, dur = 1) { if (!ctx) return; const out = spatial(pos, 0.5, 12); if (!out) return; const t = ctx.currentTime; tone(out, t, dur, 190, 170, 0.2, 'sawtooth'); }
-  return { whistle, crack, firework, buzz, init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state }) };
+  return { whistle, crack, firework, buzz, init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state, journal: journal.slice() }), _ctx: () => ctx };
 }
