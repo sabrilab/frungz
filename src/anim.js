@@ -16,7 +16,7 @@ const _hip = V3(), _knee = V3(), _dir = V3(), _pole = V3(), _v = V3(), _w = V3()
 const SPINE = ['Body', 'Hips', 'Abdomen', 'Torso', 'Chest', 'Neck', 'Head'];
 const iBody = 0, iAbdomen = 2, iTorso = 3, iChest = 4, iNeck = 5, iHead = 6;
 // force du coup de recul par arme (vitesse donnée au ressort)
-const KICK = { pistol: 1.5, revolver: 2.6, smg: 0.9, rifle: 1.15, shotgun: 3.6, sniper: 4.2 };
+const KICK = { pistol: 1.5, revolver: 2.6, pistolet_lourd: 2.2, pistolet_auto: 0.8, smg: 0.9, pm: 0.85, compact: 0.8, rifle: 1.15, carabine: 1.05, rafale: 1.1, fusil_lourd: 1.7, shotgun: 3.6, pompe_court: 3.8, semi_auto: 2.8, canon_scie: 4.4, dmr: 2.6, sniper: 4.2, calibre50: 6, mitrailleuse: 1.2 };
 
 // ressort amorti (intégration semi-implicite, stable aux grands pas) : f en Hz, z = amortissement (1 = critique, < 1 = dépasse puis revient)
 function spring(s, target, f, z, dt) {

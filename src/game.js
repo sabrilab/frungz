@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { makeCharacter, attachGun, gunInstance, chars, tintTeam, backPoint } from './assets.js';
-import { TEAMS, WEAPONS, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COMMERCE_TYPES, SHOP_NAMES, SKIN_NAMES } from './data.js';
+import { TEAMS, WEAPONS, CLASSES, classOf, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COMMERCE_TYPES, SHOP_NAMES, SKIN_NAMES } from './data.js';
 import { shopCase, lootMesh, beam, socle, baseSign, receleur, barricade, BARRICADE, grenadeMesh, policeBadge, brassard, headMarker, textTex } from './props.js';
 import { pointInPoly } from './world.js';
 import * as Anim from './anim.js';
@@ -151,7 +151,8 @@ export class Game {
   spawnActor(team, skin, bot, name) {
     const ch = makeCharacter(skin); this.root.add(ch.root);
     const a = { team, skin, bot, name, ch, pos: V(), vel: V(), yaw: 0, pitch: 0, hp: 100, armor: 0, alive: false, onGround: true, slots: [], cur: 0, fireT: 0, reloadT: 0, bag: [], bagKg: 0, mats: 30, nades: 2, momentum: 0, slideT: 0, rollT: 0, climb: null, respawnT: 0, lastHit: 0, anim: null, inCar: null, stats: { k: 0, d: 0, a: 0, cap: 0, sac: 0 }, streak: 0, rewards: [], spotted: 0, gasT: 0, channel: null, cash: 0, regenT: 0, id: this.actors.length };
-    a.cap = 20 + (bot ? 8 : (this.save.upgrades.sac || 0) * 8);
+    a.cls = bot ? pick(Object.keys(CLASSES[team])) : (this.save.cls?.[team] || Object.keys(CLASSES[team])[0]); a.perk = classOf(team, a.cls).perk;
+    a.cap = 20 + (bot ? 8 : (this.save.upgrades.sac || 0) * 8) + (a.perk.kg || 0);
     // tenue : police nationale (bleu marine, brassard orange, POLICE dans le dos) ou civils loufoques
     tintTeam(ch.model, skin, team);
     if (team === 'ordre') {
@@ -167,14 +168,17 @@ export class Game {
     a.ai = { path: null, pi: 0, goal: null, task: null, think: Math.random() * 2, target: null, seeT: 0, react: 0, strafe: 1, strafeT: 0, stuck: 0, lastPos: V(), nadeT: rnd(8, 20), los: false, losT: 0 };
     this.actors.push(a); return a;
   }
+  // équipement de la classe : arme secondaire + arme principale (celle choisie à l'armurerie remplace celle de la classe)
   loadout(a) {
-    a.slots = [{ id: 'pistol', rarity: 'commun', mag: WEAPONS.pistol.mag }];
-    if (a.bot) { const pool = a.team === 'ordre' ? ['smg', 'rifle', 'shotgun', 'rifle'] : ['smg', 'shotgun', 'rifle', 'smg']; const id = pick(pool); a.slots.push({ id, rarity: rollRarity(), mag: WEAPONS[id].mag }); a.cur = 1; }
-    else { const prim = this.save.primary && this.save.unlocked.includes(this.save.primary) ? this.save.primary : null; if (prim && prim !== 'pistol') { a.slots.push({ id: prim, rarity: 'rare', mag: WEAPONS[prim].mag }); a.cur = 1; } else a.cur = 0; }
+    const K = classOf(a.team, a.cls); a.perk = K.perk;
+    a.slots = [{ id: K.secondary, rarity: 'commun', mag: WEAPONS[K.secondary].mag }];
+    let prim = K.primary;
+    if (!a.bot) { const own = this.save.primary; if (own && own !== 'pistol' && this.save.unlocked.includes(own) && WEAPONS[own]) { if (WEAPONS[own].cat === 'pistolet') a.slots[0] = { id: own, rarity: 'rare', mag: WEAPONS[own].mag }; else prim = own; } }
+    a.slots.push({ id: prim, rarity: a.bot ? rollRarity() : 'rare', mag: WEAPONS[prim].mag }); a.cur = 1;
     this.equip(a, a.cur, true);
   }
   equip(a, i, silent) {
-    if (!a.slots[i]) return; a.cur = i; a.reloadT = 0; a.fireT = Math.max(a.fireT, 0.25);
+    if (!a.slots[i]) return; a.cur = i; a.reloadT = 0; a.burstLeft = 0; a.fireT = Math.max(a.fireT, 0.25);
     attachGun(a.ch, a.slots[i].id); a.ch.meshes = null; a.lodShadow = undefined; const rc = RARITY[a.slots[i].rarity].color;
     a.ch.gun.traverse((o) => { if (o.isMesh && a.slots[i].rarity !== 'commun') { o.material = o.material.map ? o.material : (Array.isArray(o.material) ? o.material.map((m) => tint(m, rc)) : tint(o.material, rc)); } });
     if (a.overs) a.overs = a.overs.filter((o) => o.name !== 'U_Reload'); if (!silent) this.overlay(a, 'U_Draw', 0.45, { busy: true });
@@ -184,7 +188,8 @@ export class Game {
   respawn(a, first) {
     const sp = pick(this.world.spawns[a.team].slice(0, Math.max(20, this.opts.teamSize))); const [x, z] = this.world.randomFree(sp.x, sp.z, this.actors.length > 50 ? 4 : 2.5);
     a.pos.set(x, this.world.groundY(x, z), z); a.vel.set(0, 0, 0); a.yaw = a.team === 'ordre' ? Math.PI / 2 : -Math.PI / 2; a.pitch = 0;
-    a.hp = 100; a.armor = a.bot ? (a.team === 'ordre' ? 50 : 25) : 25 * (this.save.upgrades.gilet || 0); a.alive = true; a.bag = []; a.bagKg = 0; a.nades = 2; a.frags = 1; a.momentum = 0; a.slideT = a.rollT = 0; a.climb = null; a.gasT = 0; a.channel = null;
+    if (!a.bot && this.save.cls?.[a.team] && this.save.cls[a.team] !== a.cls) { a.cls = this.save.cls[a.team]; a.cap = 20 + (this.save.upgrades.sac || 0) * 8 + (classOf(a.team, a.cls).perk.kg || 0); } const K = classOf(a.team, a.cls);
+    a.hp = 100; a.armor = Math.min(150, K.armor + (a.bot ? 0 : 25 * (this.save.upgrades.gilet || 0))); a.alive = true; a.bag = []; a.bagKg = 0; a.nades = K.nades; a.frags = K.frags; a.momentum = 0; a.slideT = a.rollT = 0; a.climb = null; a.gasT = 0; a.channel = null;
     if (!a.bot) a.mats = Math.max(a.mats, 30 + 20 * (this.save.upgrades.mats || 0)); else a.mats = 40;
     a.ch.root.visible = true; a.ch.model.rotation.x = 0; a.overs = null; a.landT = a.stopT = 0; this.loadout(a); this.setAnim(a, a.ch.actions.MX_Idle ? 'LOCO' : 'Idle_Gun', 0);
     a.ai.path = null; a.ai.task = null; a.ai.think = 0; a.spawnProt = 2.5;
@@ -210,6 +215,7 @@ export class Game {
     let dmg = amount; if (t.armor > 0) { const ab = Math.min(t.armor, dmg * 0.6); t.armor -= ab; dmg -= ab; }
     t.hp -= dmg; t.lastHit = this.time; t.regenT = 5;
     if (by && by !== t) (t.hitBy ||= new Map()).set(by, this.time);
+    if (by?.perk?.spot && by !== t) t.spotMark = this.time + by.perk.spot; // atout repérage : la cible reste marquée pour tout le camp
     if (by) { t.ai.target = by; t.ai.seeT = 1; if (!t.bot) this.hurtDir(by.pos); if (by.bot === false || t.bot === false) by.spotted = this.time; }
     if (!t.bot) { this.cam.trauma = Math.min(1, this.cam.trauma + 0.25 + amount / 120); this.input.rumble(0.6, 0.3, 120); }
     if (by === this.player && t !== this.player) {
@@ -229,7 +235,7 @@ export class Game {
     if (t.bag.length) { this.dropPile(t.pos, t.bag.splice(0)); t.bagKg = 0; this.carryMesh(t); }
     t.streak = 0;
     if (t.hitBy) { for (const [h, at] of t.hitBy) if (h !== by && h !== t && h.team !== t.team && this.time - at < 8) { h.stats.a++; if (h === this.player) this.toast('+ Assistance', '#cfe3ff'); } t.hitBy.clear(); }
-    const w = t.slots[t.cur]; if (w && w.id !== 'pistol' && (Math.random() < 0.6 || !t.bot)) this.dropPile(t.pos.clone().add(V(rnd(-0.6, 0.6), 0, rnd(-0.6, 0.6))), [], { id: w.id, rarity: w.rarity });
+    const w = t.slots[t.cur]; if (w && WEAPONS[w.id].cat !== 'pistolet' && (Math.random() < 0.6 || !t.bot)) this.dropPile(t.pos.clone().add(V(rnd(-0.6, 0.6), 0, rnd(-0.6, 0.6))), [], { id: w.id, rarity: w.rarity });
     if (by && by !== t) {
       by.stats.k++; this.addStreak(by); if (by.bot && by.alive && Math.random() < 0.12) this.overlay(by, 'U_FistPump', 1.2, { busy: true });
       if (by === this.player) this.maybeKillcam(t, opts);
@@ -263,7 +269,7 @@ export class Game {
       for (const tr of o.clip.tracks) { const b = B[tr.bone]; if (!b) continue; _oq.fromArray(tr.ip.evaluate(tt)); if (o.add) b.quaternion.multiply(_oi.identity().slerp(_oq, k)); else b.quaternion.slerp(_oq, k); }
     }
   }
-  pistolStance(a) { const id = this.weapon(a)?.id; return (id === 'pistol' || id === 'revolver') && !!a.ch.actions.MXP_Idle; }
+  pistolStance(a) { const id = this.weapon(a)?.id; return WEAPONS[id]?.hand === 'pistol' && !!a.ch.actions.MXP_Idle; }
   scoreEvent(team, pts, why, by) {
     if (this.over || !pts) return; this.score[team] += pts; if (by) by.stats.sac += pts;
     if (by === this.player) this.toast(`+${pts} pts équipe · ${why}`, TEAMS[team].color);
@@ -342,7 +348,7 @@ export class Game {
     const W = this.weapon(a); const D = WEAPONS[W.id]; const mult = RARITY[W.rarity].mult;
     if (a.reloadT > 0 || a.fireT > 0) return false;
     if (W.mag <= 0) { this.startReload(a); if (!a.bot) this.audio.click(); return false; }
-    W.mag--; a.fireT = 1 / D.rps; a.lastShot = this.time; Anim.kick(a, W.id); { const heavy = D.pellets > 1 || D.dmg > 50; this.overlay(a, 'A_Recoil', heavy ? 0.32 : 0.14, { add: true, w: heavy ? 0.8 : 0.3 }); }
+    W.mag--; a.fireT = 1 / D.rps; if (D.burst) { a.burstLeft = a.burstLeft > 0 ? a.burstLeft - 1 : D.burst - 1; if (a.burstLeft <= 0 || W.mag <= 0) { a.burstLeft = 0; a.fireT += D.burstPause || 0.25; } } a.lastShot = this.time; Anim.kick(a, W.id); { const heavy = D.pellets > 1 || D.dmg > 50; this.overlay(a, 'A_Recoil', heavy ? 0.32 : 0.14, { add: true, w: heavy ? 0.8 : 0.3 }); }
     const muzzle = V(); (a.ch.gun?.userData.muzzle || a.ch.root).getWorldPosition(muzzle);
     if (!a.bot && this.cam.fps && this.vgun) this.vgun.userData.muzzle.getWorldPosition(muzzle);
     const moving = this.feetSpeed(a) > 2 ? 1.6 : 1; const aiming = !a.bot && this.aiming ? (this.cam.fps ? 0.1 : 0.18) : 1; const air = a.onGround ? 1 : 1.8;
@@ -353,7 +359,7 @@ export class Game {
     this.fx.muzzle(muzzle, D.pellets > 1 ? 1.4 : 1);
     if (a !== this.player) this.notePing(a, muzzle);
     // douille éjectée à droite de l'arme (pas pour le revolver, qui garde ses douilles)
-    if (D.id !== 'revolver' && (a === this.player || a.pos.distanceToSquared(this.player.pos) < 625)) { const yw = a === this.player ? this.cam.yaw : a.yaw; const ep = V(); const vg = a === this.player && this.cam.fps && this.vgun; if (vg) { const B = this.vgunBB; ep.set(B ? (B.min.x + B.max.x) / 2 + 0.03 : 0.03, B ? B.max.y - 0.02 : 0.05, B ? B.min.z * 0.3 : -0.1); this.vgun.localToWorld(ep); } else (a.ch.gun || a.ch.root).getWorldPosition(ep); /* en vue subjective : fenêtre d’éjection, sur le dessus de l’arme */ this.fx.casing(ep, V(-Math.cos(yw), 0, Math.sin(yw)), D.pellets > 1); }
+    if (D.casings && (a === this.player || a.pos.distanceToSquared(this.player.pos) < 625)) { const yw = a === this.player ? this.cam.yaw : a.yaw; const ep = V(); const vg = a === this.player && this.cam.fps && this.vgun; if (vg) { const B = this.vgunBB; ep.set(B ? (B.min.x + B.max.x) / 2 + 0.03 : 0.03, B ? B.max.y - 0.02 : 0.05, B ? B.min.z * 0.3 : -0.1); this.vgun.localToWorld(ep); } else (a.ch.gun || a.ch.root).getWorldPosition(ep); /* en vue subjective : fenêtre d’éjection, sur le dessus de l’arme */ this.fx.casing(ep, V(-Math.cos(yw), 0, Math.sin(yw)), D.pellets > 1); }
     if (a === this.player) {
       const k = D.kick * (this.aiming ? 0.7 : 1); this.cam.kickP += k * rnd(0.8, 1.2); this.cam.kickY += k * rnd(-0.4, 0.4); this.cam.trauma = Math.min(1, this.cam.trauma + k * 2.2);
       this.input.rumble(D.pellets > 1 || D.dmg > 50 ? 0.8 : 0.25, 0.5, 60); this.ui.crossKick = 1;
@@ -368,7 +374,7 @@ export class Game {
       if (ha) {
         end = origin.clone().addScaledVector(d, ha.t);
         const falloff = ha.t > D.range * 0.5 ? lerp(1, 0.6, (ha.t - D.range * 0.5) / (D.range * 0.5)) : 1;
-        this.damage(ha.a, D.dmg * mult * falloff * (ha.head ? (D.id === 'shotgun' ? 1.5 : 2) : 1), a, { head: ha.head, weapon: W.id });
+        this.damage(ha.a, D.dmg * mult * falloff * (ha.head ? D.hs : 1), a, { head: ha.head, weapon: W.id });
         this.fx.impact(end, [-d.x, -d.y, -d.z], 'flesh');
       } else if (hw) {
         end = origin.clone().addScaledVector(d, hw.t);
@@ -381,16 +387,17 @@ export class Game {
     return true;
   }
   hitWorld(a, hw, d, end, D, mult) {
+        const brk = D.dmg * mult * D.veh * (a.perk?.casse || 1); // armes lourdes et atout « casse » : vitrines, barricades, voitures, mobilier
         const c = hw.c; let kind = 'world';
-        if (c?.vit) { kind = this.hitVitrine(c.vit, D.dmg * mult, a) ? 'glass' : 'metal'; }
-        else if (c?.wall) { this.hitWall(c.wall, D.dmg * mult, a); kind = c.wall.team === 'ordre' ? 'metal' : 'world'; }
-        else if (c?.car) { this.hitCar(c.car, D.dmg * mult * 0.6, a); kind = 'metal'; }
-        else if (c?.cassable && this.world.cass) { const e = this.world.cass.byId.get(c.cassable); if (e) this.world.cass.damage(e, D.dmg * mult, d, a); kind = /lampadaire|feu|dab|parcmetre|vauban|potelet|panneau|distributeur|scooter/.test(c.tag || '') ? 'metal' : /abribus|kiosque|colonne_verre/.test(c.tag || '') ? 'glass' : 'world'; }
+        if (c?.vit) { kind = this.hitVitrine(c.vit, brk, a) ? 'glass' : 'metal'; }
+        else if (c?.wall) { this.hitWall(c.wall, brk, a); kind = c.wall.team === 'ordre' ? 'metal' : 'world'; }
+        else if (c?.car) { this.hitCar(c.car, brk * 0.6, a); kind = 'metal'; }
+        else if (c?.cassable && this.world.cass) { const e = this.world.cass.byId.get(c.cassable); if (e) this.world.cass.damage(e, brk, d, a); kind = /lampadaire|feu|dab|parcmetre|vauban|potelet|panneau|distributeur|scooter/.test(c.tag || '') ? 'metal' : /abribus|kiosque|colonne_verre/.test(c.tag || '') ? 'glass' : 'world'; }
         else if (c && (c.tag === 'voiture' || c.tag === 'lampadaire' || c.tag === 'fourgon')) kind = 'metal';
     if (a === this.player || end.distanceTo(this.player.pos) < 40) this.fx.impact(end, hw.n, kind);
   }
   setUpper(a) { const s = a.ch.actions.Idle_Gun_Shoot; }
-  startReload(a) { const W = this.weapon(a); if (a.reloadT > 0 || W.mag >= WEAPONS[W.id].mag) return; a.reloadT = WEAPONS[W.id].reload; this.overlay(a, 'U_Reload', a.reloadT, { busy: true }); if (!a.bot) this.audio.reload(); }
+  startReload(a) { const W = this.weapon(a); if (a.reloadT > 0 || W.mag >= WEAPONS[W.id].mag) return; a.burstLeft = 0; a.reloadT = WEAPONS[W.id].reload * (a.perk?.reload || 1); this.overlay(a, 'U_Reload', a.reloadT, { busy: true }); if (!a.bot) this.audio.reload(); }
 
   // ---------------------------------------------------------------- vitrines
   hitVitrine(v, dmg, by) {
@@ -825,7 +832,7 @@ export class Game {
     this.aiming = !this.thr && (I.down('aim') || I.st.triggerL > 0.3) && !a.climb && a.rollT <= 0;
     this.updateScope(dt, I, a);
     const W = this.weapon(a), D = WEAPONS[W.id];
-    const wantFire = D.auto ? (I.down('fire') || I.st.triggerR > 0.4) : (I.pressed('fire') || (I.st.triggerR > 0.4 && !this._trigWas));
+    const wantFire = (D.burst && a.burstLeft > 0) || (D.auto ? (I.down('fire') || I.st.triggerR > 0.4) : (I.pressed('fire') || (I.st.triggerR > 0.4 && !this._trigWas)));
     this._trigWas = I.st.triggerR > 0.4;
     if (wantFire && !this.thr && (this._thrJust = Math.max(0, (this._thrJust || 0) - dt)) <= 0 && a.slideT <= 0.5 && !a.climb && a.rollT <= 0 && !a.channel) {
       if (!I.st.locked && !I.st.usingPad) { this.renderer.domElement.requestPointerLock?.(); }
@@ -968,7 +975,8 @@ export class Game {
     else if (a.onGround && a.slideT <= 0) a.momentum = Math.max(0, a.momentum - dt * 1.8);
     const load = a.bag.length ? 1 - 0.18 * (1 - 0.2 * (a.bot ? 0 : this.save.upgrades.sac || 0)) : 1; // porter un objet ralentit
     const slow = 1 - (a.inGas || 0) * 0.2;
-    let top = (a.wantSprint ? 6.6 + a.momentum * (civ ? 3.2 : 1.8) : 4.4) * load * slow; if (this.aiming && !a.bot) top *= 0.6; a.crouchK = lerp(a.crouchK || 0, a.crouch ? 1 : 0, 1 - Math.exp(-dt * 12)); if (a.crouch) top *= 0.5;
+    const K = classOf(a.team, a.cls), mob = (K.speed || 1) * (WEAPONS[this.weapon(a)?.id]?.mob || 1);
+    let top = (a.wantSprint ? 6.6 + a.momentum * (civ ? 3.2 : 1.8) * (a.perk?.sprint || 1) : 4.4) * load * slow * mob; if (this.aiming && !a.bot) top *= 0.6; a.crouchK = lerp(a.crouchK || 0, a.crouch ? 1 : 0, 1 - Math.exp(-dt * 12)); if (a.crouch) top *= 0.5;
     // glissade (accroupi en sprint) / roulade (accroupi sinon)
     if (a.wantCrouch && a.onGround && a.slideT <= 0 && a.rollT <= 0) {
       const sp = this.feetSpeed(a);
@@ -1261,7 +1269,7 @@ export class Game {
     // barricade ennemie qui bloque le passage : on la casse
     if (ai.wallTarget && ai.wallT > 0 && !ai.target) { ai.wallT -= dt; const w = ai.wallTarget; if (!this.walls.includes(w)) ai.wallTarget = null; else { const W2 = this.weapon(b); const o = b.pos.clone().add(V(0, 1.45, 0)); const d = w.pos.clone().add(V(0, 1, 0)).sub(o).normalize(); b.yaw = Math.atan2(d.x, d.z); if (W2.mag <= 0) this.startReload(b); else if (b.fireT <= 0 && b.reloadT <= 0) this.fire(b, o, d); } }
     ai.lastPos.copy(b.pos);
-    if (b.marker) b.marker.visible = b.team === this.save.team || this.time - (b.spotted || -99) < 3;
+    if (b.marker) b.marker.visible = b.team === this.save.team || this.time - (b.spotted || -99) < 3 || (b.spotMark || 0) > this.time;
   }
   botDecide(b) {
     const ai = b.ai; const civ = b.team === 'civils';
@@ -1351,7 +1359,8 @@ export class Game {
       const was = z.threat; z.threat = !!(only && z.owner && only !== z.owner) || (z.contested && !!z.owner);
       if (z.threat && !was && z.owner === this.player.team && this.time - (z.warnT || -99) > 8) { z.warnT = this.time; this.toast(`⚠ ${z.id} est attaquée`, '#ff8080'); }
       if (only && z.owner !== only) {
-        const rate = dt / 10 * (1 + 0.4 * (Math.min(3, n[only]) - 1)); // 10 s seul, plus vite à plusieurs ; une zone ennemie se neutralise d'abord
+        let pk = 1; for (const a of this.actors) if (a.alive && a.team === only && a.perk?.cap > pk && !a.inCar && this.inZone(a, z)) pk = a.perk.cap;
+        const rate = dt / 10 * (1 + 0.4 * (Math.min(3, n[only]) - 1)) * pk; // 10 s seul, plus vite à plusieurs ; une zone ennemie se neutralise d'abord
         if (z.cap && z.cap !== only) { z.p -= rate; if (z.p <= 0) { z.p = 0; z.cap = only; } } else { z.cap = only; z.p += rate; if (z.p >= 1) this.captureZone(z, only); }
       } else if (!only && !z.contested && z.cap && z.owner !== z.cap) { z.p = Math.max(0, z.p - dt / 20); if (z.p <= 0) z.cap = null; }
       const col = z.owner ? TEAMS[z.owner].color : '#ffffff';
@@ -1437,10 +1446,10 @@ export class Game {
     if (scoped !== S.was) { this.audio.scope(scoped); if (scoped) S.settle = 0; S.was = scoped; S.retFov = 0; }
     if (!scoped) { S.held = false; S.breath = Math.min(1, S.breath + dt / 3); S.out = Math.max(0, S.out - dt); return; }
     S.settle = Math.min(1, S.settle + dt / 0.38);
-    if (I.pressed('view') || I.st.wheel) { S.zoom = I.st.wheel ? (I.st.wheel < 0 ? 1 : 0) : 1 - S.zoom; this.audio.click(); }
+    if (I.pressed('view') || I.st.wheel) { S.zoom = I.st.wheel ? (I.st.wheel < 0 ? 1 : 0) : 1 - S.zoom; this.audio.click(); } if (WEAPONS[W.id]?.zoom === 4) S.zoom = 0; // lunette fixe ×4 (tireur d'élite)
     const hold = I.down('sprint') && S.out <= 0 && S.breath > 0;
     if (hold && !S.held) this.audio.breath(true);
-    if (hold) { S.breath -= dt / 4.5; if (S.breath <= 0) { S.breath = 0; S.out = 2.6; this.audio.breath(false); } }
+    if (hold) { S.breath -= dt / (4.5 * (a.perk?.souffle || 1)); if (S.breath <= 0) { S.breath = 0; S.out = 2.6; this.audio.breath(false); } }
     else { S.breath = Math.min(1, S.breath + dt / (S.out > 0 ? 6 : 3)); if (S.held) this.audio.breath(false); }
     S.held = hold; S.out = Math.max(0, S.out - dt);
     S.hb -= dt; if ((hold || S.out > 0) && S.hb <= 0) { S.hb = S.out > 0 ? 0.42 : 0.85; this.audio.heart(S.out > 0 ? 1 : 0.6); }
@@ -1536,7 +1545,7 @@ export class Game {
     this.vgun = new THREE.Group(); this.vgun.add(g); this.vgun.userData.muzzle = g.userData.muzzle; this.camera.add(this.vgun);
     // encombrement de l'arme dans le repère de la vue (canon vers -z, poignée à l'origine)
     g.updateMatrixWorld(true); const bb = new THREE.Box3(); g.traverse((o) => { if (o.isMesh) { o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld.clone().premultiply(this.vgun.matrixWorld.clone().invert()))); } });
-    this.vgunTop = bb.max.y; this.vgunLen = bb.max.z - bb.min.z; this.vgunBB = bb; this.vgunPistol = WEAPONS[W.id].hand === 'pistol' || W.id === 'revolver';
+    this.vgunTop = bb.max.y; this.vgunLen = bb.max.z - bb.min.z; this.vgunBB = bb; this.vgunPistol = WEAPONS[W.id].hand === 'pistol';
     this.vgunBase = V(0.17, -0.17, -0.36); this.vgunLayout = null;
     this.viewArms(g);
     if (!this.scene.children.includes(this.camera)) this.scene.add(this.camera);
@@ -1626,7 +1635,7 @@ export class Game {
   updateViewGun(dt, sp, bobA) {
     const a = this.player, C = this.cam; const g = this.vgun; const ad = this.aiming ? V(0, -(this.vgunTop || 0.12) - 0.012, -0.24 - Math.min(0.08, (this.vgunLen || 0.3) * 0.12)) : this.hipLayout();
     const t = C.bob; const sway = V(Math.cos(t) * 0.012 * bobA, -Math.abs(Math.sin(t)) * 0.015 * bobA, 0);
-    const rel = a.reloadT > 0 ? Math.sin(Math.min(1, a.reloadT / WEAPONS[this.weapon(a).id].reload) * Math.PI) : 0;
+    const rel = a.reloadT > 0 ? Math.sin(Math.min(1, a.reloadT / (WEAPONS[this.weapon(a).id].reload * (a.perk?.reload || 1))) * Math.PI) : 0;
     const run = a.momentum > 0.7 && !this.aiming;
     const target = ad.clone().add(sway).add(V(run ? -0.02 : 0, -rel * 0.15 - (run ? 0.04 : 0), C.kickP * 1.5));
     g.position.lerp(target, 1 - Math.exp(-dt * 18)); g.rotation.set(C.kickP * 2 + rel * 0.6 + (run ? -0.12 : 0), (this.input.st.mx || 0) * -0.0006 + (run ? 0.35 : 0), run ? 0.2 : 0);
@@ -1739,7 +1748,8 @@ export class Game {
     const el = $('inv'); const show = el.classList.contains('hidden'); el.classList.toggle('hidden', !show); if (!show) return;
     const a = this.player, card = (c, t, ...sm) => `<div class="card" style="--c:${c}"><b>${t}</b>${sm.map((x) => `<small>${x}</small>`).join('')}</div>`;
     const weapons = a.slots.map((w, i) => { const W = WEAPONS[w.id]; return card(RARITY[w.rarity].color, `${svg(W.ico)} ${W.name}${i === a.cur ? ' ' + svg('check') : ''}`, `<span style="color:${RARITY[w.rarity].color}">${RARITY[w.rarity].name}</span> · chargeur ${w.mag}/${W.mag}`, `Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.rps} coups/s`); });
-    const gear = [card('#888', `${svg(a.team === 'ordre' ? 'gas' : 'smoke')} ${a.team === 'ordre' ? 'Lacrymo' : 'Fumigène'} × ${a.nades} · ${svg('frag')} Grenade × ${a.frags ?? 0}`, `maintenir ${this.input.label('grenade')} pour viser`), card('#c98a4a', `${svg('barricade')} Barricades ${a.walls ?? 3}/3`, a.walls < 3 ? `prochaine dans ${Math.ceil(a.wallT || 0)} s` : 'prêtes'), card('#57b6ff', `${svg('vest')} Gilet ${Math.round(a.armor)}`, `santé ${Math.ceil(a.hp)}`)];
+    const K = classOf(a.team, a.cls);
+    const gear = [card(TEAMS[a.team].color, `${svg(K.ico)} ${K.name} · ${K.role}`, `${K.perkName} : ${K.perkDesc}`), card('#888', `${svg(a.team === 'ordre' ? 'gas' : 'smoke')} ${a.team === 'ordre' ? 'Lacrymo' : 'Fumigène'} × ${a.nades} · ${svg('frag')} Grenade × ${a.frags ?? 0}`, `maintenir ${this.input.label('grenade')} pour viser`), card('#c98a4a', `${svg('barricade')} Barricades ${a.walls ?? 3}/3`, a.walls < 3 ? `prochaine dans ${Math.ceil(a.wallT || 0)} s` : 'prêtes'), card('#57b6ff', `${svg('vest')} Gilet ${Math.round(a.armor)}`, `santé ${Math.ceil(a.hp)}`)];
     const carried = a.bag.length ? a.bag.map((i) => card(RARITY[i.rarity].color, `${i.icon} ${i.nom}`, `<span style="color:${RARITY[i.rarity].color}">${RARITY[i.rarity].name}</span>${i.stolen ? ' · volé' : ''}`, `${fmt(i.valeur)} € · receleur ${fmt(this.recelPrice(i) * (a.team === 'ordre' ? 0.6 : 1))} €`)) : [card('#555', 'Les mains vides', 'Casse une vitrine de luxe et rapporte un objet')];
     const socs = this.socles[a.team], held = socs.filter((x) => x.item), inc = held.reduce((t, x) => t + x.item.valeur * 0.006, 0);
     const base = held.length ? held.map((x) => card(RARITY[x.item.rarity].color, `${x.item.icon} ${x.item.nom}`, `${fmt(x.item.valeur)} €${x.owner === a ? ' · à toi' : x.owner ? ' · ' + x.owner.name : ''}`)) : [card('#555', 'Rien d\'exposé', 'Dépose ton objet à la base : il rapporte chaque seconde')];
@@ -1839,7 +1849,7 @@ export class Game {
     for (const c of this.fx.clouds) { g.globalAlpha = 0.4; g.fillStyle = c.kind === 'gas' ? '#e8e6cf' : '#ff4fa0'; g.beginPath(); g.arc(c.pos.x, c.pos.z, c.r, 0, 7); g.fill(); g.globalAlpha = 1; }
     // tirs ennemis récents
     for (const p of this.pings || []) { const age = this.time - p.t; if (age > 2 || !p.enemy) continue; g.globalAlpha = 1 - age / 2; g.fillStyle = '#ff3b30'; g.beginPath(); g.arc(p.x, p.z, 1.6, 0, 7); g.fill(); } g.globalAlpha = 1;
-    for (const a of this.actors) { if (!a.alive || a === me) continue; const ally = a.team === me.team; if (!ally && this.time - (a.spotted || -99) > 3 && a.pos.distanceTo(me.pos) > 12) continue; g.fillStyle = ally ? TEAMS[a.team].color : '#ff2b2b'; g.strokeStyle = '#000'; g.lineWidth = 0.3; g.beginPath(); g.arc(a.pos.x, a.pos.z, (a.bag.some((i) => i.stolen) ? 1.6 : 1.1) * sc, 0, 7); g.fill(); g.stroke(); }
+    for (const a of this.actors) { if (!a.alive || a === me) continue; const ally = a.team === me.team; if (!ally && this.time - (a.spotted || -99) > 3 && !((a.spotMark || 0) > this.time) && a.pos.distanceTo(me.pos) > 12) continue; g.fillStyle = ally ? TEAMS[a.team].color : '#ff2b2b'; g.strokeStyle = '#000'; g.lineWidth = 0.3; g.beginPath(); g.arc(a.pos.x, a.pos.z, (a.bag.some((i) => i.stolen) ? 1.6 : 1.1) * sc, 0, 7); g.fill(); g.stroke(); }
     // joueur : flèche (toujours vers le haut en mode boussole)
     g.save(); g.translate(me.pos.x, me.pos.z); g.rotate(-this.cam.yaw); g.scale(sc, sc); g.fillStyle = '#ffe04a'; g.strokeStyle = '#000'; g.lineWidth = 0.4; g.beginPath(); g.moveTo(0, 2.8); g.lineTo(1.8, -1.8); g.lineTo(0, -0.8); g.lineTo(-1.8, -1.8); g.closePath(); g.fill(); g.stroke(); g.restore();
     if (!big) { // nord sur le bord
