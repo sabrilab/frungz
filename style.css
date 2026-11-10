@@ -263,3 +263,25 @@ body.scoped #cross, body.scoped #streakbar { visibility: hidden; }
 #scope.kick .ret { animation: skick .35s ease-out; }
 @keyframes skick { 0% { margin-top: -60px; } 100% { margin-top: 0; } }
 
+
+/* armurerie : aperçu 3D */
+#shopPv { display: flex; gap: 16px; width: min(880px, 100%); align-items: stretch; background: radial-gradient(120% 140% at 30% 40%, rgba(232,197,71,.12), rgba(0,0,0,.25) 60%); border-radius: 14px; padding: 8px 14px 8px 8px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.pvbox { position: relative; flex: 0 0 auto; width: min(52%, 460px); aspect-ratio: 520 / 300; }
+.pv3d { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.pv3d:active { cursor: grabbing; }
+.pvhint { position: absolute; left: 10px; bottom: 6px; font-size: 11px; color: var(--dim); pointer-events: none; opacity: .7; }
+.pvinfo { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 5px; text-align: left; min-width: 0; }
+.pvinfo h3 { font: 22px Bungee; margin: 0; }
+.pvtag { margin: 0 0 4px; color: var(--gold); font-weight: 800; font-size: 13px; }
+.pvdesc { margin: 4px 0; color: var(--dim); font-size: 13px; }
+.st { display: grid; grid-template-columns: 92px 1fr 76px; align-items: center; gap: 8px; font-size: 12px; }
+.st span { color: var(--dim); } .st em { font-style: normal; font-weight: 800; text-align: right; }
+.st i { height: 7px; background: rgba(255,255,255,.1); border-radius: 4px; overflow: hidden; }
+.st i b { display: block; height: 100%; background: linear-gradient(90deg, #e8c547, #ff8a3d); border-radius: 4px; transition: width .35s cubic-bezier(.3,1.6,.5,1); }
+.pips { display: flex; gap: 5px; } .pips b { width: 26px; height: 8px; border-radius: 3px; background: rgba(255,255,255,.12); } .pips b.on { background: #57b6ff; }
+.card .th { width: 100%; aspect-ratio: 320 / 184; object-fit: contain; margin: -4px 0 2px; filter: drop-shadow(0 6px 6px rgba(0,0,0,.45)); transition: transform .2s; }
+.card:hover .th, .card.sel .th { transform: scale(1.06) rotate(-1.5deg); }
+.card.sel { background: rgba(255,255,255,.13); box-shadow: inset 0 0 0 2px var(--c, #777); }
+#shopList { max-height: 40vh; }
+@media (max-width: 640px) { #shopPv { flex-direction: column; } .pvbox { width: 100%; } }
+#shop { background: radial-gradient(ellipse at 50% 25%, rgba(34,40,58,.97), rgba(6,7,12,.98)); z-index: 7; }
