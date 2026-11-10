@@ -7,6 +7,7 @@ const P = {
   shotgun: '<path d="M2 10h20M2 12.5h12M7 12.5v2h5v-2M14 12.5l-2.2 5.5H8.6l1.4-5.5"/>',
   rifle: '<path d="M1 10h14l2-1.5h5V11h-4l-1 2h-4l-1.4 5H8.8l1-5H7l-2 3H3l1.4-4H1zM11 8V6.5"/>',
   sniper: '<path d="M1 12h21M8 8.5h7V12M10 8.5V7.5M15 12l-2 6h-3l1.2-6M2 12l-1 3.5"/>',
+  lmg: '<path d="M1 10h15l1.5-1.5H23V11h-5l-1 2h-3.5l-1.4 5H9.3l1-5H7.5l-2 3H3.4l1.4-4H1zM12 8V6.5M14 13v3.5l-2 2M14 16.5l2 2"/><circle cx="10" cy="14.2" r="1.6"/>',
   revolver: '<path d="M2 9h11M2 9v2.4h6M13 7.5h3a2 2 0 0 1 0 4h-3zM15 11.5l-1.6 7H10l1.4-7"/><circle cx="14.6" cy="9.5" r="1"/>',
   // lancers et atouts
   gas: '<rect x="8" y="9" width="8" height="12" rx="1.5"/><path d="M10 9V7h4v2M9 5c1-1.5 2-1.5 3 0s2 1.5 3 0M7 2.5c1.2-1 2.3-1 3.4 0"/>',

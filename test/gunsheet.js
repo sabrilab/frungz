@@ -1,0 +1,10 @@
+import * as THREE from 'three';
+import { loadGuns, guns } from '../src/assets.js';
+import { WEAPONS } from '../src/data.js';
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(1600, 1000); document.body.appendChild(r.domElement);
+const sc = new THREE.Scene(); sc.background = new THREE.Color('#d8dde2'); sc.add(new THREE.HemisphereLight('#fff', '#666', 2)); const d = new THREE.DirectionalLight('#fff', 2); d.position.set(1, 2, 3); sc.add(d);
+const cam = new THREE.OrthographicCamera(-8, 8, 5, -5, 0.1, 100); cam.position.set(0, 0, 20);
+await loadGuns();
+const ids = Object.keys(WEAPONS); ids.forEach((id, i) => { const g = guns[id].clone(true); const c = i % 4, row = Math.floor(i / 4); g.position.set(-6.5 + c * 4, 4 - row * 1.9, 0); g.scale.multiplyScalar(2.2); sc.add(g);
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 64; const x = cv.getContext('2d'); x.font = '36px sans-serif'; x.fillStyle = '#000'; x.fillText(id + ' · ' + WEAPONS[id].model, 4, 44); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv) })); sp.scale.set(3.6, 0.45, 1); sp.position.set(-5.2 + c * 4, 3.3 - row * 1.9, 1); sc.add(sp); });
+r.render(sc, cam); window.done = true;

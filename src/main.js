@@ -11,7 +11,7 @@ import { createMetro } from './metro.js';
 import { Game } from './game.js';
 import { createPreview } from './preview.js';
 import { applyRealism, skyEnvironment, realismUniforms } from './realisme.js';
-import { TEAMS, WEAPONS, UPGRADES, SKIN_NAMES } from './data.js';
+import { TEAMS, WEAPONS, WEAPON_CATS, CLASSES, classOf, UPGRADES, SKIN_NAMES } from './data.js';
 import { svg } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
@@ -19,8 +19,8 @@ const fmt = (n) => Math.round(n).toLocaleString('fr-FR');
 const Q = new URLSearchParams(location.search);
 
 // ---------- sauvegarde ----------
-const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Paysan', settings: { sens: 1, padSens: 1, assist: true, fps: false, teamSize: 50, invertY: false, dynres: true } };
-let save; try { save = { ...DEFAULT, ...JSON.parse(localStorage.getItem('frungz-save') || '{}') }; save.settings = { ...DEFAULT.settings, ...save.settings }; save.upgrades ||= {}; } catch { save = structuredClone(DEFAULT); }
+const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, cls: { ordre: 'intervention', civils: 'casseur' }, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Paysan', settings: { sens: 1, padSens: 1, assist: true, fps: false, teamSize: 50, invertY: false, dynres: true } };
+let save; try { save = { ...DEFAULT, ...JSON.parse(localStorage.getItem('frungz-save') || '{}') }; save.settings = { ...DEFAULT.settings, ...save.settings }; save.upgrades ||= {}; save.cls = { ...DEFAULT.cls, ...save.cls }; } catch { save = structuredClone(DEFAULT); }
 const persist = () => { try { localStorage.setItem('frungz-save', JSON.stringify(save)); } catch {} };
 if ((save.sv || 1) < 2) { save.sv = 2; save.settings.teamSize = 50; } // passage au 50 contre 50 par défaut
 
@@ -92,7 +92,7 @@ const ALL_SKINS = [...TEAMS.ordre.skins, ...TEAMS.civils.skins];
 const CARS = [['sportscar', 'sport', 'Coupé sport orange'], ['sportscar2', 'sport', 'Coupé sport blanc'], ['sports', 'sport', 'Coupé sport rouge'], ['roadster', 'sport', 'Cabriolet bleu'], ['muscle', 'sport', 'Muscle car jaune'], ['sports-armored', 'blinde', 'Sportive blindée'], ['cop', 'police', 'Voiture de police'], ['police-sedan', 'police', 'Berline de police'], ['suv-luxury', 'civil', 'SUV de luxe']];
 let world, mapRoot, carDefs = [], night = null;
 let progress = { map: 0, chars: 0, guns: 0, cars: 0 };
-const showProgress = () => { const p = progress.map * 0.6 + progress.chars / ALL_SKINS.length * 0.25 + progress.guns / 6 * 0.05 + progress.cars / CARS.length * 0.1; $('loadbar').style.width = (p * 100).toFixed(0) + '%'; };
+const showProgress = () => { const p = progress.map * 0.6 + progress.chars / ALL_SKINS.length * 0.25 + progress.guns / Object.keys(WEAPONS).length * 0.05 + progress.cars / CARS.length * 0.1; $('loadbar').style.width = (p * 100).toFixed(0) + '%'; };
 async function loadAll() {
   const gp = await fetch('assets/gameplay.json').then((r) => r.json());
   const [{ root, ground, cassables, rame }] = await Promise.all([
@@ -120,10 +120,18 @@ function renderMenu() {
   document.querySelectorAll('.side').forEach((b) => b.classList.toggle('on', b.dataset.team === save.team));
   const skins = TEAMS[save.team].skins; if (!skins.includes(save.skin)) save.skin = skins[0];
   $('skins').innerHTML = skins.map((s) => `<button data-skin="${s}" class="${s === save.skin ? 'on' : ''}">${SKIN_NAMES[s] || s}</button>`).join('');
+  const cur = classOf(save.team, save.cls[save.team]).id;
+  $('classes').innerHTML = Object.values(CLASSES[save.team]).map((K) => `<button data-cls="${K.id}" class="${K.id === cur ? 'on' : ''}"><em>${svg(K.ico)}</em><b>${K.name}</b><small>${K.role}</small></button>`).join('');
+  const K = classOf(save.team, cur), P = save.primary && save.unlocked.includes(save.primary) && WEAPONS[save.primary] ? WEAPONS[save.primary] : null;
+  const prim = P && P.cat !== 'pistolet' ? P : WEAPONS[K.primary], sec = P && P.cat === 'pistolet' ? P : WEAPONS[K.secondary];
+  $('clsInfo').innerHTML = `<span>${svg(prim.ico)} ${prim.name}${prim.id !== K.primary ? ' <i>(armurerie)</i>' : ''}</span><span>${svg(sec.ico)} ${sec.name}</span><span>${svg('vest')} ${K.armor ? 'Gilet ' + K.armor : 'Sans gilet'}</span><span>${svg('target')} <b>${K.perkName}</b> : ${K.perkDesc}</span>`;
   $('nightBtn').textContent = save.settings.night ? 'Mode jour' : 'Mode nuit (émeute)';
   $('bank').textContent = fmt(save.bank); $('lvl').textContent = save.lvl || 1;
 }
 document.querySelectorAll('.side').forEach((b) => b.addEventListener('click', () => { save.team = b.dataset.team; persist(); renderMenu(); audio.init(); audio.play('uiSelect'); }));
+$('classes').addEventListener('click', (e) => { const b = e.target.closest('button[data-cls]'); if (!b) return; pickClass(b.dataset.cls); audio.init(); audio.play('uiTick'); });
+// choisir une classe reprend ses armes (l'arme achetée reste dans la planque, à rééquiper à l'armurerie) ; en partie, elle s'applique au prochain retour
+function pickClass(id) { save.cls[save.team] = id; save.primary = null; persist(); renderMenu(); if (game?.player) game.toast(`Classe ${classOf(save.team, id).name} : au prochain retour dans la rue`, '#ccc'); }
 $('skins').addEventListener('click', (e) => { const s = e.target.dataset?.skin; if (!s) return; save.skin = s; persist(); renderMenu(); audio.init(); audio.play('uiTick'); });
 $('play').disabled = true;
 $('play').addEventListener('click', () => start());
@@ -145,13 +153,19 @@ function showPv(k, id) {
   if (k === 'w') {
     const W = WEAPONS[id], owned = save.unlocked.includes(id) || id === 'pistol';
     pv.show('w', id);
-    $('pvinfo').innerHTML = `<h3>${svg(W.ico)} ${W.name}</h3><p class="pvtag">${owned ? (save.primary === id || id === 'pistol' ? 'Équipée' : 'Dans ta planque') : fmt(W.price) + ' €'}${W.scope ? ' · lunette ×4 / ×8' : ''}${W.auto ? ' · automatique' : ''}</p>`
+    $('pvinfo').innerHTML = `<h3>${svg(W.ico)} ${W.name}</h3><p class="pvtag">${owned ? (save.primary === id || id === 'pistol' ? 'Équipée' : 'Dans ta planque') : fmt(W.price) + ' €'}${W.scope ? ' · lunette ×4 / ×8' : ''}${W.auto ? ' · automatique' : W.burst ? ' · rafale de ' + W.burst : ''}${W.veh > 1 ? ' · perce-blindage' : ''}</p>`
       + stat('Dégâts', (W.dmg * W.pellets) / 120, W.dmg + (W.pellets > 1 ? '×' + W.pellets : ''))
-      + stat('Cadence', W.rps / 12, W.rps + ' coups/s')
+      + stat('Cadence', (W.burst ? W.burst / (W.burst / W.rps + (W.burstPause || 0.25)) : W.rps) / 12, (W.burst ? (W.burst / (W.burst / W.rps + (W.burstPause || 0.25))).toFixed(1) : W.rps) + ' coups/s')
       + stat('Précision', 1 - Math.sqrt(W.spread / 0.08), '')
       + stat('Portée', W.range / 220, W.range + ' m')
       + stat('Chargeur', W.mag / 32, W.mag + ' balles')
-      + stat('Rechargement', 1 - (W.reload - 1) / 2, W.reload + ' s');
+      + stat('Rechargement', 1 - (W.reload - 1) / 2, W.reload + ' s')
+      + stat('Mobilité', (W.mob - 0.8) / 0.3, Math.round(W.mob * 100) + ' %');
+  } else if (k === 'c') {
+    const K = classOf(save.team, id), P = WEAPONS[K.primary], S = WEAPONS[K.secondary];
+    pv.show('w', K.primary);
+    $('pvinfo').innerHTML = `<h3>${svg(K.ico)} ${K.name}</h3><p class="pvtag">${K.role}${save.cls[save.team] === id ? ' · ta classe' : ''}</p><p class="pvdesc">${svg(P.ico)} ${P.name} · ${svg(S.ico)} ${S.name}</p><p class="pvdesc"><b>${K.perkName}</b> : ${K.perkDesc}</p>`
+      + stat('Protection', K.armor / 100, K.armor ? K.armor + ' / 100' : 'aucune') + stat('Vitesse', (K.speed - 0.8) / 0.35, Math.round(K.speed * 100) + ' %') + stat('Grenades', (K.nades + K.frags) / 4, `${K.nades} ${save.team === 'ordre' ? 'lacrymo' : 'fumigène'}${K.nades > 1 ? 's' : ''} · ${K.frags} grenade${K.frags > 1 ? 's' : ''}`);
   } else {
     const U = UPGRADES[id], l = save.upgrades[id] || 0;
     pv.show('u', id, id === 'gilet' ? Math.max(1, Math.min(U.max, l + 1)) : 0);
@@ -164,12 +178,21 @@ function renderShop() {
   document.querySelectorAll('.bankN').forEach((e) => (e.textContent = fmt(save.bank)));
   if (!pv) { try { pv = createPreview(); $('pvbox').prepend(pv.canvas); } catch (e) { console.warn('aperçu 3D indisponible', e); $('shopPv').style.display = 'none'; } }
   const th = (k, id, l) => { const u = pv?.thumb(k, id, l); return u ? `<img class="th" src="${u}" alt="">` : ''; };
-  const w = Object.entries(WEAPONS).filter(([id]) => id !== 'pistol').map(([id, W]) => {
-    const owned = save.unlocked.includes(id), eq = save.primary === id;
-    return `<div class="card ${owned ? 'owned' : ''}" data-k="w" data-id="${id}" style="--c:${owned ? '#2f6' : '#777'}">${th('w', id, 0)}<b>${svg(W.ico)} ${W.name}</b><small>Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.rps} coups/s · chargeur ${W.mag}</small><button data-w="${id}" ${!owned && save.bank < W.price ? 'disabled' : ''}>${owned ? (eq ? 'Équipée ' + svg('check') : 'Équiper') : fmt(W.price) + ' €'}</button></div>`;
-  });
+  const head = (t) => `<h4 class="shead">${t}</h4>`;
+  const curCls = classOf(save.team, save.cls[save.team]).id;
+  const c = [head('Classes ' + TEAMS[save.team].short)].concat(Object.values(CLASSES[save.team]).map((K) => `<div class="card cls ${K.id === curCls ? 'owned' : ''}" data-k="c" data-id="${K.id}" style="--c:${K.id === curCls ? '#2f6' : TEAMS[save.team].color}">${th('w', K.primary, 0)}<b>${svg(K.ico)} ${K.name}</b><small>${K.role} · ${WEAPONS[K.primary].name} · ${K.perkName}</small><button data-c="${K.id}">${K.id === curCls ? 'Ta classe ' + svg('check') : 'Choisir'}</button></div>`));
+  const w = [];
+  for (const [cat, label] of Object.entries(WEAPON_CATS)) {
+    const list = Object.entries(WEAPONS).filter(([id, W]) => W.cat === cat && id !== 'pistol'); if (!list.length) continue;
+    w.push(head(label));
+    for (const [id, W] of list) {
+      const owned = save.unlocked.includes(id), eq = save.primary === id;
+      w.push(`<div class="card ${owned ? 'owned' : ''}" data-k="w" data-id="${id}" style="--c:${owned ? '#2f6' : '#777'}">${th('w', id, 0)}<b>${svg(W.ico)} ${W.name}</b><small>Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.burst ? 'rafale ×' + W.burst : W.rps + ' coups/s'} · chargeur ${W.mag}</small><button data-w="${id}" ${!owned && save.bank < W.price ? 'disabled' : ''}>${owned ? (eq ? 'Équipée ' + svg('check') : 'Équiper') : fmt(W.price) + ' €'}</button></div>`);
+    }
+  }
+  w.push(head('Planque'));
   const u = Object.entries(UPGRADES).map(([id, U]) => { const l = save.upgrades[id] || 0; const max = l >= U.max; const p = U.price(l); return `<div class="card" data-k="u" data-id="${id}" style="--c:#57b6ff">${th('u', id, id === 'gilet' ? Math.max(1, l) : 0)}<b>${svg(U.ico)} ${U.name} · niv. ${l}/${U.max}</b><small>${U.desc}</small><button data-u="${id}" ${max || save.bank < p ? 'disabled' : ''}>${max ? 'Maximum' : fmt(p) + ' €'}</button></div>`; });
-  $('shopList').innerHTML = w.join('') + u.join('');
+  $('shopList').innerHTML = c.join('') + w.join('') + u.join('');
   const sel = pvSel || ['w', save.primary && save.primary !== 'pistol' ? save.primary : 'rifle'];
   showPv(sel[0], sel[1]); markSel();
   pv?.start();
@@ -181,7 +204,8 @@ $('shopList').addEventListener('pointerover', (e) => pvFrom(e.target));
 $('shopList').addEventListener('focusin', (e) => pvFrom(e.target));
 $('shopList').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
-  if (b.dataset.w) { const id = b.dataset.w; if (!save.unlocked.includes(id)) { save.bank -= WEAPONS[id].price; save.unlocked.push(id); audio.cash(true); } save.primary = id; if (game?.player?.alive) { const a = game.player; const W = { id, rarity: 'rare', mag: WEAPONS[id].mag }; if (a.slots.length > 1) a.slots[1] = W; else a.slots.push(W); game.equip(a, 1); } }
+  if (b.dataset.c) { pickClass(b.dataset.c); }
+  if (b.dataset.w) { const id = b.dataset.w; if (!save.unlocked.includes(id)) { save.bank -= WEAPONS[id].price; save.unlocked.push(id); audio.cash(true); } save.primary = id; if (game?.player?.alive) { const a = game.player; const W = { id, rarity: 'rare', mag: WEAPONS[id].mag }; const i = WEAPONS[id].cat === 'pistolet' ? 0 : 1; a.slots[i] = W; game.equip(a, i); } }
   if (b.dataset.u) { const id = b.dataset.u; const l = save.upgrades[id] || 0; save.bank -= UPGRADES[id].price(l); save.upgrades[id] = l + 1; audio.cash(true); if (game) { game.player.cap = 20 + (save.upgrades.sac || 0) * 8; } }
   persist(); renderShop(); renderMenu();
 });
@@ -279,7 +303,7 @@ function endGame(r) {
   $('end').classList.remove('hidden');
   if (game) { scene.remove(game.root); world.dynamic.length = 0; game = null; }
 }
-window.__start = start; window.__THREE = THREE;
+window.__start = start; window.__THREE = THREE; window.__CLASSES = CLASSES; window.__WEAPONS = WEAPONS;
 
 // ---------- boucle ----------
 const clock = new THREE.Clock(); let menuT = 0;

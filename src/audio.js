@@ -113,7 +113,7 @@ export function createAudio() {
   // détonation : claquement (bruit filtré) + coup de basse + queue réverbérée dans la rue
   function gun(kind, pos = null, vol = 1) {
     if (!ctx) return; const out = spatial(pos, vol, 14); if (!out) return; const t = ctx.currentTime;
-    const P = { pistol: [2600, 0.12, 150, 0.9], smg: [3200, 0.09, 170, 0.7], rifle: [2200, 0.16, 120, 1.0], shotgun: [1500, 0.3, 80, 1.3], sniper: [1800, 0.45, 70, 1.4], revolver: [1900, 0.22, 100, 1.2] }[kind] || [2400, 0.14, 130, 1];
+    const P = { pistol: [2600, 0.12, 150, 0.9], smg: [3200, 0.09, 170, 0.7], rifle: [2200, 0.16, 120, 1.0], shotgun: [1500, 0.3, 80, 1.3], sniper: [1800, 0.45, 70, 1.4], revolver: [1900, 0.22, 100, 1.2], heavy: [2000, 0.2, 105, 1.15], lmg: [2100, 0.14, 110, 1.05], dmr: [1900, 0.32, 85, 1.25], heavy50: [1300, 0.6, 55, 1.6] }[kind] || [2400, 0.14, 130, 1];
     // chaque couche coûte 3 à 4 nœuds audio : un tir complet pour le joueur et les tirs proches, une seule couche pour les
     // tirs faibles ou quand beaucoup de sons jouent déjà (sinon ~1 000 nœuds en plein combat et le son décroche)
     const lite = pos && (lastLoud < 0.3 || active.length > 16);

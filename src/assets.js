@@ -10,7 +10,6 @@ import { WEAPONS } from './data.js';
 const CHAR_H = 1.8;
 export const chars = {}; // nom → { scene, clips, k, minY }
 export const guns = {}; // id → Object3D (barre vers +x, poignée à l'origine, longueur réelle)
-const GUN_LEN = { pistol: 0.24, smg: 0.5, shotgun: 0.95, rifle: 0.88, sniper: 1.15, revolver: 0.32 };
 
 // animations Mixamo reciblées hors ligne sur le squelette des Modular Men (outil : bake/ dans le fil du jeu) : course, pas chassés, diagonales, saut, chute, accroupi
 let mxClips = null;
@@ -120,6 +119,7 @@ export async function loadGuns(onEach) {
   const ids = Object.keys(WEAPONS);
   await Promise.all(ids.map(async (id) => {
     const W = WEAPONS[id];
+    try {
     const mtl = await new MTLLoader().setPath('assets/guns/').loadAsync(`${W.model}.mtl`); mtl.preload();
     const obj = await new OBJLoader().setMaterials(mtl).setPath('assets/guns/').loadAsync(`${W.model}.obj`);
     // matériaux : couleurs de l'MTL en PBR mat, un peu de métal
@@ -130,14 +130,18 @@ export async function loadGuns(onEach) {
     });
     // poignée à l'origine (sommets les plus bas), longueur réelle
     const pos = []; obj.traverse((o) => { if (o.isMesh) { const a = o.geometry.attributes.position; for (let i = 0; i < a.count; i++) pos.push([a.getX(i), a.getY(i), a.getZ(i)]); } });
-    const box = new THREE.Box3().setFromObject(obj); const len = box.max.x - box.min.x; const k = GUN_LEN[id] / len;
-    pos.sort((a, b) => a[1] - b[1]); const low = pos.slice(0, 30); const gx = low.reduce((s, v) => s + v[0], 0) / low.length;
+    const box = new THREE.Box3().setFromObject(obj); const len = box.max.x - box.min.x; const k = (W.len || 0.6) / len;
+    pos.sort((a, b) => a[1] - b[1]); const win = W.grip != null ? pos.filter((v) => Math.abs((v[0] - box.min.x) / len - W.grip) < 0.08) : pos; const low = (win.length >= 30 ? win : pos).slice(0, 30); /* W.grip : position de la poignée (fraction de la longueur depuis la crosse), sinon le chargeur ou le bipied passeraient pour la poignée */ const gx = low.reduce((s, v) => s + v[0], 0) / low.length;
     const grip = new THREE.Vector3(gx, box.min.y * 0.62, 0);
     const holder = new THREE.Group(); obj.position.copy(grip).multiplyScalar(-1); holder.add(obj); holder.scale.setScalar(k);
     // bouche du canon (pour la flamme et les traçantes)
     const muzzle = new THREE.Object3D(); muzzle.position.set(box.max.x - grip.x, (box.max.y + box.min.y) * 0.5 + 0.1 - grip.y, 0); holder.add(muzzle); holder.userData.muzzle = muzzle;
-    guns[id] = holder; onEach?.();
+    guns[id] = holder;
+    } catch (e) { console.warn('arme', id, W.model, e); }
+    onEach?.();
   }));
+  // modèle manquant : on prend celui d'une arme de la même famille (le jeu reste jouable)
+  for (const id of ids) if (!guns[id]) { const alt = ids.find((j) => guns[j] && WEAPONS[j].cat === WEAPONS[id].cat) || 'pistol'; const g = guns[alt].clone(true); g.userData.muzzle = g.children[1]; guns[id] = g; }
 }
 export function gunInstance(id) { const g = guns[id].clone(true); g.userData.muzzle = g.children[1]; return g; }
 
