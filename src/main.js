@@ -114,7 +114,7 @@ async function setupPost() {
   grade = new ShaderPass({ uniforms: { tDiffuse: { value: null }, uT: { value: 0 }, uFilm: { value: 1 }, uNight: { value: 0 } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `uniform sampler2D tDiffuse; uniform float uT, uFilm, uNight; varying vec2 vUv;
       void main(){ vec2 d = vUv - 0.5; vec3 c = texture2D(tDiffuse, vUv).rgb;
-        if (uFilm > 0.01) { vec2 o = d * dot(d, d) * 0.012 * uFilm; c.r = texture2D(tDiffuse, vUv + o).r; c.b = texture2D(tDiffuse, vUv - o).b; }
+        if (uFilm > 0.01) { vec2 o = d * dot(d, d) * 0.005 * uFilm; c.r = texture2D(tDiffuse, vUv + o).r; c.b = texture2D(tDiffuse, vUv - o).b; }
         float l = dot(c, vec3(0.299, 0.587, 0.114));
         c = mix(c, c * c * (3.0 - 2.0 * c), 0.22); c += vec3(-0.012, 0.0, 0.018) * (1.0 - l) + vec3(0.02, 0.008, -0.012) * l;
         c = mix(vec3(l), c, 1.08);
@@ -122,12 +122,16 @@ async function setupPost() {
         if (uNight > 0.01) { vec3 lift = pow(max(c, vec3(0.0)), vec3(0.8)) + vec3(0.006, 0.012, 0.03) * (1.0 - l); c = mix(c, lift, uNight); }
         c *= 1.0 - dot(d, d) * mix(0.55, 0.35, uNight);
         float g = fract(sin(dot(floor(gl_FragCoord.xy) + fract(uT) * 97.0, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
-        c += g * 0.028 * uFilm * (1.0 - 0.6 * l);
+        c += g * 0.012 * uFilm * (1.0 - 0.6 * l);
         gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }` });
   composer.addPass(grade);
   // anticrénelage (les cibles du post-traitement n'ont pas de multi-échantillonnage) : FXAA sur l'image finale
   const { FXAAPass } = await import('three/examples/jsm/postprocessing/FXAAPass.js');
   const fxaa = new FXAAPass(); composer.addPass(fxaa); window.__fxaa = fxaa;
+  // netteté : accentuation adaptative après l'anticrénelage (rend le piqué d'origine, et plus, sans halos)
+  const { SharpenShader } = await import('./photo.js');
+  const sharp = new ShaderPass(SharpenShader); sharp.uniforms.uSharp.value = Q.has('sharp') ? +Q.get('sharp') : 0.7; composer.addPass(sharp); window.__sharp = sharp;
+  sharp.setSize = (w, h) => sharp.uniforms.uTexel.value.set(1 / Math.max(1, w), 1 / Math.max(1, h)); { const pr = renderer.getPixelRatio(); sharp.setSize(innerWidth * pr, innerHeight * pr); }
   window.__post = composer;
 }
 setupPost();
