@@ -271,13 +271,13 @@ export function installTurrets(Game) {
   P.wallPrompt = function (a) { return this.turretPrompt(a) || wallPrompt.call(this, a); };
   // ↓ / Q devant sa propre tourelle : on la démonte (au lieu de poser une barricade)
   const placeWall = P.placeWall;
-  P.placeWall = function (a, yawIn) {
+  P.placeWall = function (a, yawIn, at) {
     if (a === this.player && !a.bot) {
       if (a.carryTurret) return null;
       const T = this.nearTurret(a, true);
       if (T) { if (T.bt >= T.build && !T.up && !a.channel) this.startChannel(a, 'Démontage…', 0.7, () => T.alive, () => { const k = T.hp / TLV[T.level].hp; this.removeTurret(T); this.carryTurret(a, T.level, k); this.audio.play('debris', T.pos, 0.4); this.toast(`${svg('turret')} Tourelle démontée : ${this.input.label('fire')} pour la reposer`, '#7fe0ff'); }, 'Interact'); return null; }
     }
-    return placeWall.call(this, a, yawIn);
+    return placeWall.call(this, a, yawIn, at);
   };
   // pose pendant le transport : silhouette devant le joueur, verte ou rouge ; tir = poser
   const interactions = P.interactions;

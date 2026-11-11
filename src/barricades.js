@@ -23,7 +23,10 @@ export const TIERS = [
 ];
 // galons gagnés par succès
 export const GALONS = { kill: 1, head: 1, assist: 0.5, capture: 3, wall: 1 };
-const BOT_LIFE = 90; // s : une barricade de bot finit par céder (la ville ne se fige pas)
+const BOT_LIFE = 90;
+// aperçu de pose : vert (libre), doré (raccord bout à bout), rouge (impossible) ; vu à travers les murs
+const ghostMat = (c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.4, depthWrite: false, depthTest: false });
+const GHOST = { ok: ghostMat('#7dffa8'), snap: ghostMat('#ffd76a'), bad: ghostMat('#ff4a4a') }; // s : une barricade de bot finit par céder (la ville ne se fige pas)
 
 // ------------------------------------------------------------------ règles et méthodes du jeu
 export function installBarricades(Game) {
@@ -80,12 +83,78 @@ export function installBarricades(Game) {
   };
 
   // ---- pose : toujours en matériau léger ; règles communes + plafond par camp
-  P.wallSpot = function (a, yaw) {
-    const f = V(Math.sin(yaw), 0, Math.cos(yaw)); const p = a.pos.clone().addScaledVector(f, 2.4); p.y = this.world.groundY(p.x, p.z, p.y + 0.3);
-    if (!this.world.free(...this.world.cell(p.x, p.z))) return { why: 'Pas de place ici' };
-    if (this.walls.some((w) => w.pos.distanceTo(p) < 2.5)) return { why: 'Trop près d\'une autre barricade' };
-    for (const z of this.zoneState) if (Math.hypot(p.x - z.center[0], p.z - z.center[1]) < 3.5) return { why: 'Pas sur le drapeau' };
+  // at : point visé (aperçu du joueur) ; sans at : 2,4 m devant (bots, pose rapide)
+  P.wallSpot = function (a, yaw, at) {
+    const f = V(Math.sin(yaw), 0, Math.cos(yaw)); const p = at ? at.clone() : a.pos.clone().addScaledVector(f, 2.4); p.y = this.world.groundY(p.x, p.z, (at ? at.y : p.y) + 0.3);
+    const ax = Math.cos(yaw), az = -Math.sin(yaw), W2 = BARRICADE.w / 2, W = this.world;
+    // ni chevauchement ni croisement avec une autre barricade (sauf la voisine raccordée bout à bout)
+    const segPt = (w, x, z) => { x -= w.pos.x; z -= w.pos.z; const l = Math.max(-W2, Math.min(W2, x * w.col.cs - z * w.col.sn)); return Math.hypot(x - l * w.col.cs, z + l * w.col.sn); };
+    const near = this.walls.filter((w) => w.pos.distanceToSquared(p) < 81);
+    for (const w of near) { if (w === at?.snap) continue; let m = 1e9; for (const k of [-1, -0.5, 0, 0.5, 1]) m = Math.min(m, segPt(w, p.x + ax * W2 * k, p.z + az * W2 * k)); if (w.pos.distanceTo(p) < 2.5 || m < 0.9) return { p, why: 'Trop près d\'une autre barricade' }; }
+    // toute la longueur doit tenir : pas dans un mur, pas dans l'eau, sol à peu près plat (les cases d'une barricade voisine ne comptent pas)
+    for (const k of [-0.9, -0.45, 0, 0.45, 0.9]) {
+      const x = p.x + ax * W2 * k, z = p.z + az * W2 * k;
+      if (!W.free(...W.cell(x, z)) && !near.some((w) => segPt(w, x, z) < 1.3)) return { p, why: 'Pas de place ici' };
+      if (W.inWater?.(x, z)) return { p, why: 'Pas dans l\'eau' };
+      if (Math.abs(k) > 0.8 && Math.abs(W.groundY(x, z, p.y + 0.6) - p.y) > 0.45) return { p, why: 'Sol trop en pente' };
+    }
+    for (const z of this.zoneState) if (Math.hypot(p.x - z.center[0], p.z - z.center[1]) < 3.5) return { p, why: 'Pas sur le drapeau' };
+    // personne coincé dedans (ni soi, ni un coéquipier, ni un ennemi)
+    for (const o of this.actors) {
+      if (!o.alive || o.inCar) continue; const dx = o.pos.x - p.x, dz = o.pos.z - p.z;
+      if (Math.abs(dx * ax + dz * az) < W2 + 0.25 && Math.abs(dx * az - dz * ax) < 0.6 && Math.abs(o.pos.y - p.y) < 2) return { p, why: o === a ? 'Recule un peu' : 'Quelqu\'un est dans le passage' };
+    }
     return { p };
+  };
+  // aperçu du joueur : point visé au réticule (1,8 à 5 m), raccord bout à bout avec une barricade de son camp
+  P.buildAim = function (a, noSnap) {
+    const yaw = this.cam.yaw, f = V(Math.sin(yaw), 0, Math.cos(yaw)); const d = V(); this.camera.getWorldDirection(d);
+    let dist = 2.6;
+    if (d.y < -0.06) { const h = this.world.ray(this.camera.position, d, 40); const e = h ? this.camera.position.clone().addScaledVector(d, h.t) : null; if (e) dist = Math.hypot(e.x - a.pos.x, e.z - a.pos.z); else dist = 5; }
+    dist = Math.max(1.8, Math.min(5, dist));
+    const at = a.pos.clone().addScaledVector(f, dist); let wy = yaw, snap = null, bd = 2.4;
+    for (const w of this.walls) {
+      if (noSnap || w.team !== a.team || w.pos.distanceToSquared(at) > 49) continue;
+      let dy = Math.abs(((yaw - w.yaw) % Math.PI + Math.PI) % Math.PI); dy = Math.min(dy, Math.PI - dy); if (dy > 1.1) continue;
+      for (const s of [-1, 1]) { const e = V(w.pos.x + Math.cos(w.yaw) * s * BARRICADE.w, w.pos.y, w.pos.z - Math.sin(w.yaw) * s * BARRICADE.w); const dd = Math.hypot(e.x - at.x, e.z - at.z); if (dd < bd) { bd = dd; snap = w; at.set(e.x, e.y, e.z); } }
+    }
+    if (snap) { wy = snap.yaw; if (Math.cos(wy - yaw) < 0) wy += Math.PI; }
+    at.snap = snap; return { at, yaw: wy, snap };
+  };
+  // appui sur Q / ↓ / bouton Barricade : on tient pour viser, on relâche pour poser (un appui bref pose aussi)
+  P.buildPress = function (a) {
+    if (a.walls == null) a.walls = 3;
+    if (a.carryTurret || this.nearTurret?.(a, true) || a.walls < 1 || !a.alive || a.inCar || a.channel) { this.placeWall(a); return; }
+    this.building = { t: 0 };
+  };
+  P.buildEnd = function () { this.building = null; if (this.wallGhost) this.wallGhost.visible = false; };
+  P.updateBuild = function (a, dt) {
+    const B = this.building; if (!B) return;
+    if (!a.alive || a.inCar || a.carryTurret || a.channel || a.walls < 1) { this.buildEnd(); return; }
+    B.t += dt; const I = this.input, T = TIERS[0]; let A = this.buildAim(a), s = this.wallSpot(a, A.yaw, A.at);
+    if (s.why && A.snap) { A = this.buildAim(a, true); s = this.wallSpot(a, A.yaw, A.at); } // raccord impossible : pose libre
+    // place prise (potelet, arbre, autre barricade) : on cherche tout seul un peu plus près ou plus loin dans l'axe
+    if (s.why && !A.snap && /place|Trop près|Recule/.test(s.why)) {
+      const f = V(Math.sin(A.yaw), 0, Math.cos(A.yaw)), d0 = Math.hypot(A.at.x - a.pos.x, A.at.z - a.pos.z);
+      for (const o of [0.5, -0.5, 1, -1, 1.5, -1.5]) { const d = d0 + o; if (d < 1.8 || d > 5.5) continue; const at = a.pos.clone().addScaledVector(f, d); at.y = A.at.y; const t = this.wallSpot(a, A.yaw, at); if (!t.why) { s = t; A.at = at; break; } }
+    }
+    let g = this.wallGhost;
+    if (!g || g.userData.team !== a.team) { if (g) this.root.remove(g); g = this.wallGhost = wallMesh(a.team, 0); g.userData.team = a.team; g.traverse((o) => { if (o.isMesh) { o.castShadow = o.receiveShadow = false; o.renderOrder = 10; } }); g.children.slice(-2).forEach((o) => { o.visible = false; o.userData.ghostSkip = true; }); this.root.add(g); }
+    g.visible = true; g.position.copy(s.p); g.rotation.y = A.yaw;
+    const m = s.why ? GHOST.bad : A.snap ? GHOST.snap : GHOST.ok;
+    if (g.userData.mat !== m) { g.userData.mat = m; g.traverse((o) => { if (o.isMesh && !o.userData.ghostSkip) o.material = m; }); }
+    if (A.snap !== B.snap) { B.snap = A.snap; if (A.snap) this.audio.click?.(); }
+    // pulsation légère : on voit que c'est un aperçu
+    m.opacity = 0.46 + 0.1 * Math.sin(this.time * 7);
+    if (!I.down('build')) { // relâché : on pose (ou on dit pourquoi pas)
+      this.buildEnd();
+      if (s.why) { this.toast(s.why, '#ff8080'); return; }
+      const w = this.placeWall(a, A.yaw, A.at); if (w && A.snap) this.toast(`🧱 ${T.nom[a.team]} raccordées`, '#9ff59f');
+      return;
+    }
+    const key = I.label('build');
+    this.ui.prompt = s.why ? `🧱 <span class="r" style="color:#ff8080">${s.why}</span>`
+      : `Relâche <b>${key}</b> : poser ${T.nom[a.team].toLowerCase()}${A.snap ? ' <span class="r" style="color:#ffd76a">— raccord à la barricade voisine</span>' : ''} <span class="r">(${a.walls} en réserve)</span>`;
   };
   // la barricade ferme-t-elle une ruelle ? (les deux bouts collés à un mur) : interdit aux bots
   P.wallClosesLane = function (p, yaw) {
@@ -93,11 +162,11 @@ export function installBarricades(Game) {
     for (const s of [-1, 1]) { let shut = false; for (const k of [0.6, 1.6, 2.8]) { const x = p.x + ax * s * (BARRICADE.w / 2 + k), z = p.z + az * s * (BARRICADE.w / 2 + k); if (!this.world.free(...this.world.cell(x, z))) { shut = true; break; } } if (shut) blocked++; }
     return blocked === 2;
   };
-  P.placeWall = function (a, yawIn) {
+  P.placeWall = function (a, yawIn, at) {
     if (a.walls == null) a.walls = 3;
     if (a.walls < 1 || !a.alive || a.inCar) { if (a === this.player && a.alive) this.toast(`Barricade dans ${Math.ceil(a.wallT || 15)} s`, '#ff8080'); return null; }
     const yaw = yawIn ?? (a === this.player ? this.cam.yaw : a.yaw);
-    const s = this.wallSpot(a, yaw); if (!s.p) { if (a === this.player) this.toast(s.why, '#ff8080'); return null; }
+    const s = this.wallSpot(a, yaw, at); if (s.why) { if (a === this.player) this.toast(s.why, '#ff8080'); return null; }
     const p = s.p; const team = this.walls.filter((w) => w.team === a.team);
     if (a.bot) { if (team.length >= this.wallCap() - 3 || this.wallClosesLane(p, yaw)) return null; }
     else if (team.length >= this.wallCap()) { const old = team.find((w) => w.owner?.bot); if (old) this.destroyWall(old); }
@@ -147,6 +216,9 @@ export function installBarricades(Game) {
     }
     return best;
   };
+  // l'aperçu de pose passe après les autres invites (il les remplace tant qu'on tient la touche)
+  const interactions = P.interactions;
+  P.interactions = function (a, dt) { interactions.call(this, a, dt); if (a === this.player) this.updateBuild(a, dt); };
   // invite à l'écran du joueur (appelée par interactions)
   P.wallPrompt = function (a) {
     if (a.inCar) return null; const w = this.nearFriendlyWall(a); if (!w) return null;

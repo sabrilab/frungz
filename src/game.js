@@ -956,7 +956,7 @@ export class Game {
         if (this.fire(a, o, d)) { a.momentum *= 0.92; }
       }
     }
-    if (I.pressed('build') && !this.thr) this.placeWall(a);
+    if (I.pressed('build') && !this.thr) this.buildPress(a);
     if (I.pressed('shop') && !this.thr && this.atBase(a)) this.onShop?.();
     // interactions : voiture, vitrine, butin, planque, receleur, vol
     this.interactions(a, dt);
@@ -1922,7 +1922,7 @@ export class Game {
     const a = this.player, card = (c, t, ...sm) => `<div class="card" style="--c:${c}"><b>${t}</b>${sm.map((x) => `<small>${x}</small>`).join('')}</div>`;
     const weapons = a.slots.map((w, i) => { const W = WEAPONS[w.id]; return card(RARITY[w.rarity].color, `${svg(W.ico)} ${W.name}${i === a.cur ? ' ' + svg('check') : ''}`, `<span style="color:${RARITY[w.rarity].color}">${RARITY[w.rarity].name}</span> · chargeur ${w.mag}/${W.mag}`, `Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.rps} coups/s`); });
     const K = classOf(a.team, a.cls);
-    const gear = [card(TEAMS[a.team].color, `${svg(K.ico)} ${K.name} · ${K.role}`, `${K.perkName} : ${K.perkDesc}`), card('#888', `${svg(a.team === 'ordre' ? 'gas' : 'smoke')} ${a.team === 'ordre' ? 'Lacrymo' : 'Fumigène'} × ${a.nades} · ${svg('frag')} Grenade × ${a.frags ?? 0}`, `maintenir ${this.input.label('grenade')} pour viser`), (() => { const B = tierInfo(a); return card(B.T.col, `${svg('barricade')} Barricades ${a.walls ?? 3}/3 · ${B.T.mat[a.team]}`, a.walls < 3 ? `prochaine dans ${Math.ceil(a.wallT || 0)} s` : 'prêtes', B.next ? `${B.next.mat[a.team]} à ${B.next.need} galons (${fmtG(B.g)})` : 'béton débloqué', `${this.input.label('interact')} devant une barricade du camp : renforcer`); })(), card('#57b6ff', `${svg('vest')} Gilet ${Math.round(a.armor)}`, `santé ${Math.ceil(a.hp)}`)];
+    const gear = [card(TEAMS[a.team].color, `${svg(K.ico)} ${K.name} · ${K.role}`, `${K.perkName} : ${K.perkDesc}`), card('#888', `${svg(a.team === 'ordre' ? 'gas' : 'smoke')} ${a.team === 'ordre' ? 'Lacrymo' : 'Fumigène'} × ${a.nades} · ${svg('frag')} Grenade × ${a.frags ?? 0}`, `maintenir ${this.input.label('grenade')} pour viser`), (() => { const B = tierInfo(a); return card(B.T.col, `${svg('barricade')} Barricades ${a.walls ?? 3}/3 · ${B.T.mat[a.team]}`, a.walls < 3 ? `prochaine dans ${Math.ceil(a.wallT || 0)} s` : 'prêtes', B.next ? `${B.next.mat[a.team]} à ${B.next.need} galons (${fmtG(B.g)})` : 'béton débloqué', `maintenir ${this.input.label('build')} : viser la pose · ${this.input.label('interact')} devant une barricade du camp : renforcer`); })(), card('#57b6ff', `${svg('vest')} Gilet ${Math.round(a.armor)}`, `santé ${Math.ceil(a.hp)}`)];
     const carried = a.bag.length ? a.bag.map((i) => card(RARITY[i.rarity].color, `${i.icon} ${i.nom}`, `<span style="color:${RARITY[i.rarity].color}">${RARITY[i.rarity].name}</span>${i.stolen ? ' · volé' : ''}`, `${fmt(i.valeur)} € · receleur ${fmt(this.recelPrice(i) * (a.team === 'ordre' ? 0.6 : 1))} €`)) : [card('#555', 'Les mains vides', 'Casse une vitrine de luxe et rapporte un objet')];
     const socs = this.socles[a.team], held = socs.filter((x) => x.item), inc = held.reduce((t, x) => t + x.item.valeur * 0.006, 0);
     const base = held.length ? held.map((x) => card(RARITY[x.item.rarity].color, `${x.item.icon} ${x.item.nom}`, `${fmt(x.item.valeur)} €${x.owner === a ? ' · à toi' : x.owner ? ' · ' + x.owner.name : ''}`)) : [card('#555', 'Rien d\'exposé', 'Dépose ton objet à la base : il rapporte chaque seconde')];
