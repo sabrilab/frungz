@@ -517,3 +517,14 @@ body.scoped #cross, body.scoped #streakbar { visibility: hidden; }
 #mats .tier { font: 800 11px Inter; letter-spacing: .04em; text-transform: uppercase; margin-left: 6px; }
 #mats .gal { display: block; height: 3px; margin-top: 3px; border-radius: 2px; background: rgba(255,255,255,.15); overflow: hidden; }
 #mats .gal i { display: block; height: 100%; transition: width .3s; }
+
+/* étiquettes des atouts posés : ce qui arrive, accroché à la fumée de désignation */
+#zonetags { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+#zonetags .ztag { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; will-change: transform; --c: #fff; }
+#zonetags .ztag b { font: 900 12px/1 Inter, sans-serif; letter-spacing: .06em; color: #fff; background: rgba(12,14,18,.78); border: 1.5px solid var(--c); border-radius: 6px; padding: 4px 7px; white-space: nowrap; display: flex; gap: 5px; align-items: center; }
+#zonetags .ztag b svg { width: 14px; height: 14px; color: var(--c); }
+#zonetags .ztag small { font: 700 10.5px/1 Inter, sans-serif; color: var(--c); text-shadow: 0 1px 2px #000; }
+#zonetags .ztag i { width: 2px; height: 16px; background: linear-gradient(var(--c), transparent); }
+#zonetags .ztag.foe b { background: rgba(60,8,6,.85); animation: ztag-blink .6s steps(2) infinite; }
+@keyframes ztag-blink { 50% { border-color: transparent; } }
+#hud.gs #zonetags { display: none; }
