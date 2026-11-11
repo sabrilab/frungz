@@ -9,6 +9,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { pointInPoly } from './world.js';
 import { svg } from './icons.js';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { mats as carMats, paint as carPaint, rectUVsBox, ATLAS } from './voitures.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
@@ -50,9 +52,9 @@ const node = (parent, name, x, y, z) => { const o = new THREE.Object3D(); o.name
 // pièces fixes regroupées par matière : un maillage par matière au lieu d'une centaine
 function mergeByMaterial(group) {
   group.updateMatrixWorld(true); const by = new Map();
-  group.traverse((o) => { if (!o.isMesh) return; const g = o.geometry.index ? o.geometry.clone() : o.geometry.clone(); g.applyMatrix4(o.matrixWorld); (by.get(o.material) || by.set(o.material, []).get(o.material)).push(g); });
+  group.traverse((o) => { if (!o.isMesh) return; const g = clean(o.geometry.clone()); g.applyMatrix4(o.matrixWorld); (by.get(o.material) || by.set(o.material, []).get(o.material)).push(g); });
   const out = new THREE.Group(); out.name = 'coque';
-  for (const [m, list] of by) { const geo = mergeGeometries(list, false); if (!geo) continue; const mesh = new THREE.Mesh(geo, m); mesh.castShadow = !m.transparent; mesh.receiveShadow = true; out.add(mesh); }
+  for (const [m, list] of by) { const geo = mergeGeometries(list, false); if (!geo) continue; const mesh = new THREE.Mesh(geo, m); mesh.castShadow = !m.transparent && m.name !== 'car_optiques'; mesh.receiveShadow = true; out.add(mesh); }
   return out;
 }
 
@@ -66,60 +68,87 @@ function missileMesh(scale = 1, color = '#d9dde2') {
 }
 const GEO = {};
 
+// Modèle détaillé (passe réalisme) : coque lisse en composite vernie, bourrelet et bande de couleur, pare-brise bombé,
+// siège baquet, écran de bord, bras en carbone, carénages profilés (bord d'attaque arrondi), moteurs à cloche,
+// hélices tripales vrillées, patins cintrés, feux de navigation, livrée par camp (aucune marque).
 function buildHeli(type) {
-  const S = HELIS[type]; const g = new THREE.Group(); const st = new THREE.Group();
-  const body = mat(S.body, { r: 0.45, m: 0.25, ds: true }), acc = mat(S.accent, { r: 0.5 }), arm = mat(S.arm, { r: 0.55, m: 0.3 }), metal = mat('#8d939b', { r: 0.3, m: 0.75 });
-  const dark = mat('#16171a', { r: 0.85 }), glass = mat('#a9d2ea', { r: 0.05, m: 0.2, t: 0.32 }), lamp = mat('#fff6dc', { e: '#fff1c8', ei: 1.4 });
-  // coque : moitié basse d'un œuf, ouverte sur le dessus, avec un rebord et une bande de couleur
-  part(st, new THREE.SphereGeometry(1, 14, 7, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.58), body, 0, 0.8, 0.05, 0, 0, 0, 0.6, 0.5, 1.0);
-  part(st, new THREE.TorusGeometry(1, 0.035, 4, 18), acc, 0, 0.93, 0.05, Math.PI / 2, 0, 0, 0.585, 0.975, 1.2);
-  part(st, new THREE.TorusGeometry(1, 0.03, 4, 18), acc, 0, 0.62, 0.05, Math.PI / 2, 0, 0, 0.57, 0.95, 1.6);
-  // pare-brise incliné, phare sous le nez
-  part(st, new THREE.CylinderGeometry(0.6, 0.6, 0.42, 12, 1, true, -0.62, 1.24), glass, 0, 1.13, 0.18, -0.38, 0, 0, 1, 1, 1.45);
-  part(st, new THREE.BoxGeometry(0.22, 0.07, 0.04), lamp, 0, 0.5, 1.0);
-  // siège baquet, manches latéraux, repose-pieds
-  part(st, new THREE.BoxGeometry(0.48, 0.08, 0.46), dark, ...SEAT.map((v, i) => (i === 1 ? v - 0.04 : v)));
-  part(st, new THREE.BoxGeometry(0.46, 0.46, 0.09), dark, 0, 0.84, -0.5, -0.16); // dossier bas : le pilote reste visible de dos
-  part(st, new THREE.BoxGeometry(0.5, 0.06, 0.18), arm, 0, 0.36, 0.5);
-  for (const sx of [-1, 1]) { tube(st, V(sx * 0.31, 0.56, 0.08), V(sx * 0.3, 0.8, 0.12), 0.02, metal); part(st, new THREE.BoxGeometry(0.045, 0.09, 0.05), dark, sx * 0.3, 0.84, 0.12); }
-  // pylône derrière le siège et bloc batterie
-  part(st, new THREE.BoxGeometry(0.62, 0.42, 0.42), arm, 0, 1.0, -0.82);
-  part(st, new THREE.BoxGeometry(0.1, 0.62, 0.14), arm, 0, 1.3, -0.62);
-  part(st, new THREE.BoxGeometry(0.34, 0.16, 0.34), arm, 0, 1.6, -0.52);
-  // bras, moteurs, carénages des hélices, feux de position
+  const S = HELIS[type], hq = !['bas', 'mobile'].includes(globalThis.__quality); const g = new THREE.Group(); const st = new THREE.Group();
+  const MT = carMats(hq), body = carPaint(S.body, hq, { metal: 0.35, rough: 0.28 }), acc = carPaint(S.accent, hq, { metal: 0.2, rough: 0.3 });
+  const carbon = MT.trim, metal = MT.metal, dark = MT.plastic, glassM = new THREE.MeshPhysicalMaterial({ name: 'heli_bulle', color: '#cfe6f5', roughness: 0.02, metalness: 0, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: 1.5 });
+  const lamp = mat('#fff6dc', { e: '#fff1c8', ei: 1.6 }); lamp.flatShading = false;
+  const SEG = hq ? 40 : 20;
+  // coque : moitié basse d'un œuf allongé, lisse, épaisseur visible au bord (coque extérieure + paroi intérieure sombre)
+  const shell = new THREE.SphereGeometry(1, SEG, SEG / 2, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.58); shell.scale(0.6, 0.5, 1.0); shell.translate(0, 0.8, 0.05); part(st, shell, body);
+  const inner = new THREE.SphereGeometry(0.965, SEG, SEG / 2, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.58); inner.scale(0.6, 0.5, 1.0); inner.translate(0, 0.8, 0.05); flip(inner); part(st, inner, dark);
+  const lip = new THREE.TorusGeometry(1, 0.03, 10, SEG * 2); lip.rotateX(Math.PI / 2); lip.scale(0.585, 1, 0.975); lip.translate(0, 0.93, 0.05); part(st, lip, acc);
+  // bande de couleur sous le bourrelet (une seconde coque très fine, à peine plus grande)
+  const band = new THREE.SphereGeometry(1.006, SEG, 3, 0, Math.PI * 2, Math.PI * 0.53, Math.PI * 0.07); band.scale(0.6, 0.5, 1.0); band.translate(0, 0.8, 0.05); part(st, band, acc);
+  // pare-brise bombé en polycarbonate, cadre noir
+  const ws = new THREE.SphereGeometry(0.62, SEG, 10, -0.75, 1.5, Math.PI * 0.18, Math.PI * 0.3); ws.scale(1, 1.1, 1.25); ws.translate(0, 0.66, 0.2); part(st, ws, glassM);
+  const wf = new THREE.TorusGeometry(0.62, 0.012, 6, 24, 1.5); wf.rotateX(Math.PI / 2); wf.rotateY(Math.PI / 2 - 0.75 - 1.5 + Math.PI); wf.scale(1, 1, 1.25); wf.translate(0, 0.94, 0.2); part(st, wf, carbon);
+  // feu d'atterrissage sous le nez, écran de bord
+  part(st, new THREE.CylinderGeometry(0.06, 0.07, 0.04, 20).rotateX(Math.PI / 2 - 0.4), lamp, 0, 0.48, 0.98);
+  const scr = new THREE.BoxGeometry(0.26, 0.15, 0.02); scr.rotateX(-0.6); part(st, scr, mat('#0c1a26', { e: '#2a6f9a', ei: 0.8 }), 0, 0.82, 0.62);
+  // siège baquet (assise, dossier galbé), harnais, manches latéraux, repose-pieds
+  part(st, new THREE.CapsuleGeometry(0.2, 0.12, 6, 14).rotateZ(Math.PI / 2).scale(1, 0.32, 1.1), MT.interior, SEAT[0], SEAT[1] - 0.02, SEAT[2]);
+  part(st, new THREE.CapsuleGeometry(0.2, 0.16, 6, 14).scale(1.05, 1, 0.3), MT.interior, 0, 0.84, -0.5, -0.16);
+  for (const sx of [-1, 1]) part(st, new THREE.BoxGeometry(0.04, 0.42, 0.012), acc, sx * 0.1, 0.84, -0.45, -0.16);
+  part(st, new THREE.BoxGeometry(0.5, 0.05, 0.2), carbon, 0, 0.36, 0.5);
+  for (const sx of [-1, 1]) { tube(st, V(sx * 0.31, 0.56, 0.08), V(sx * 0.3, 0.8, 0.12), 0.018, metal, 12); part(st, new THREE.CapsuleGeometry(0.025, 0.06, 4, 10), dark, sx * 0.3, 0.85, 0.12); }
+  // nacelle arrière (batteries) aux arêtes arrondies, pylône et moyeu des bras
+  part(st, new RoundedBoxGeometry(0.64, 0.44, 0.44, 3, 0.08), body, 0, 1.0, -0.82);
+  part(st, new RoundedBoxGeometry(0.66, 0.06, 0.46, 2, 0.02), acc, 0, 0.86, -0.82);
+  for (let i = 0; i < 4; i++) part(st, new THREE.BoxGeometry(0.5, 0.012, 0.02), dark, 0, 0.92 + i * 0.05, -1.045); // ouïes de ventilation
+  part(st, new RoundedBoxGeometry(0.12, 0.62, 0.16, 2, 0.03), carbon, 0, 1.3, -0.62);
+  part(st, new THREE.CylinderGeometry(0.2, 0.22, 0.14, 24), carbon, 0, 1.6, -0.52);
+  // bras en carbone, moteurs à cloche, carénages profilés, stators, feux de position
   const hub = V(0, 1.6, -0.52);
+  const duct = GEO.ductP ||= (() => { const pr = []; for (let i = 0; i <= 16; i++) { const a = i / 16 * Math.PI * 2; pr.push(new THREE.Vector2(0.56 + Math.cos(a) * 0.045 * (Math.cos(a) > 0 ? 1 : 0.7) + (Math.sin(a) > 0 ? 0.03 * Math.sin(a) : 0), Math.sin(a) * 0.09)); } return new THREE.LatheGeometry(pr, SEG); })();
   for (const [, sx, z] of ROTORS) {
-    const c = V(sx * 1.0, 1.55, z); tube(st, hub, c, 0.05, arm); tube(st, V(sx * 0.3, 1.05, z * 0.4 - 0.4), c.clone().add(V(-sx * 0.25, -0.05, 0)), 0.03, arm);
-    part(st, GEO.motor ||= new THREE.CylinderGeometry(0.09, 0.1, 0.16, 8), metal, c.x, c.y - 0.04, c.z);
-    part(st, GEO.duct ||= new THREE.TorusGeometry(0.56, 0.05, 5, 20), acc, c.x, c.y, c.z, Math.PI / 2);
-    part(st, GEO.duct2 ||= new THREE.CylinderGeometry(0.58, 0.58, 0.14, 20, 1, true), arm, c.x, c.y, c.z);
-    part(st, GEO.nav ||= new THREE.BoxGeometry(0.07, 0.07, 0.07), mat(sx > 0 ? '#ff2a2a' : '#2aff6b', { e: sx > 0 ? '#ff2a2a' : '#2aff6b', ei: 2 }), c.x + sx * 0.6, c.y, c.z);
+    const c = V(sx * 1.0, 1.55, z); tube(st, hub, c, 0.045, carbon, 14); tube(st, V(sx * 0.3, 1.05, z * 0.4 - 0.4), c.clone().add(V(-sx * 0.25, -0.05, 0)), 0.028, carbon, 12);
+    part(st, GEO.motor2 ||= new THREE.CylinderGeometry(0.085, 0.1, 0.14, 24), metal, c.x, c.y - 0.03, c.z);
+    part(st, GEO.motorC ||= new THREE.CylinderGeometry(0.1, 0.1, 0.03, 24), carbon, c.x, c.y - 0.1, c.z);
+    part(st, duct, acc, c.x, c.y, c.z);
+    for (let k = 0; k < 3; k++) { const b = GEO.stator ||= new THREE.BoxGeometry(1.06, 0.018, 0.03); part(st, b, carbon, c.x, c.y - 0.06, c.z, 0, k * Math.PI / 3); }
+    part(st, GEO.nav2 ||= new THREE.SphereGeometry(0.035, 12, 8), mat(sx > 0 ? '#ff2a2a' : '#2aff6b', { e: sx > 0 ? '#ff2a2a' : '#2aff6b', ei: 2.4 }), c.x + sx * 0.62, c.y, c.z);
   }
-  // patins
+  // patins cintrés (tubes lisses) et jambes
   for (const sx of [-1, 1]) {
-    tube(st, V(sx * 0.52, 0.04, -0.9), V(sx * 0.52, 0.04, 0.72), 0.035, metal); tube(st, V(sx * 0.52, 0.04, 0.72), V(sx * 0.52, 0.18, 0.95), 0.035, metal);
-    tube(st, V(sx * 0.52, 0.04, 0.42), V(sx * 0.32, 0.42, 0.36), 0.03, metal); tube(st, V(sx * 0.52, 0.04, -0.56), V(sx * 0.32, 0.44, -0.5), 0.03, metal);
+    const skid = new THREE.CatmullRomCurve3([V(sx * 0.52, 0.06, -0.95), V(sx * 0.52, 0.035, -0.6), V(sx * 0.52, 0.035, 0.55), V(sx * 0.52, 0.07, 0.82), V(sx * 0.52, 0.2, 0.95)]);
+    part(st, new THREE.TubeGeometry(skid, 24, 0.032, 10), metal);
+    for (const [z0, z1] of [[0.42, 0.36], [-0.56, -0.5]]) part(st, new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(sx * 0.52, 0.04, z0), V(sx * 0.46, 0.25, (z0 + z1) / 2), V(sx * 0.32, 0.43, z1)]), 8, 0.026, 8), metal);
   }
-  // mitrailleuses jumelées sous la coque, rails des missiles sur les flancs
+  // mitrailleuses jumelées sous la coque (boîtier, manchon refroidisseur, canon), rails des missiles
   for (const sx of [-1, 1]) {
-    part(st, new THREE.BoxGeometry(0.1, 0.12, 0.34), dark, sx * 0.4, 0.5, 0.58); part(st, new THREE.CylinderGeometry(0.03, 0.03, 0.5, 6), metal, sx * 0.4, 0.52, 0.98, Math.PI / 2);
-    part(st, new THREE.BoxGeometry(0.06, 0.04, 0.8), arm, sx * 0.66, 0.74, 0.12); tube(st, V(sx * 0.5, 0.72, 0.12), V(sx * 0.66, 0.74, 0.12), 0.025, arm);
+    part(st, new RoundedBoxGeometry(0.11, 0.13, 0.36, 2, 0.02), dark, sx * 0.4, 0.5, 0.58);
+    part(st, new THREE.CylinderGeometry(0.036, 0.036, 0.26, 14), carbon, sx * 0.4, 0.52, 0.86, Math.PI / 2);
+    part(st, new THREE.CylinderGeometry(0.016, 0.016, 0.52, 10), metal, sx * 0.4, 0.52, 0.98, Math.PI / 2);
+    part(st, new RoundedBoxGeometry(0.06, 0.04, 0.8, 1, 0.01), carbon, sx * 0.66, 0.74, 0.12); tube(st, V(sx * 0.5, 0.72, 0.12), V(sx * 0.66, 0.74, 0.12), 0.022, carbon, 10);
   }
-  if (S.police) for (const sx of [-1, 1]) part(st, new THREE.BoxGeometry(0.02, 0.1, 0.5), mat('#e9eef5'), sx * 0.6, 0.78, -0.3);
+  // livrée : panneau « POLICE » sur les flancs de la Brigade, bande damier des Frungz
+  if (S.police) for (const sx of [-1, 1]) { const pl = new THREE.PlaneGeometry(0.5, 0.09); pl.rotateY(sx * Math.PI / 2); pl.translate(sx * 0.6, 0.76, -0.25); rectUVsBox(pl, ATLAS.policeCapot); if (sx < 0) flipU(pl); part(st, pl, MT.detail); }
   g.add(mergeByMaterial(st));
-  // pièces animées : hélices (pales + disque flou), missiles visibles sur les rails, gyrophares
-  const blade = GEO.blade ||= new THREE.BoxGeometry(1.0, 0.02, 0.085), disc = GEO.disc ||= new THREE.CircleGeometry(0.52, 18).rotateX(-Math.PI / 2);
+  // pièces animées : hélices tripales vrillées + disque flou, missiles sur les rails, gyrophares
+  const blade = GEO.blade3 ||= (() => { const L = []; for (let k = 0; k < 3; k++) { const b = new THREE.BoxGeometry(0.5, 0.012, 0.08, 8, 1, 1); const p = b.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i) + 0.27, tw = 0.35 * (1 - x / 0.54), w = 1 - 0.45 * (x / 0.54); const y = p.getY(i), zz = p.getZ(i) * w; p.setXYZ(i, x, y * Math.cos(tw) - zz * Math.sin(tw), y * Math.sin(tw) + zz * Math.cos(tw)); } b.computeVertexNormals(); b.rotateY(k * Math.PI * 2 / 3); L.push(b.toNonIndexed()); } L.push(new THREE.CylinderGeometry(0.05, 0.06, 0.06, 16).toNonIndexed()); return mergeGeometries(L.map(clean)); })();
+  const disc = GEO.disc ||= new THREE.CircleGeometry(0.52, 18).rotateX(-Math.PI / 2);
   const discM = mat('#d6dde5', { t: 0.0 }); discM.userData = {};
-  for (const [name, sx, z] of ROTORS) { const r = new THREE.Group(); r.name = name; r.position.set(sx * 1.0, 1.62, z); const b = new THREE.Mesh(blade, dark); b.name = 'pale'; r.add(b); const d = new THREE.Mesh(disc, discM); d.name = 'flou'; r.add(d); g.add(r); }
+  for (const [name, sx, z] of ROTORS) { const r = new THREE.Group(); r.name = name; r.position.set(sx * 1.0, 1.62, z); const b = new THREE.Mesh(blade, carbon); b.name = 'pale'; r.add(b); const d = new THREE.Mesh(disc, discM); d.name = 'flou'; r.add(d); g.add(r); }
   for (const [i, [sx, y]] of [[1, 0.66], [-1, 0.66], [1, 0.81], [-1, 0.81]].entries()) { const m = missileMesh(1); m.name = 'pod' + i; m.position.set(sx * 0.66, y, 0.14); g.add(m); }
-  const b1 = new THREE.Mesh(GEO.beacon ||= new THREE.BoxGeometry(0.14, 0.08, 0.14), mat(S.light, { e: S.light, ei: 3 })); b1.name = 'feu-1'; b1.position.set(0.1, 1.72, -0.52); g.add(b1);
-  const b2 = new THREE.Mesh(GEO.beacon, mat(S.police ? '#e9eef5' : S.light, { e: S.police ? '#bcd3ff' : S.light, ei: 3 })); b2.name = 'feu-2'; b2.position.set(-0.1, 1.72, -0.52); g.add(b2);
+  const dome = GEO.dome ||= new THREE.SphereGeometry(0.075, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+  const b1 = new THREE.Mesh(dome, mat(S.light, { e: S.light, ei: 3 })); b1.name = 'feu-1'; b1.position.set(0.1, 1.67, -0.52); g.add(b1);
+  const b2 = new THREE.Mesh(dome, mat(S.police ? '#e9eef5' : S.light, { e: S.police ? '#bcd3ff' : S.light, ei: 3 })); b2.name = 'feu-2'; b2.position.set(-0.1, 1.67, -0.52); g.add(b2);
+  // ombre de contact sous l'engin
+  { const sh = new THREE.PlaneGeometry(1.4 / 0.6, 2.3 / 0.8); sh.rotateX(-Math.PI / 2); sh.translate(0, 0.012, -0.1); const o = new THREE.Mesh(sh, MT.contact); o.renderOrder = -1; o.name = 'ombre'; g.add(o); }
   // repères pour le pilote (même noms que les motos : la pose du pilote est calculée par deuxroues.js)
   node(g, 'seat-driver', ...SEAT);
   for (const sx of [-1, 1]) { node(g, sx > 0 ? 'peg-left' : 'peg-right', sx * 0.16, 0.42, 0.5); node(g, sx > 0 ? 'grip-left' : 'grip-right', sx * 0.3, 0.86, 0.12); node(g, sx > 0 ? 'canon-g' : 'canon-d', sx * 0.4, 0.52, 1.25); }
-  g.traverse((o) => { if (o.isMesh && o.parent !== g.children[0]) o.castShadow = o.material !== discM; });
+  g.traverse((o) => { if (o.isMesh && o.parent !== g.children[0]) o.castShadow = o.material !== discM && o.material !== MT.contact; });
   return { scene: g, kind: 'heli', type, nom: S.nom, camp: S.camp, police: !!S.police, spec: { seat: SEAT, lean: 0.04, hp: S.hp }, size: [1.2, 1.4, 1.9] };
 }
+// retourne les faces (paroi intérieure visible de l'intérieur)
+function flip(geo) { const i = geo.index; if (i) { const a = i.array; for (let k = 0; k < a.length; k += 3) { const t = a[k + 1]; a[k + 1] = a[k + 2]; a[k + 2] = t; } } const n = geo.attributes.normal; for (let k = 0; k < n.count; k++) n.setXYZ(k, -n.getX(k), -n.getY(k), -n.getZ(k)); }
+function flipU(geo) { const uv = geo.attributes.uv, u = []; for (let k = 0; k < uv.count; k++) u.push(uv.getX(k)); const mn = Math.min(...u), mx = Math.max(...u); for (let k = 0; k < uv.count; k++) uv.setX(k, mn + mx - uv.getX(k)); }
+function clean(g) { g = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k); if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2)); return g; }
 let DEFS = null;
 export function heliDefs() { return (DEFS ||= Object.fromEntries(Object.keys(HELIS).map((k) => [k, buildHeli(k)]))); }
 

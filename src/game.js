@@ -18,7 +18,7 @@ import { installRegie } from './regie.js';
 import { installConvois } from './convois.js';
 import { installBarricades, TIERS, tierInfo, fmtG } from './barricades.js';
 import { installLanceurs } from './lanceurs.js';
-import { installManiement } from './maniement.js';
+import { installManiement, VIEW_MAG } from './maniement.js';
 import { installTurrets } from './tourelles.js';
 import { createFeedback } from './feedback.js';
 
@@ -81,6 +81,8 @@ const BOT_NAMES = {
 // ===================================================================================================================
 // classe d'un bot : tirage pondéré (peu de tireurs embusqués, sinon la rue devient un stand de tir)
 function pickClass(team) { const L = Object.values(CLASSES[team]); let x = Math.random() * L.reduce((t, K) => t + (K.bots ?? 1), 0); for (const K of L) { x -= K.bots ?? 1; if (x <= 0) return K.id; } return L[0].id; }
+// ombre de contact des voitures (voitures.js) : ne projette pas d'ombre elle-même
+const CONTACT = (o) => o.material?.name === 'car_ombre_contact';
 export class Game {
   constructor(env) {
     Object.assign(this, env); // renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts, onEnd
@@ -470,7 +472,7 @@ export class Game {
     if (W.mag <= 0) { this.startReload(a); if (!a.bot) this.audio.click(); return false; }
     W.mag--; a.netShots = (a.netShots || 0) + 1; a.fireT = 1 / D.rps; if (D.burst) { a.burstLeft = a.burstLeft > 0 ? a.burstLeft - 1 : D.burst - 1; if (a.burstLeft <= 0 || W.mag <= 0) { a.burstLeft = 0; a.fireT += D.burstPause || 0.25; } } a.lastShot = this.time; Anim.kick(a, W.id); { const heavy = D.pellets > 1 || D.dmg > 50; this.overlay(a, 'A_Recoil', heavy ? 0.32 : 0.14, { add: true, w: heavy ? 0.8 : 0.3 }); }
     const muzzle = V(); (a.ch.gun?.userData.muzzle || a.ch.root).getWorldPosition(muzzle);
-    if (!a.bot && this.cam.fps && this.vgun) this.vgun.userData.muzzle.getWorldPosition(muzzle);
+    if (!a.bot && this.cam.fps && this.vgun) { this.vgun.userData.muzzle.getWorldPosition(muzzle); this.vmSeen?.(muzzle); }
     const moving = this.feetSpeed(a) > 2 ? 1.6 : 1; const aiming = !a.bot && this.aiming ? (this.cam.fps ? 0.1 : 0.18) : 1; const air = a.onGround ? 1 : 1.8;
     const scopedShot = a === this.player && D.scope && this.aiming;
     const hip = D.scope && !a.bot && !scopedShot ? 22 : 1, settle = scopedShot ? 1 + (1 - (this.sc?.settle ?? 1)) * 14 : 1;
@@ -479,7 +481,7 @@ export class Game {
     this.fx.muzzle(muzzle, D.pellets > 1 ? 1.4 : 1);
     if (a !== this.player) this.notePing(a, muzzle);
     // douille éjectée à droite de l'arme (pas pour le revolver, qui garde ses douilles)
-    if (D.casings && (a === this.player || a.pos.distanceToSquared(this.player.pos) < 625)) { const yw = a === this.player ? this.cam.yaw : a.yaw; const ep = V(); const vg = a === this.player && this.cam.fps && this.vgun; if (vg) { const B = this.vgunBB; ep.set(B ? (B.min.x + B.max.x) / 2 + 0.03 : 0.03, B ? B.max.y - 0.02 : 0.05, B ? B.min.z * 0.3 : -0.1); this.vgun.localToWorld(ep); } else (a.ch.gun || a.ch.root).getWorldPosition(ep); /* en vue subjective : fenêtre d’éjection, sur le dessus de l’arme */ this.fx.casing(ep, V(-Math.cos(yw), 0, Math.sin(yw)), D.pellets > 1); }
+    if (D.casings && (a === this.player || a.pos.distanceToSquared(this.player.pos) < 625)) { const yw = a === this.player ? this.cam.yaw : a.yaw; const ep = V(); const vg = a === this.player && this.cam.fps && this.vgun; if (vg) { const B = this.vgunBB; ep.set(B ? (B.min.x + B.max.x) / 2 + 0.03 : 0.03, B ? B.max.y - 0.02 : 0.05, B ? B.min.z * 0.3 : -0.1); this.vgun.localToWorld(ep); this.vmSeen?.(ep); } else (a.ch.gun || a.ch.root).getWorldPosition(ep); /* en vue subjective : fenêtre d’éjection, sur le dessus de l’arme */ this.fx.casing(ep, V(-Math.cos(yw), 0, Math.sin(yw)), D.pellets > 1); }
     if (a === this.player) {
       const k = D.kick * (this.aiming ? 0.7 : 1); this.cam.kickP += k * rnd(0.8, 1.2); this.cam.kickY += k * rnd(-0.4, 0.4); this.cam.trauma = Math.min(1, this.cam.trauma + k * 2.2);
       this.input.rumble(D.pellets > 1 || D.dmg > 50 ? 0.8 : 0.25, 0.5, 60); this.ui.crossKick = 1;
@@ -692,10 +694,10 @@ export class Game {
     return [Math.min(def.size[0], q(xs, 0.985) - q(xs, 0.015)), def.size[1], Math.min(def.size[2], q(zs, 0.995) - q(zs, 0.005))];
   }
   // modèle de voiture fusionné une fois par modèle : toutes les pièces (caisse et roues) regroupées par matière
-  staticCar(def) {
-    if (def.stat !== undefined) return def.stat; def.stat = null;
+  staticCar(def, far = false) {
+    const key = far ? 'statFar' : 'stat'; if (def[key] !== undefined) return def[key]; def[key] = null; if (far && !def.far) return null;
     try {
-      const root = def.scene; root.updateMatrixWorld(true); const inv = root.matrixWorld.clone().invert(); const by = new Map();
+      const root = far ? def.far : def.scene; root.updateMatrixWorld(true); const inv = root.matrixWorld.clone().invert(); const by = new Map();
       root.traverse((o) => { if (!o.isMesh || Array.isArray(o.material) || o.isSkinnedMesh) return; const g = o.geometry.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)); (by.get(o.material) || by.set(o.material, []).get(o.material)).push(g); });
       const grp = new THREE.Group(); grp.name = 'voiture_fusionnee';
       for (const [mat, list] of by) {
@@ -708,17 +710,19 @@ export class Game {
         const idx = list.some((g) => g.index); const L = idx ? list.map((g) => g.index ? g : g.setIndex([...Array(g.attributes.position.count).keys()])) : list;
         const m = mergeGeometries(L, false); if (!m) return null; grp.add(new THREE.Mesh(m, mat));
       }
-      def.stat = grp;
+      def[key] = grp;
     } catch (e) { console.warn('fusion voiture', e); }
-    return def.stat;
+    return def[key];
   }
   // version garée (fusionnée) accrochée au véhicule ; la version détaillée reste là, cachée, pour rouler
   attachStatic(c) {
     const st = this.staticCar(c.def); c.detail = [...c.obj.children]; c.mv = false; if (!st) return;
-    c.stat = st.clone(); c.stat.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); c.obj.add(c.stat); for (const o of c.detail) o.visible = false;
+    c.stat = st.clone(); c.stat.traverse((o) => { if (o.isMesh) { o.castShadow = !CONTACT(o); o.receiveShadow = true; } }); c.obj.add(c.stat); for (const o of c.detail) o.visible = false;
+    // version légère (≈ 4 000 triangles) pour les voitures garées au loin
+    const sf = this.staticCar(c.def, true); if (sf) { c.statFar = sf.clone(); c.statFar.visible = false; c.obj.add(c.statFar); c.far = false; }
   }
   addCar(def, x, z, yaw) {
-    const obj = def.scene.clone(true); obj.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    const obj = def.scene.clone(true); obj.traverse((o) => { if (o.isMesh) { o.castShadow = !CONTACT(o); o.receiveShadow = true; } });
     this.root.add(obj);
     const size = def.body || (def.body = this.bodySize(def)); const wheels = ['wheel-front-left', 'wheel-front-right', 'wheel-back-left', 'wheel-back-right'].map((n) => obj.getObjectByName(n) || obj.getObjectByName(n.replace(/-/g, '_')));
     const car = { def, obj, wheels, pos: V(x, this.world.groundY(x, z), z), yaw, speed: 0, steer: 0, hp: def.classe === 'blinde' ? 600 : 320, maxHp: def.classe === 'blinde' ? 600 : 320, driver: null, spawn: [x, z, yaw], dead: 0, W: size[0], L: size[2], H: size[1], max: { sport: 34, blinde: 26, police: 30, civil: 24 }[def.classe] || 26, accel: { sport: 15, blinde: 10, police: 13, civil: 9 }[def.classe] || 11, police: def.classe === 'police' };
@@ -840,7 +844,7 @@ export class Game {
     // dans la Seine : la voiture coule
     const Wt = this.world.water; if (Wt && c.pos.y < Wt.y && this.world.inWater(c.pos.x, c.pos.z) && !c.sunk) { c.sunk = true; this.fx.burst(V(c.pos.x, Wt.y + 0.2, c.pos.z), 30, { color: '#cfe3ef', speed: 6, size: 0.12, life: 1 }); if (drv) this.exitCar(drv); c.dead = 40; c.obj.visible = false; const j = this.world.dynamic.indexOf(c.col); if (j >= 0) this.world.dynamic.splice(j, 1); this.audio.play('thud', c.pos, 1); return; }
     c.rollV = lerp(c.rollV || 0, -yawRate * c.speed * 0.006, 1 - Math.exp(-dt * 6)); c.pitchV = lerp(c.pitchV || 0, (thr - brk) * -0.02, 1 - Math.exp(-dt * 5));
-    for (let i = 0; i < 4; i++) { const w = c.wheels[i]; if (!w) continue; w.rotation.x += c.speed * dt / 0.3; if (i < 2) w.rotation.y = c.steer; }
+    for (let i = 0; i < 4; i++) { const w = c.wheels[i]; if (!w) continue; w.rotation.x += c.speed * dt / (c.def.R || 0.3); if (i < 2) w.rotation.y = c.steer; }
     this.syncCar(c);
     if (drv) { drv.pos.copy(c.pos); drv.yaw = c.yaw; }
     this.carFx(c, dt, thr, brk, hand);
@@ -892,7 +896,7 @@ export class Game {
       for (const s of this.shops) { const near = s.front.distanceToSquared(cp) < 55 * 55; if (near !== s.near) { s.near = near; for (const m of s.itemMeshes) m.visible = near; } }
       for (const c of this.cars) { if (c.dead) continue; const d2 = c.obj.position.distanceToSquared(cp); c.obj.visible = d2 < 130 * 130 || !!c.driver;
         // voiture garée : un seul maillage par matière (≈ 6 dessins) ; détaillée (roues qui tournent) dès qu'elle roule
-        if (c.stat) { const mv = !!c.driver || Math.abs(c.speed) > 0.05; if (c.mv !== mv) { c.mv = mv; c.stat.visible = !mv; for (const o of c.detail) o.visible = mv; } } const sh = d2 < 50 * 50; if (c.sh !== sh) { c.sh = sh; c.obj.traverse((o) => { if (o.isMesh) o.castShadow = sh; }); } } }
+        if (c.stat) { const mv = !!c.driver || Math.abs(c.speed) > 0.05, far = !mv && !!c.statFar && d2 > 38 * 38; if (c.mv !== mv || c.far !== far) { c.mv = mv; c.far = far; c.stat.visible = !mv && !far; if (c.statFar) c.statFar.visible = far; for (const o of c.detail) o.visible = mv; } } const sh = d2 < 50 * 50; if (c.sh !== sh) { c.sh = sh; c.obj.traverse((o) => { if (o.isMesh) o.castShadow = sh && !CONTACT(o); }); } } }
     this.updateBullets(dt); this.updateProjs(dt); this.updateScorch(dt); this.updatePip(dt); this.updateNades(dt); this.updateThrown(dt); this.updateStreaks(dt); this.cloudEffects(dt); this.updateZones(dt); this.updateShops(dt); this.updateDrops(dt); this.socleIncome(dt);
     this.updateWalls(dt);
     this.specialT -= dt; if (this.specialT <= 0) { this.specialT = 120; this.specialDelivery(); }
@@ -1698,12 +1702,20 @@ export class Game {
     let mesh = null; ch.model.traverse((o) => { if (o.isSkinnedMesh && o.name === 'corps') mesh = o; }); if (!mesh) return;
     const Q = () => new THREE.Quaternion(), wpos = (o) => o.getWorldPosition(V()), wq = (o) => o.getWorldQuaternion(Q());
     // on ne garde que les triangles des bras (os dominants : bras, avant-bras, main, doigts)
-    const ARM = /^(UpperArm|LowerArm|Wrist|Index|Middle|Ring|Pinky|Thumb|index_|middle_|ring_|pinky_|thumb_)/, src = mesh.geometry, si = src.attributes.skinIndex, sw = src.attributes.skinWeight, isArm = new Uint8Array(si.count);
+    const ARM = /^(LowerArm|Wrist|Index|Middle|Ring|Pinky|Thumb|index_|middle_|ring_|pinky_|thumb_)/, src = mesh.geometry, si = src.attributes.skinIndex, sw = src.attributes.skinWeight, isArm = new Uint8Array(si.count);
     for (let v = 0; v < si.count; v++) { let bi = 0, w = -1; for (let k = 0; k < 4; k++) { const ww = sw.getComponent(v, k); if (ww > w) { w = ww; bi = si.getComponent(v, k); } } isArm[v] = ARM.test(mesh.skeleton.bones[bi].name) ? 1 : 0; }
     const idx = []; const I = src.index; for (let i = 0; i < I.count; i += 3) { const x = I.getX(i), y = I.getX(i + 1), z = I.getX(i + 2); if (isArm[x] && isArm[y] && isArm[z]) idx.push(x, y, z); }
     const geo = new THREE.BufferGeometry(); for (const k in src.attributes) geo.setAttribute(k, src.attributes[k]); geo.setIndex(idx); mesh.geometry = geo; mesh.frustumCulled = false; mesh.castShadow = false; mesh.renderOrder = 5;
+    /* vue de très près : le relief du tissu (texture prévue pour être vue de loin) ferait des stries sur la manche, on garde la couleur seule */
+    { const m0 = mesh.material, m1 = m0.clone(); m1.bumpMap = null; m1.normalMap = null; m1.roughness = 0.9; m1.onBeforeCompile = m0.onBeforeCompile; if (m0.customProgramCacheKey) m1.customProgramCacheKey = m0.customProgramCacheKey; mesh.material = m1; }
     // repère de chaque main relevé sur la pose de repos : f = sens des doigts, n = côté paume, k = ligne des jointures
     ch.mixer.stopAllAction(); mesh.skeleton.pose(); ch.root.updateMatrixWorld(true);
+    /* manche affinée : vue de si près, l'épaisseur du sweat ferait un gros boudin. Les sommets de l'avant-bras sont resserrés vers l'os (copie des positions : le perso vu de l'extérieur n'est pas touché) */
+    { const pos = src.attributes.position.clone(), im = mesh.matrixWorld.clone().invert(), bn = mesh.skeleton.bones, p = V();
+      for (const S of ['R', 'L']) { const Lb = B['LowerArm' + S], Wb = B['Wrist' + S]; if (!Lb || !Wb) continue; const e = wpos(Lb).applyMatrix4(im), w = wpos(Wb).applyMatrix4(im), ax = w.clone().sub(e), L2 = ax.lengthSq(), li = bn.indexOf(Lb);
+        for (let v = 0; v < pos.count; v++) { let wt = 0; for (let k = 0; k < 4; k++) if (si.getComponent(v, k) === li) wt += sw.getComponent(v, k); if (wt < 0.05) continue;
+          p.fromBufferAttribute(pos, v); const t = clamp(p.clone().sub(e).dot(ax) / L2, 0, 1), c = e.clone().addScaledVector(ax, t), k = 1 - 0.24 * wt * (1 - 0.35 * t); p.sub(c).multiplyScalar(k).add(c); pos.setXYZ(v, p.x, p.y, p.z); } }
+      geo.setAttribute('position', pos); }
     const hands = {}, FING = ['Index', 'Middle', 'Ring', 'Pinky'];
     for (const S of ['R', 'L']) { const W = B['Wrist' + S], p = wpos(W), f = wpos(B['Middle1' + S]).sub(p), len = f.length(); f.normalize();
       const k = wpos(B['Pinky1' + S]).sub(wpos(B['Index1' + S])); let n = V().crossVectors(f, k).normalize();
@@ -1720,7 +1732,7 @@ export class Game {
       const CURL = S === 'R' ? [0.9, 1.6, 1.1] : P ? [0.95, 1.4, 0.9] : [1.15, 1.5, 0.9];
       for (const o of H.fing) { if (o.F === 'Thumb') { if (o.i === 1) H.thumb = o; continue; } const amt = CURL[o.i - 1] * (S === 'R' && o.F === 'Index' ? 0.45 : 1) * (1 + 0.05 * FING.indexOf(o.F));
         const nq = wq(o.b).premultiply(Q().setFromAxisAngle(ax, amt * FINGER_SIGN)); o.b.quaternion.copy(wq(o.b.parent).invert().multiply(nq)); o.b.updateMatrixWorld(true); }
-      H.arm = wpos(B['UpperArm' + S]).distanceTo(wpos(B['LowerArm' + S])) + wpos(B['LowerArm' + S]).distanceTo(wpos(W)); }
+      H.l1 = wpos(B['UpperArm' + S]).distanceTo(wpos(B['LowerArm' + S])); H.l2 = wpos(B['LowerArm' + S]).distanceTo(wpos(W)); H.arm = H.l1 + H.l2; H.up0 = B['UpperArm' + S].position.clone(); }
     // mesures de l'arme dans le repère de la vue : bas et face avant de la poignée (main droite), dessous du garde-main (main gauche)
     this.vgun.updateMatrixWorld(true); const inv = this.vgun.matrixWorld.clone().invert(), vs = [], tmp = V();
     g.traverse((o) => { if (!o.isMesh) return; const m = inv.clone().multiply(o.matrixWorld), p = o.geometry.attributes.position; for (let i = 0; i < p.count; i++) { tmp.fromBufferAttribute(p, i).applyMatrix4(m); vs.push([tmp.x, tmp.y, tmp.z]); } });
@@ -1740,8 +1752,8 @@ export class Game {
     // les épaules suivent l'arme, buste de trois quarts, et restent sous le bord de l'écran : on ne voit que les avant-bras et les mains, jamais la coupe de la manche
     const gp = this.vgun.position, yaw = A.pistol ? -0.15 : -0.6, back = A.pistol ? 0.42 : 0.4, depth = Math.max(0, -(gp.z + back)) + 0.12; A.grp.rotation.y = yaw;
     A.grp.position.set(gp.x - 0.1, Math.min(gp.y - 0.14, -depth * Math.tan(cam.fov * Math.PI / 360) - 0.24), gp.z + back).sub(A.sh0.clone().applyAxisAngle(V(0, 1, 0), yaw));
-    for (const S of ['R', 'L']) { B['UpperArm' + S].scale.setScalar(1); B['Wrist' + S].scale.setScalar(1); }
-    cam.updateMatrixWorld(true);
+    for (const S of ['R', 'L']) { B['UpperArm' + S].position.copy(A.hands[S].up0); }
+    cam.updateMatrixWorld(true); A.grp.updateMatrixWorld(true); const cq = cam.getWorldQuaternion(Q()), cdir = (x, y, z) => V(x, y, z).normalize().applyQuaternion(cq);
     const vq = this.vgun.getWorldQuaternion(Q()), dir = (x, y, z) => V(x, y, z).normalize().applyQuaternion(vq); // repère de l'arme à l'écran : x à droite, y en haut, -z vers le canon
     // chaque main est orientée par deux directions : F le sens des doigts (avant qu'ils se referment) et N le côté vers lequel regarde la paume ; « at » est le point de l'arme où se posent les jointures (ou le creux de la paume)
     const place = (H, F, N0, at, bk, lift) => { const N = N0.addScaledVector(F, -N0.dot(F)).normalize(), K = V().crossVectors(F, N);
@@ -1754,10 +1766,12 @@ export class Game {
       : place(A.hands.L, dir(0.5, -0.5, -0.7), dir(0.72, 0.68, 0.1), A.support.clone().add(V(-0.012, 0.004, 0)), 0.62, 0.014); /* paume contre l'arête basse gauche du garde-main : on voit le dos de la main et le pouce, les doigts passent dessous */
     { const O = this.vhand; if (O) { /* maniement : pompe (la main suit le fût), chargeur, verrou */ if (O.Ls.lengthSq() > 0) lp.add(O.Ls.clone().applyQuaternion(vq)); if (O.Lw > 0) lp.lerp(this.vgun.localToWorld(O.L.clone()), O.Lw); if (O.Rw > 0) rp.lerp(this.vgun.localToWorld(O.R.clone()), O.Rw); } }
     const down = V(0, -1, 0).applyQuaternion(vq), right = V(1, 0, 0).applyQuaternion(vq);
-    for (const [S, tp, tq, pole, td] of [['R', rp, rq, down.clone().addScaledVector(right, 0.5), dir(-0.22, -0.05, -0.97)], ['L', lp, lq, down.clone().addScaledVector(right, -0.6), A.pistol ? dir(0.1, 0.15, -1) : dir(0.12, 0.12, -0.98)]]) {
-      // bras allongé au besoin (la main garde sa taille) : l'arme est tenue loin devant, l'épaule reste hors champ
-      const U = B['UpperArm' + S], W = B['Wrist' + S], H = A.hands[S], sp0 = U.getWorldPosition(V()), need = sp0.distanceTo(tp) / (H.arm * 0.94), s = clamp(need, 1, 1.35); U.scale.setScalar(s); W.scale.setScalar(1 / s); U.updateMatrixWorld(true);
-      this.armIK(U, B['LowerArm' + S], W, tp, tq, pole);
+    /* On ne montre que les mains et le départ de l'avant-bras : le haut du bras n'est pas dessiné, donc le coude se place librement.
+       L'avant-bras part de la main vers le bas de l'écran et sort vite du cadre (jamais de gros bras en travers de l'image) ; l'épaule est posée derrière le coude, hors champ. */
+    for (const [S, tp, tq, fa, td] of [['R', rp, rq, A.pistol ? cdir(0.2, -0.62, 0.76) : cdir(0.2, -0.6, 0.78), dir(-0.22, -0.05, -0.97)], ['L', lp, lq, A.pistol ? cdir(-0.3, -0.62, 0.72) : cdir(-0.56, -0.56, 0.6), A.pistol ? dir(0.1, 0.15, -1) : dir(0.12, 0.12, -0.98)]]) {
+      const U = B['UpperArm' + S], H = A.hands[S], E = tp.clone().addScaledVector(fa, H.l2), Sp = E.clone().addScaledVector(cdir(S === 'R' ? 0.25 : -0.25, 0.25, 1), H.l1 * 0.98);
+      U.position.copy(U.parent.worldToLocal(Sp.clone())); U.updateMatrixWorld(true); const pole = E.clone().sub(Sp.clone().add(tp).multiplyScalar(0.5));
+      this.armIK(U, B['LowerArm' + S], B['Wrist' + S], tp, tq, pole);
       // pouce couché le long de l'arme
       const t = H.thumb, tip = B['Thumb3' + S]; if (t && tip) { t.b.quaternion.copy(t.q0); t.b.updateMatrixWorld(true); const d = tip.getWorldPosition(V()).sub(t.b.getWorldPosition(V())).normalize();
         const nq = t.b.getWorldQuaternion(Q()).premultiply(Q().setFromUnitVectors(d, td)); t.b.quaternion.copy(t.b.parent.getWorldQuaternion(Q()).invert().multiply(nq)); t.b.updateMatrixWorld(true); } }
@@ -1776,13 +1790,13 @@ export class Game {
   // place l'arme selon le nombre d'or : le bout du canon sur le point d'or bas-droit (61,8 % de la largeur, 61,8 % de la hauteur),
   // la crosse qui file vers le coin ; l'arme couvre ~23 % de la largeur (fusils) ou ~9 % (pistolets), toujours sous la ligne des 62 %
   hipLayout() {
-    const cam = this.camera, ty = Math.tan(cam.fov * Math.PI / 360), tx = ty * cam.aspect, PHI = 0.618;
+    const cam = this.camera, ty = Math.tan(cam.fov * Math.PI / 360) / VIEW_MAG, tx = ty * cam.aspect, PHI = 0.618; /* l'arme est dessinée avec une focale plus longue que le décor (voir maniement.js) */
     const key = cam.fov.toFixed(1) + cam.aspect.toFixed(3); if (this.vgunLayout?.key === key) return this.vgunLayout.v;
     const L = this.vgunLen || 0.6, fz = this.vgunBB ? -this.vgunBB.min.z : L * 0.7, rz = this.vgunBB ? this.vgunBB.max.z : L * 0.3;
     const fx = 2 * PHI - 1, fy = -(2 * PHI - 1); // point d'or en coordonnées écran (-1..1)
     // Arme tenue près de l'œil et tournée vers le centre, comme dans les jeux de tir à gros budget : elle occupe le tiers d'or bas-droit,
     // le bout du canon reste sur le point d'or (61,8 % ; 61,8 %), la crosse et les avant-bras sortent par le bas et la droite
-    const P = this.vgunPistol, d = P ? 0.4 : clamp(0.27 + L * 0.04, 0.28, 0.33), th = P ? 0.07 : 0.115, ph = P ? 0.03 : 0.028; void rz;
+    const P = this.vgunPistol, d = P ? 0.37 : clamp(0.36 + L * 0.06, 0.38, 0.44), th = P ? 0.07 : 0.115, ph = P ? 0.03 : 0.028; void rz;
     const mzY = this.vgun?.userData.muzzle ? this.vgun.userData.muzzle.position.y : (this.vgunTop || 0.1) - 0.03, dz = d + fz * Math.cos(th);
     const X = fx * tx * dz + fz * Math.sin(th), Y = fy * ty * dz - mzY - fz * Math.sin(ph); this.vgunHipRot = { x: ph, y: th };
     const v = V(X, Y, -d); this.vgunLayout = { key, v }; return v;

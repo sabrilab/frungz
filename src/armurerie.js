@@ -30,7 +30,7 @@ function ext(pts, w, bev = 0.003, z = 0, holes) {
   if (holes) for (const h of holes) sh.holes.push(new THREE.Path(h.map((p) => new THREE.Vector2(p[0], p[1]))));
   const b = LO ? 0 : Math.min(bev, w * 0.3), d = w - 2 * b;
   const g = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: b > 0, bevelThickness: b, bevelSize: b, bevelOffset: -b, bevelSegments: 1, steps: 1, curveSegments: 4 });
-  g.translate(0, 0, -d / 2 + z); return g;
+  g.translate(0, 0, -d / 2 + z); g.userData.bev = true; return g;
 }
 const rect = (x0, x1, y0, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
 function tube(r0, r1, x0, x1, y = 0, z = 0, seg = SEG()) { const g = new THREE.CylinderGeometry(r1, r0, x1 - x0, seg); g.rotateZ(-Math.PI / 2); g.translate((x0 + x1) / 2, y, z); return g; }
@@ -153,8 +153,16 @@ function slots(x0, x1, y, r, n) { if (LO) return; const ap = r * Math.cos(Math.P
 // ---------------------------------------------------------------- assemblage
 const C = new THREE.Color();
 function assemble(parts, mat, lo) {
+  const LOW = !!lo;
   const grp = new THREE.Group(); if (!parts.length) return grp;
-  const norm = (g) => { g = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; };
+  // gE : arêtes vives (chanfreins des pièces usinées), là où la peinture et le bronzage s'usent en premier ; la matière y fait ressortir le métal nu
+  const norm = (g) => { const bev = g.userData.bev && !LOW; g = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
+    const P = g.attributes.position, e = new Float32Array(P.count);
+    if (bev) for (let i = 0; i < P.count; i += 3) { const ax = P.getX(i), ay = P.getY(i), az = P.getZ(i), ux = P.getX(i + 1) - ax, uy = P.getY(i + 1) - ay, uz = P.getZ(i + 1) - az, vx = P.getX(i + 2) - ax, vy = P.getY(i + 2) - ay, vz = P.getZ(i + 2) - az;
+      let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz) || 1; nx = Math.abs(nx / l); ny = Math.abs(ny / l); nz = Math.abs(nz / l);
+      let on = nz > 0.25 && nz < 0.95; if (!on && nz <= 0.25 && Math.min(nx, ny) > 0.25) on = Math.max(Math.hypot(ux, uy), Math.hypot(vx, vy), Math.hypot(ux - vx, uy - vy)) < 0.0085;
+      if (on) e[i] = e[i + 1] = e[i + 2] = 1; }
+    g.setAttribute('gE', new THREE.BufferAttribute(e, 1)); return g; };
   if (lo) { const gs = parts.map(([m, g]) => { g = norm(g); const col = lo(m), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = col.r; a[i * 3 + 1] = col.g; a[i * 3 + 2] = col.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; });
     const mesh = new THREE.Mesh(mergeGeometries(gs), mat('LOD')); mesh.castShadow = true; grp.add(mesh); return grp; }
   const by = new Map(); for (const [m, g] of parts) { if (!by.has(m)) by.set(m, []); by.get(m).push(norm(g)); }
@@ -418,14 +426,16 @@ export function buildGun(id, mat, lo = false) {
   else { for (const [name, g] of Object.entries(G.groups)) { const grp = assemble(g.parts, mat); grp.name = name; grp.position.set(...g.pivot); model.add(grp); }
     for (const d of G.decals) { const T = d.ret ? reticle(d.ret) : engraving(d.text), wd = d.h * T.asp, pl = new THREE.Mesh(new THREE.PlaneGeometry(wd, d.h), T.mat), piv = G.groups[d.grp].pivot;
       pl.geometry.rotateY(d.side === 0 ? -Math.PI / 2 : d.side < 0 ? Math.PI : 0); pl.geometry.translate(d.x - piv[0], d.y - piv[1], d.z - piv[2]); pl.renderOrder = d.ret ? 7 : 5; model.getObjectByName(d.grp).add(pl); } }
-  // mise à la longueur réelle de la fiche de l'arme
-  const box3 = new THREE.Box3().setFromObject(model), k = W.len ? W.len / (box3.max.x - box3.min.x) : 1;
-  model.traverse((o) => { if (o.isMesh) o.geometry.scale(k, k, k); else o.position.multiplyScalar(k); });
-  const M = G.meta, S = (a) => a && a.map((v) => v * k);
+  // mise à la longueur réelle de la fiche de l'arme, puis carrure : hauteur et épaisseur gonflées par rapport à la longueur (armes trapues et massives, comme dans les jeux de tir ;
+  // même facteur en hauteur et en épaisseur pour que canons et lunettes restent ronds)
+  const box3 = new THREE.Box3().setFromObject(model), k = W.len ? W.len / (box3.max.x - box3.min.x) : 1, f = W.fat || (W.hand === 'pistol' ? 1.1 : 1.27), kf = k * f;
+  model.traverse((o) => { if (o.isMesh) { if (o.material.name === 'Reticule') { o.geometry.computeBoundingBox(); const c = o.geometry.boundingBox.getCenter(new THREE.Vector3()); o.geometry.translate(-c.x, -c.y, -c.z).scale(1, 1 / f, 1 / f).translate(c.x, c.y, c.z); } o.geometry.scale(k, kf, kf); } else o.position.set(o.position.x * k, o.position.y * kf, o.position.z * kf); });
+  const M = G.meta, S = (a) => a && a.map((v, i) => v * (i ? kf : k));
   const holder = new THREE.Group(); holder.add(model);
-  const mz = new THREE.Object3D(); mz.position.set(M.muzzle[0] * k, M.muzzle[1] * k, 0); holder.add(mz); holder.userData.muzzle = mz;
-  holder.userData.dim = { rear: box3.min.x * k, front: box3.max.x * k, top: box3.max.y * k, bot: box3.min.y * k, unit: 1 };
-  holder.userData.meta = { kind: M.kind || 'mag', mag: S(M.mag), magDir: M.magDir || [0.18, -1], bolt: M.bolt ? { ...M.bolt, travel: M.bolt.travel * k, handle: S(M.bolt.handle) } : null, pump: M.pump ? { travel: M.pump.travel * k } : null,
-    support: S(M.support), fore: S(M.fore), sightY: M.sightY * k, optic: M.optic || null, scope: !!M.scope, eject: S(M.eject), gb: M.gb != null ? M.gb * k : -0.057 * k, pistol: !!M.pistol, k };
+  const mz = new THREE.Object3D(); mz.position.set(M.muzzle[0] * k, M.muzzle[1] * kf, 0); holder.add(mz); holder.userData.muzzle = mz;
+  holder.userData.dim = { rear: box3.min.x * k, front: box3.max.x * k, top: box3.max.y * kf, bot: box3.min.y * kf, unit: 1 };
+  const md = M.magDir || [0.18, -1];
+  holder.userData.meta = { kind: M.kind || 'mag', mag: S(M.mag), magDir: [md[0], md[1] * f], bolt: M.bolt ? { ...M.bolt, travel: M.bolt.travel * k, handle: S(M.bolt.handle) } : null, pump: M.pump ? { travel: M.pump.travel * k } : null,
+    support: S(M.support), fore: S(M.fore), sightY: M.sightY * kf, optic: M.optic || null, scope: !!M.scope, eject: S(M.eject), gb: M.gb != null ? M.gb * kf : -0.057 * kf, pistol: !!M.pistol, k, f };
   return holder;
 }
