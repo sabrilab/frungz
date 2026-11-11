@@ -54,15 +54,15 @@
 </div>
 
 <!-- écrans -->
-<div id="menu" class="screen lobby">
+<div id="menu" class="screen lobby v-salon">
   <div id="plates"></div>
   <header class="lb-top">
-    <!-- logo : assets/logo.svg ; tant qu'il n'est pas livré, le titre en texte reste affiché -->
     <div id="logoSlot" class="lb-logo"><img class="logo-img" src="assets/logo.svg" alt="Frungz" onerror="this.remove()"><div class="logo">FRUNGZ</div></div>
     <nav class="lb-nav">
-      <button class="tab on" id="tabSalon">Salon</button>
-      <button class="tab" id="openShop">Armurerie</button>
-      <button class="tab" id="openSettings">Réglages</button>
+      <button class="tab on" id="tabSalon" data-view="salon"><i>1</i>Salon</button>
+      <button class="tab" id="tabCasier" data-view="casier"><i>2</i>Casier</button>
+      <button class="tab" id="openShop"><i>3</i>Armurerie</button>
+      <button class="tab" id="openSettings"><i>4</i>Réglages</button>
     </nav>
     <div class="lb-wallet">
       <div class="chip cash" title="Banque"><span class="eur">€</span><b id="bank">0</b></div>
@@ -70,35 +70,50 @@
     </div>
   </header>
 
+  <!-- casier : camp, classe, armes, tenue (le perso passe en gros plan à droite) -->
   <aside class="lb-left">
     <section class="lb-card">
-      <h3 class="sticker">Ton camp</h3>
+      <h3 class="sticker">1 · Ton camp</h3>
       <div class="pick">
         <button class="side ordre" data-team="ordre"><b>LA BRIGADE</b><span>Tiens les zones, coffre les casseurs.</span></button>
         <button class="side civils" data-team="civils"><b>LES FRUNGZ</b><span>Casse, remplis ta planque, revends.</span></button>
       </div>
     </section>
     <section class="lb-card">
-      <h3 class="sticker">Classe</h3>
+      <h3 class="sticker">2 · Classe et armes</h3>
       <div class="classes" id="classes"></div>
       <div class="clsinfo" id="clsInfo"></div>
     </section>
     <section class="lb-card">
-      <h3 class="sticker">Tenue</h3>
+      <h3 class="sticker">3 · Tenue</h3>
       <div class="skins" id="skins"></div>
     </section>
+    <button class="chunky backsalon" id="backSalon">Retour au salon</button>
   </aside>
 
-  <aside class="lb-right">
-    <div class="plaque"><small>Carte</small><b id="mapName">PLACE FRUNGZ</b><span id="modeLine">Domination · 50 c. 50</span></div>
-    <div id="mapBtn" class="toggle maps" role="group" aria-label="Carte"><button data-map="paris" title="Place Frungz : cœur de Paris">Paris</button><button data-map="banlieue" title="Les Hauts de Frungz : banlieue parisienne">Banlieue</button></div>
-    <button id="nightBtn" class="toggle"><span class="sun">Jour</span><span class="moon">Nuit d'émeute</span></button>
+  <!-- salon : ce que tu emportes (raccourci vers le casier) et ton équipe -->
+  <div class="lb-dock">
+    <button class="loadout" id="loadoutBtn" title="Changer de classe, d'armes ou de tenue">
+      <span class="ico" id="ldIco"></span>
+      <span class="txt"><small id="ldTeam">Les Frungz</small><b id="ldClass">Casseur</b><span id="ldGun">Fusil d'assaut</span></span>
+      <span class="go">Modifier</span>
+    </button>
     <div class="squadline"><b id="squadN">1/4</b><span>dans ton équipe</span><button id="openInvite" class="mini">Inviter</button></div>
+  </div>
+
+  <aside class="lb-right">
+    <div class="lbl">Carte</div>
+    <div id="mapBtn" class="maptiles" role="group" aria-label="Carte">
+      <button data-map="paris" title="Place Frungz : cœur de Paris"><img src="assets/ui/map-paris.jpg" alt=""><b>Paris</b><small>Place Frungz</small></button>
+      <button data-map="banlieue" title="Les Hauts de Frungz : banlieue parisienne"><img src="assets/ui/map-banlieue.jpg" alt=""><b>Banlieue</b><small>Les Hauts de Frungz</small></button>
+    </div>
+    <div class="modeline"><span id="mapName">PLACE FRUNGZ</span> · <span id="modeLine">Domination · 50 c. 50</span></div>
+    <button id="nightBtn" class="toggle"><span class="sun">Jour</span><span class="moon">Nuit d'émeute</span></button>
     <button id="play" class="big mega"><span>JOUER</span></button>
     <div id="loading"><div class="bar"><i id="loadbar"></i></div><span id="loadtxt">Chargement du quartier…</span></div>
   </aside>
 
-  <div class="help"><kbd>ZQSD</kbd>/<kbd>WASD</kbd> se déplacer · <kbd>Clic</kbd> tirer · <kbd>Clic droit</kbd> viser · <kbd>G</kbd> lancer · <kbd>Échap</kbd> toutes les commandes · manette PS4 / Xbox reconnue · glisse sur ton perso pour le tourner</div>
+  <div class="help"><span class="salon-only">Glisse sur ton perso pour le faire tourner</span><span class="casier-only">Tes choix sont gardés pour la prochaine partie</span> · <kbd>Échap</kbd> toutes les commandes · manette reconnue</div>
 </div>
 
 <div id="invite" class="screen panel hidden">

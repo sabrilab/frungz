@@ -8,11 +8,11 @@ import { TEAMS, classOf } from './data.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 // places : toi devant au centre, puis gauche, droite, loin à droite (en mètres, repère de la scène : x à droite, z vers la caméra)
-export const SLOTS = [[0, 0.5], [-1.45, -0.7], [1.45, -0.7], [2.85, -1.9]];
+export const SLOTS = [[0, 0.5], [-1.6, -0.6], [1.6, -0.6], [-2.95, -1.6]];
 
 export function createLobby({ scene, camera, world, Q }) {
   // lieu : sur la place, la fontaine et le kiosque derrière l'équipe ; réglable par ?lobby=x,z,yaw pour essayer d'autres décors
-  const L = (Q.get('lobby') || world.gp.lobby?.join(',') || '3.5,-22,3.1416').split(',').map(Number);
+  const L = (Q.get('lobby') || world.gp.lobby?.join(',') || '1.5,-22,3.1416').split(',').map(Number);
   const root = new THREE.Group(); root.name = 'lobby'; root.visible = false; scene.add(root);
   const gy = world.groundY(L[0], L[1], 2);
   root.position.set(L[0], gy, L[1]); root.rotation.y = L[2] || 0;
@@ -34,11 +34,13 @@ export function createLobby({ scene, camera, world, Q }) {
     const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: '#fff', toneMapped: false }));
     const beam = new THREE.Mesh(beamGeo, beamMat()); beam.renderOrder = 3;
     disc.receiveShadow = true; g.add(disc, ring, beam); root.add(g);
-    return { g, ring, beam, ch: null, key: '', turn: i === 0 ? 0 : (i === 1 ? 0.28 : i === 2 ? -0.28 : -0.4), spin: 0, head: V(), idleT: Math.random() * 10 };
+    return { g, ring, beam, ch: null, key: '', turn: i === 0 ? 0 : (i === 1 ? 0.3 : i === 2 ? -0.3 : 0.45), spin: 0, head: V(), idleT: Math.random() * 10 };
   });
 
   // caméra de portrait (le groupe est un peu à droite à cause de la 4e place : on vise entre toi et elle)
-  const camPos = V(0.62, 1.75, 9.6), camLook = V(0.62, 1.12, -0.4); const tmp = V(), look = V();
+  // vues : « salon » = toute l'équipe, toi pile au centre ; « casier » = gros plan sur toi, décalé à droite pour laisser la place aux réglages
+  const VIEWS = { salon: { pos: V(0, 1.75, 9.6), look: V(0, 1.12, -0.5) }, casier: { pos: V(-0.95, 1.3, 4.7), look: V(-0.95, 1.02, 0.4) } };
+  const camPos = VIEWS.salon.pos.clone(), camLook = VIEWS.salon.look.clone(); let view = 'salon'; const tmp = V(), look = V();
   let t = 0, drag = 0, dragV = 0, party = [];
 
   function dress(p, m) {
@@ -50,7 +52,7 @@ export function createLobby({ scene, camera, world, Q }) {
     const ch = makeCharacter(m.skin); tintTeam(ch.model, m.skin, m.team);
     ch.model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
     try { if (m.gun) { attachGun(ch, m.gun); ch.gunId = m.gun; } } catch (e) { console.warn('arme du salon', e); }
-    const idle = ch.actions[m.pistol ? 'MXP_IdleLow' : 'MX_IdleLow'] || ch.actions.MX_Idle || Object.values(ch.actions)[0];
+    const idle = ch.actions[m.pistol ? 'MXP_Idle' : 'MX_Idle'] || ch.actions.MX_IdleLow || Object.values(ch.actions)[0];
     idle?.play(); ch.idle = idle; ch.mixer.update(Math.random() * 2);
     ch.root.rotation.y = p.turn; p.g.add(ch.root); p.ch = ch;
   }
@@ -77,11 +79,13 @@ export function createLobby({ scene, camera, world, Q }) {
       });
       rim.color.copy(col).lerp(new THREE.Color('#ffffff'), 0.25);
     },
+    setView(v) { if (VIEWS[v]) view = v; },
     gesture(i, name) { const p = pads[i]; if (p) gesture(p, name); },
     // glisser pour faire tourner ton perso
     drag(dx) { dragV += dx * 0.012; },
     update(dt) {
-      t += dt;
+      t += dt; const V0 = VIEWS[view], kk = 1 - Math.pow(0.004, dt); camPos.lerp(V0.pos, kk); camLook.lerp(V0.look, kk);
+      pads.forEach((p, i) => { if (i) p.g.visible = view === 'salon'; });
       dragV *= Math.pow(0.02, dt); drag += dragV * dt * 60 * 0.06; drag *= Math.pow(0.35, dt);
       pads.forEach((p, i) => {
         p.beam.material.uniforms.t.value = t + i;
@@ -91,7 +95,7 @@ export function createLobby({ scene, camera, world, Q }) {
       });
       // caméra : respiration lente, léger parallaxe
       root.updateMatrixWorld(true);
-      tmp.set(camPos.x + Math.sin(t * 0.25) * 0.12, camPos.y + Math.sin(t * 0.33) * 0.04, camPos.z); root.localToWorld(tmp); camera.position.copy(tmp);
+      tmp.set(camPos.x + Math.sin(t * 0.25) * 0.05, camPos.y + Math.sin(t * 0.33) * 0.04, camPos.z); root.localToWorld(tmp); camera.position.copy(tmp);
       look.copy(camLook); root.localToWorld(look); camera.lookAt(look);
     },
     // positions écran (pixels CSS) au-dessus de chaque place, pour les étiquettes HTML
