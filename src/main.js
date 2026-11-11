@@ -508,7 +508,7 @@ function dynRes(raw) {
   fpsShown = Math.round(1 / ftAvg); const el = $('s-fpsn'); if (el) el.textContent = fpsShown + ' (résolution ' + Math.round(prCur * 100) + ' %)';
   // rendu cinéma coupé quand on passe sous ~40 images/s, rallumé au-dessus de ~52
   if (cine) cine.auto = ftAvg > 1 / 40 ? 0 : ftAvg < 1 / 52 ? 1 : cine.auto;
-  if (save.settings.dynres === false || !game || game.paused) return;
+  if (save.settings.dynres === false || Q.has('bench') || !game || game.paused) return; // banc d'essai : résolution figée, même charge partout
   // effets allégés quand ça rame (moins d'éclats, fumée moins dense), puis rétablis quand il y a de la marge
   const L = fx.stats().load; fx.setLoad(ftAvg > 1 / 40 ? L - 0.15 : ftAvg < 1 / 55 ? L + 0.1 : L);
   let n = prCur; if (ftAvg > 1 / 45) n = Math.max(QS.prMin, prCur - 0.1); else if (ftAvg < 1 / 57) n = Math.min(prMax, prCur + 0.05);
@@ -552,6 +552,34 @@ function frame() {
 window.__cineState = (dt) => cine && cineState(dt);
 renderMenu(); frame();
 loadAll().catch((e) => { $('loadtxt').textContent = 'Erreur de chargement : ' + e.message; console.error(e); });
+
+// ---------- banc d'essai : ?bench=40 (secondes) → partie lancée seule, caméra qui tourne, images/s mesurées ----------
+// Sert à comparer l'app Mac et les navigateurs sur la même machine (mac/scripts/bench.sh). Résultat affiché en bas à gauche et écrit dans le titre de la page.
+if (Q.has('bench')) {
+  const dur = Math.max(10, +Q.get('bench') || 40), warm = 8;
+  const box = document.createElement('div'); box.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:99999;font:700 15px/1.4 Inter,system-ui,sans-serif;color:#fff;background:rgba(0,0,0,.75);padding:10px 14px;border-radius:10px;white-space:pre;pointer-events:none';
+  box.textContent = 'Banc d\u2019essai : chargement\u2026'; document.body.appendChild(box);
+  const gpu = (() => { try { const gl = renderer.getContext(), e = gl.getExtension('WEBGL_debug_renderer_info'); return e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch { return '?'; } })();
+  const go = () => {
+    if (!window.__loaded) return setTimeout(go, 250);
+    start(); let t0 = performance.now(), last = t0, calm = 0; const ft = [];
+    const tick = (now) => {
+      const d = now - last; last = now; if (ft.length === 0 && (d > 250 || calm < 60)) { calm = d > 250 ? 0 : calm + 1; t0 = now; } // la mise en route (compilation des shaders, gel de plusieurs secondes) ne compte pas : le chrono repart après 60 images normales
+      const el = (now - t0) / 1000;
+      if (game) { if (game.paused && !game.over) closePause(); game.cam.yaw += d / 1000 * 0.35; }
+      if (el > warm) ft.push(d);
+      if (el < warm + dur) { box.textContent = el < warm ? `Banc d\u2019essai : mise en route ${Math.ceil(warm - el)} s` : `Banc d\u2019essai : mesure ${Math.ceil(warm + dur - el)} s \u00b7 ${fpsShown} images/s`; requestAnimationFrame(tick); return; }
+      const s = [...ft].sort((x, y) => x - y), n = s.length, avg = s.reduce((x, y) => x + y, 0) / n, pct = (q) => s[Math.min(n - 1, Math.floor(n * q))];
+      const r = { fps: +(1000 / avg).toFixed(1), median: +(1000 / pct(0.5)).toFixed(1), low1: +(1000 / pct(0.99)).toFixed(1), worstMs: +s[n - 1].toFixed(1), over33: +(100 * s.filter((x) => x > 33.4).length / n).toFixed(1), frames: n, w: innerWidth, h: innerHeight, pr: renderer.getPixelRatio(), q: QN, bots: game?.actors?.length || 0, gpu, app: !!window.frungzMac, ua: navigator.userAgent };
+      box.textContent = `Banc d\u2019essai termin\u00e9\n${r.fps} images/s en moyenne \u00b7 1 % les plus lentes : ${r.low1}\n${r.w}\u00d7${r.h} \u00d7${r.pr} \u00b7 qualit\u00e9 ${r.q} \u00b7 ${r.bots} persos`;
+      window.__bench = r; console.log('BENCH', JSON.stringify(r)); document.title = 'BENCH ' + JSON.stringify(r);
+      // servi par mac/scripts/bench-server.cjs : le résultat part au serveur local, puis la page s'arrête (le navigateur ne fait plus tourner le jeu pendant la mesure suivante)
+      if (Q.has('fin')) fetch('/bench-result?nav=' + encodeURIComponent(Q.get('fin')), { method: 'POST', body: JSON.stringify(r) }).then(() => setTimeout(() => location.replace('/bench-fini'), 1500)).catch(() => {});
+    };
+    requestAnimationFrame(tick);
+  };
+  go();
+}
 
 // ---------- mise à jour : recharger la dernière version publiée ----------
 // Chaque build porte un numéro (__BUILD__) et publie version.json ; l'accueil le relit de temps en temps et allume le bouton quand une version plus récente est en ligne.
