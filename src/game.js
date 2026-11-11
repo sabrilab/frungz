@@ -13,6 +13,7 @@ import { heliMethods } from './helico.js';
 import { installThrows, THROWS, solveThrow } from './throws.js';
 import { svg, iconize } from './icons.js';
 import { installSeries } from './series.js';
+import { installNotoriete } from './notoriete.js';
 import { installConvois } from './convois.js';
 import { installBarricades, TIERS, tierInfo, fmtG } from './barricades.js';
 import { installLanceurs } from './lanceurs.js';
@@ -911,8 +912,8 @@ export class Game {
     const sensM = 0.0032 * I.settings.sens * (this.aiming ? (WEAPONS[this.weapon(a)?.id]?.scope ? (this.sc?.zoom ? 0.15 : 0.3) : 0.6) : 1);
     let padK = 3.8 * I.settings.padSens * (this.aiming ? (WEAPONS[this.weapon(a)?.id]?.scope ? (this.sc?.zoom ? 0.2 : 0.35) : 0.55) : 1) * dt;
     // visée assistée manette : ralentit près d'une cible et la suit légèrement
-    if (I.st.usingPad && I.settings.assist && a.alive && !a.inCar) {
-      const t = this.assistTarget(); if (t) { padK *= 0.55; if (this.aiming || I.st.triggerR > 0.3) { C.yaw += t.dy * Math.min(1, dt * (this.aiming ? 5 : 2.5)); C.pitch += t.dp * Math.min(1, dt * (this.aiming ? 4 : 2)); } }
+    if ((I.st.usingPad || I.st.usingTouch) && I.settings.assist && a.alive && !a.inCar) {
+      const t = this.assistTarget(); if (t) { padK *= 0.55; if (this.aiming || I.st.triggerR > 0.3 || I.down('fire')) { C.yaw += t.dy * Math.min(1, dt * (this.aiming ? 5 : 2.5)); C.pitch += t.dp * Math.min(1, dt * (this.aiming ? 4 : 2)); } }
     }
     C.yaw -= I.st.mx * sensM + I.st.lookX * padK; C.pitch -= (I.st.my * sensM + I.st.lookY * padK) * (I.settings.invertY ? -1 : 1);
     C.pitch = clamp(C.pitch, -1.3, 1.25);
@@ -941,7 +942,7 @@ export class Game {
     const wantFire = (D.burst && a.burstLeft > 0) || (D.auto ? (I.down('fire') || I.st.triggerR > 0.4) : (I.pressed('fire') || (I.st.triggerR > 0.4 && !this._trigWas)));
     this._trigWas = I.st.triggerR > 0.4;
     if (wantFire && !this.thr && !a.carryTurret && (this._thrJust = Math.max(0, (this._thrJust || 0) - dt)) <= 0 && a.slideT <= 0.5 && !a.climb && a.rollT <= 0 && !a.channel) {
-      if (!I.st.locked && !I.st.usingPad) { this.renderer.domElement.requestPointerLock?.(); }
+      if (!I.st.locked && !I.st.usingPad && !I.st.usingTouch) { this.renderer.domElement.requestPointerLock?.(); }
       else {
         const o = this.camera.position.clone(); const d = V(); this.camera.getWorldDirection(d);
         // on part de devant le joueur pour ne pas toucher ce qui est entre la caméra et lui
@@ -1885,7 +1886,7 @@ export class Game {
   // barre des séries : progression vers chaque bonus, bonus prêt mis en avant avec la touche à presser
   drawStreakbar() {
     const a = this.player, el = $('streakbar'); if (!el) return; const L = streakTiers(a.team, a.streak);
-    const key = `${a.streak}|${a.rewards.join(',')}|${this.input.st.usingPad}|${this.streakUsed || ''}`; if (key === this._sbKey) return; this._sbKey = key;
+    const key = `${a.streak}|${a.rewards.join(',')}|${this.input.st.usingPad}${this.input.st.usingTouch}|${this.streakUsed || ''}`; if (key === this._sbKey) return; this._sbKey = key;
     // 7 paliers : on montre les bonus prêts et les 3 prochains (le reste se devine dans le sac)
     let prev = 0;
     const shown = new Set(); for (const id of new Set(a.rewards)) { const c = L.filter((r) => r.id === id && r.n <= a.streak).pop() || L.find((r) => r.id === id); if (c) shown.add(c); }
@@ -1959,7 +1960,7 @@ export class Game {
     const ready = a.rewards.length ? `<span class="rdy">${svg(this.streakDef(a, a.rewards[a.rewards.length - 1]).ico)} ${this.streakDef(a, a.rewards[a.rewards.length - 1]).nom} · ${this.input.label('streak')}</span>` : '';
     el.innerHTML = `<div class="top"><div class="kills">${svg('skull')} ${a.stats.k}<small>ÉLIM.</small></div><div class="pos">#${i + 1}<small>SUR ${all.length}</small></div></div>`
       + `<div class="sub"><span>Assist. <b>${a.stats.a}</b></span><span>Captures <b>${a.stats.cap}</b></span><span>Saccage <b>${a.stats.sac}</b></span></div>`
-      + `<table>${rows.map((x, j) => `<tr class="${x.team === 'ordre' ? 'o' : 'c'}${x === a ? ' me' : ''}"><td class="n">${from + j + 1}</td><td class="nm">${esc(x.name)}</td><td class="k">${x.stats.k}</td><td class="p">${fmt(contrib(x))}</td></tr>`).join('')}</table>`
+      + `<table>${rows.map((x, j) => `<tr class="${x.team === 'ordre' ? 'o' : 'c'}${x === a ? ' me' : ''}"><td class="n">${from + j + 1}</td><td class="nm">${esc(x.name)}${this.notoTag?.(x) || ''}</td><td class="k">${x.stats.k}</td><td class="p">${fmt(contrib(x))}</td></tr>`).join('')}</table>`
       + `<div class="streak">Série <b>${a.streak}</b>${next ? ` · ${svg(next.ico)} ${next.nom} à ${next.n}` : ''} ${ready}</div>`;
   }
   minimapInit() {
@@ -2026,3 +2027,4 @@ installBarricades(Game);
 installManiement(Game);
 installLanceurs(Game); // après les barricades : complète this.blast (vitrines)
 installTurrets(Game); // après les barricades : enrobe blast, wallPrompt, placeWall, updateWalls
+installNotoriete(Game); // en dernier : enrobe addGalons, kill, multiKill, addStreak, captureZone, killFeed, drawRank, update, build

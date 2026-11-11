@@ -66,7 +66,8 @@ export function setupScene(renderer) {
 
 // charge un .glb en préférant sa version .gz (le CDN ne compresse pas les .glb : 3 à 4 fois moins à télécharger), décompressée dans le navigateur
 export async function loadGLB(url, onProgress) {
-  if (typeof DecompressionStream !== 'undefined') try {
+  // dans l'app iPhone, les fichiers sont dans l'app : pas de version compressée (on la retire du paquet), on lit le .glb directement
+  if (typeof DecompressionStream !== 'undefined' && !window.Capacitor?.isNativePlatform?.()) try {
     const r = await fetch(url + '.gz'); const total = +r.headers.get('content-length') || 0;
     if (r.ok) {
       const chunks = []; let got = 0; const rd = r.body.getReader(); for (;;) { const { done, value } = await rd.read(); if (done) break; chunks.push(value); got += value.length; if (total) onProgress?.(Math.min(0.99, got / total)); }

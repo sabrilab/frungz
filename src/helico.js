@@ -295,7 +295,7 @@ export const heliMethods = {
     if (I.pressed('streak')) this.heliCycle(a, c);
     if (I.pressed('grenade')) this.heliSpecial(a, c);
     const want = I.down('fire') || I.st.triggerR > 0.4;
-    if (want && !I.st.locked && !I.st.usingPad) { this.renderer.domElement.requestPointerLock?.(); return; }
+    if (want && !I.st.locked && !I.st.usingPad && !I.st.usingTouch) { this.renderer.domElement.requestPointerLock?.(); return; }
     if (want && c.spin > 0.8 && !c.over && c.fireT <= 0) {
       const o = this.camera.position.clone(), d = V(); this.camera.getWorldDirection(d);
       o.addScaledVector(d, Math.max(0, o.distanceTo(c.pos) - 1.2)); // on part de l'engin, pas de la caméra

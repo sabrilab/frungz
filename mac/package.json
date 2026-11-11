@@ -1,0 +1,39 @@
+{
+  "name": "frungz-mac",
+  "productName": "Frungz",
+  "version": "1.0.0",
+  "description": "Frungz en application Mac (Electron) : le jeu en ligne, plein écran, accélération graphique, souris capturée, manette",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "app": "sh scripts/app.sh",
+    "start": "electron .",
+    "bench": "sh scripts/bench.sh"
+  },
+  "devDependencies": {
+    "electron": "45.1.0",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "fr.sabrilab.frungz",
+    "productName": "Frungz",
+    "copyright": "Frungz",
+    "directories": { "output": "out", "buildResources": "build" },
+    "files": ["main.js", "preload.js", "package.json"],
+    "extraResources": [{ "from": "jeu", "to": "jeu" }],
+    "mac": {
+      "category": "public.app-category.action-games",
+      "icon": "build/icon.png",
+      "target": [{ "target": "dir" }],
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "NSHighResolutionCapable": true,
+        "LSApplicationCategoryType": "public.app-category.action-games",
+        "GCSupportsControllerUserInteraction": true,
+        "NSSupportsSuddenTermination": false
+      }
+    }
+  }
+}
