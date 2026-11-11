@@ -58,7 +58,7 @@ export function enhanceCar(root) {
 const VS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
 const AO_N = 12;
 const aoFrag = `
-uniform sampler2D tDepth; uniform mat4 uProjInv; uniform float uProjY, uAspect, uRadius, uFar; uniform vec2 uTexel;
+uniform sampler2D tDepth; uniform mat4 uProjInv, uProjM; uniform vec3 uSunV; uniform float uProjY, uAspect, uRadius, uFar, uCS; uniform vec2 uTexel;
 varying vec2 vUv;
 vec3 vpos(vec2 uv){ float d = texture2D(tDepth, uv).x; vec4 p = uProjInv * vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0); return p.xyz / p.w; }
 void main(){
@@ -90,11 +90,25 @@ void main(){
   }
   ao = wsum > 0.0 ? 1.0 - ao / wsum * 1.5 : 1.0;
   ao = clamp(ao, 0.35, 1.0); ao = mix(ao, 1.0, smoothstep(uFar * 0.6, uFar, z));
-  gl_FragColor = vec4(ao, 1.0, 1.0, 1.0);
+  // ombres de contact : petite marche vers le soleil dans la profondeur (ce que la carte d'ombre, trop grossière, rate :
+  // pieds des persos, roues, pieds de chaises, plinthes). Seulement de près, et seulement sur les faces tournées vers le soleil.
+  float cs = 1.0;
+  if (uCS > 0.0 && z < 40.0 && dot(N, uSunV) > 0.05) {
+    float L = mix(0.35, 1.2, smoothstep(2.0, 25.0, z)), occ = 0.0;
+    for (int k = 1; k <= 10; k++) {
+      float t = (float(k) - 0.5 + jit) / 10.0; vec3 Q = P + N * (0.01 + z * 0.0008) + uSunV * (t * t * L);
+      vec4 cq = uProjM * vec4(Q, 1.0); if (cq.w <= 0.0) break; vec2 uq = cq.xy / cq.w * 0.5 + 0.5;
+      if (uq.x < 0.0 || uq.x > 1.0 || uq.y < 0.0 || uq.y > 1.0) break;
+      float dz = -Q.z + vpos(uq).z; // > 0 : la scène est devant le rayon
+      if (dz > 0.02 + z * 0.002 && dz < 0.45) { occ = 1.0 - t * 0.6; break; }
+    }
+    cs = 1.0 - occ * (1.0 - smoothstep(20.0, 40.0, z));
+  }
+  gl_FragColor = vec4(ao, cs, 1.0, 1.0);
 }`;
 const compFrag = `
 uniform sampler2D tDiffuse, tDepth, tAO; uniform mat4 uProjInv, uCamWorld; uniform vec2 uAOTexel;
-uniform vec3 uHaze, uSunCol, uSunDir; uniform float uDebug, uAOk, uAerial, uDen, uNear, uFar;
+uniform vec3 uHaze, uSunCol, uSunDir; uniform vec2 uSunUV; uniform float uRays, uCSk, uDebug, uAOk, uAerial, uDen, uNear, uFar;
 varying vec2 vUv;
 float lin(float d){ return (uNear * uFar) / max(uFar - d * (uFar - uNear), 1e-4); }
 vec3 safe(vec3 c){
@@ -106,20 +120,30 @@ vec3 safe(vec3 c){
 void main(){
   vec3 c = safe(texture2D(tDiffuse, vUv).rgb);
   float d = texture2D(tDepth, vUv).x;
-  if (d >= 0.99999) { gl_FragColor = vec4(c, 1.0); return; } // ciel
+  // rayons de soleil : le ciel visible entre les immeubles et les arbres est étiré vers le soleil (12 lectures de profondeur)
+  vec3 rays = vec3(0.0);
+  if (uRays > 0.0) {
+    vec2 dv = (uSunUV - vUv); float jr = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))); float acc = 0.0, wr = 1.0;
+    for (int k = 0; k < 12; k++) { vec2 uq = vUv + dv * ((float(k) + jr) / 12.0) * 0.7; if (uq.x < 0.0 || uq.x > 1.0 || uq.y < 0.0 || uq.y > 1.0) break; acc += step(0.99999, texture2D(tDepth, uq).x) * wr; wr *= 0.9; }
+    float fall = 1.0 - smoothstep(0.0, 0.9, length(dv * vec2(1.6, 1.0)));
+    rays = uSunCol * acc / 7.2 * fall * fall * uRays;
+  }
+  if (d >= 0.99999) { gl_FragColor = vec4(safe(c + rays * 0.5), 1.0); return; } // ciel
   float z = lin(d);
   // occlusion : 9 lectures de la carte à demi-résolution, pondérées par l'écart de profondeur (bords nets)
   if (uAOk > 0.0) {
-    float s = 0.0, w = 0.0;
+    float s = 0.0, w = 0.0, sc = 0.0;
     for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
       vec2 o = vec2(float(i), float(j)) * uAOTexel * 0.75; float zt = lin(texture2D(tDepth, vUv + o).x);
       float wt = exp(-abs(zt - z) / (z * 0.015 + 0.02)) * (i == 0 && j == 0 ? 2.0 : 1.0);
-      s += texture2D(tAO, vUv + o).r * wt; w += wt;
+      vec2 aq = texture2D(tAO, vUv + o).rg; s += aq.r * wt; w += wt; sc += aq.g * wt;
     }
-    float ao = w > 0.0 ? s / w : 1.0; ao = clamp(ao, 0.0, 1.0);
+    float ao = w > 0.0 ? s / w : 1.0; ao = clamp(ao, 0.0, 1.0); float cs = w > 0.0 ? clamp(sc / w, 0.0, 1.0) : 1.0;
     // l'occlusion pèse surtout sur la lumière ambiante : moins sur les zones très éclairées par le soleil
     float L = dot(c, vec3(0.2126, 0.7152, 0.0722));
     c *= mix(1.0, ao, uAOk * mix(1.0, 0.55, smoothstep(0.6, 2.5, L)));
+    // ombre de contact : retire la lumière du soleil (estimée par la luminosité) là où le rayon vers le soleil est bouché
+    c *= 1.0 - (1.0 - cs) * uCSk * 0.55 * smoothstep(0.2, 1.1, L);
     if (uDebug > 0.5) { gl_FragColor = vec4(vec3(ao), 1.0); return; }
   }
   // perspective atmosphérique : voile bleuté avec la distance, plus dense en bas, réchauffé du côté du soleil
@@ -130,7 +154,7 @@ void main(){
     vec3 hz = uHaze + uSunCol * pow(max(dot(wd, uSunDir), 0.0), 6.0) * 0.5;
     c = mix(c, hz, clamp(k, 0.0, 0.85));
   }
-  gl_FragColor = vec4(safe(c), 1.0);
+  gl_FragColor = vec4(safe(c + rays), 1.0);
 }`;
 
 export class PhotoPass extends Pass {
@@ -141,15 +165,15 @@ export class PhotoPass extends Pass {
     // (écrire dans l'autre cible du composer, dont la profondeur est lue ensuite, formerait une boucle de rétroaction)
     this.outRT = new THREE.WebGLRenderTarget(2, 2, { depthBuffer: false, type: THREE.HalfFloatType }); this.colorOut = null;
     this.aoRT = new THREE.WebGLRenderTarget(2, 2, { depthBuffer: false, type: THREE.UnsignedByteType, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
-    this.aoMat = new THREE.ShaderMaterial({ uniforms: { tDepth: { value: null }, uProjInv: { value: new THREE.Matrix4() }, uProjY: { value: 1 }, uAspect: { value: 1 }, uRadius: { value: 0.9 }, uFar: { value: 160 }, uTexel: { value: new THREE.Vector2() } },
+    this.aoMat = new THREE.ShaderMaterial({ uniforms: { tDepth: { value: null }, uProjInv: { value: new THREE.Matrix4() }, uProjY: { value: 1 }, uAspect: { value: 1 }, uRadius: { value: 0.9 }, uProjM: { value: new THREE.Matrix4() }, uSunV: { value: new THREE.Vector3(0, 1, 0) }, uCS: { value: 1 }, uFar: { value: 160 }, uTexel: { value: new THREE.Vector2() } },
       vertexShader: VS, fragmentShader: aoFrag, depthTest: false, depthWrite: false });
     this.compMat = new THREE.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, tDepth: { value: null }, tAO: { value: this.aoRT.texture }, uProjInv: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() }, uAOTexel: { value: new THREE.Vector2() },
-      uHaze: { value: new THREE.Color() }, uSunCol: { value: new THREE.Color() }, uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uDebug: { value: 0 }, uAOk: { value: 1.0 }, uAerial: { value: 1 }, uDen: { value: 0.0007 }, uNear: { value: 0.05 }, uFar: { value: 1000 } },
+      uHaze: { value: new THREE.Color() }, uSunCol: { value: new THREE.Color() }, uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uSunUV: { value: new THREE.Vector2(-9, -9) }, uRays: { value: 0 }, uCSk: { value: 1 }, uDebug: { value: 0 }, uAOk: { value: 1.0 }, uAerial: { value: 1 }, uDen: { value: 0.0007 }, uNear: { value: 0.05 }, uFar: { value: 1000 } },
       vertexShader: VS, fragmentShader: compFrag, depthTest: false, depthWrite: false });
     this.aoQ = new FullScreenQuad(this.aoMat); this.compQ = new FullScreenQuad(this.compMat);
     this.enabled2 = true; // choix du joueur
     this.auto = 1; // coupé automatiquement quand ça rame
-    this.ao = 1.0; this.aerial = 1;
+    this.ao = 1.0; this.aerial = 1; this.contact = 1; this.rays = 0.35; this._sd = new THREE.Vector3(); this._cd = new THREE.Vector3(); this._sp = new THREE.Vector3();
   }
   setSize(w, h) { this.outRT.setSize(w, h); const W = Math.max(1, Math.round(w / 2)), H = Math.max(1, Math.round(h / 2)); this.aoRT.setSize(W, H); this.aoMat.uniforms.uTexel.value.set(1 / w, 1 / h); this.compMat.uniforms.uAOTexel.value.set(1 / W, 1 / H); }
   render(renderer, writeBuffer, readBuffer) {
@@ -164,7 +188,14 @@ export class PhotoPass extends Pass {
     // voile = couleur de l'horizon du ciel affiché (suit le jour, la nuit), éclairci côté soleil
     const su = this.sky?.material.uniforms; if (su) { c.uHaze.value.copy(su.hor.value).multiplyScalar(night ? 0.6 : 1.0); c.uSunDir.value.copy(su.sunDir.value); }
     c.uSunCol.value.copy(this.sun?.color || c.uSunCol.value).multiplyScalar(night ? 0.0 : 0.6);
-    if (c.uAOk.value > 0.001) { renderer.setRenderTarget(this.aoRT); this.aoQ.render(renderer); }
+    // soleil vu de la caméra : direction (ombres de contact) et position à l'écran (rayons)
+    a.uProjM.value.copy(cam.projectionMatrix); const sd = this._sd.copy(c.uSunDir.value);
+    a.uSunV.value.copy(sd).transformDirection(cam.matrixWorldInverse); a.uCS.value = night ? 0 : this.contact; c.uCSk.value = night ? 0 : this.contact;
+    cam.getWorldDirection(this._cd); const facing = this._cd.dot(sd);
+    this._sp.copy(cam.position).addScaledVector(sd, 500).project(cam);
+    const ok = facing > 0.1 && Number.isFinite(this._sp.x + this._sp.y);
+    c.uRays.value = ok && !night ? this.rays * Math.min(1, (facing - 0.1) * 3) : 0; if (ok) c.uSunUV.value.set(this._sp.x * 0.5 + 0.5, this._sp.y * 0.5 + 0.5);
+    if (c.uAOk.value > 0.001 || c.uCSk.value > 0) { renderer.setRenderTarget(this.aoRT); this.aoQ.render(renderer); }
     renderer.setRenderTarget(this.outRT); this.compQ.render(renderer); this.colorOut = this.outRT.texture;
   }
   dispose() { this.outRT.dispose(); this.aoRT.dispose(); this.aoMat.dispose(); this.compMat.dispose(); this.aoQ.dispose(); this.compQ.dispose(); }
