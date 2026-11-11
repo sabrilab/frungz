@@ -1,0 +1,10 @@
+{
+  "name": "Frungz",
+  "short_name": "Frungz",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#0d1016",
+  "icons": [{ "src": "assets/ui/icon-1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }]
+}

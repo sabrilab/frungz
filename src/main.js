@@ -495,6 +495,25 @@ function toggleFullscreen() {
   else (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el, { navigationUI: 'hide' })?.catch?.(() => {});
 }
 window.__toggleFullscreen = toggleFullscreen;
+// bouton « Plein écran » de l'accueil (tablette, téléphone, ordinateur). iPhone : Safari ne permet pas le plein écran d'une page,
+// on explique alors comment ajouter Frungz à l'écran d'accueil (il s'ouvre ensuite sans barre, comme une app).
+{
+  const b = $('fsBtn'), d = document;
+  const standalone = NATIVE || navigator.standalone || matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
+  const can = !!(d.fullscreenEnabled || d.webkitFullscreenEnabled);
+  if (b) {
+    if (standalone) b.remove();
+    else {
+      const sync = () => { const on = !!(d.fullscreenElement || d.webkitFullscreenElement); b.classList.toggle('on', on); b.querySelector('.t').textContent = on ? 'Quitter' : 'Plein écran'; b.title = on ? 'Quitter le plein écran' : 'Jouer en plein écran'; };
+      d.addEventListener('fullscreenchange', sync); d.addEventListener('webkitfullscreenchange', sync);
+      b.addEventListener('click', () => {
+        audio.init();
+        if (can) { toggleFullscreen(); try { screen.orientation?.lock?.('landscape').catch(() => {}); } catch {} return; }
+        let tip = $('fsTip'); if (!tip) { tip = document.createElement('div'); tip.id = 'fsTip'; tip.innerHTML = `<b>Plein écran</b><p>Ton navigateur ne permet pas le plein écran d'une page. Ajoute Frungz à ton écran d'accueil : touche <b>Partager</b> <span class="sh">⬆</span> puis <b>« Sur l'écran d'accueil »</b>. Lancé depuis son icône, Frungz s'ouvre en plein écran, sans barre.</p><button class="chunky">Compris</button>`; document.body.appendChild(tip); tip.querySelector('button').onclick = () => tip.remove(); }
+      });
+    }
+  }
+}
 addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.code === 'KeyL') { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) toggleFullscreen(); } }, true);
 document.addEventListener('fullscreenchange', () => { $('s-fullscreen') && ($('s-fullscreen').textContent = document.fullscreenElement ? 'Quitter le plein écran (⌘L)' : 'Plein écran (⌘L)'); if (game && !game.paused && !game.over && !input.st.usingPad && !document.pointerLockElement) renderer.domElement.requestPointerLock?.(); });
 document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && performance.now() < fsSwitch && game && !game.paused && !game.over) { renderer.domElement.requestPointerLock?.(); return; } if (!document.pointerLockElement && game && !game.paused && !game.over && !input.st.usingPad && $('shop').classList.contains('hidden') && $('inv').classList.contains('hidden')) openPause(); });
