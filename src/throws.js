@@ -179,7 +179,7 @@ export function installThrows(Game) {
     const bars = Array.from({ length: 10 }, (_, i) => `<i class="${i < Math.round(this.thrPower * 10) ? 'on' : ''}"></i>`).join('');
     const key = `${T.icon}${S.kind}${n}${Math.round(this.thrPower * 10)}`; if (el.dataset.k === key) return; el.dataset.k = key;
     el.style.setProperty('--c', T.col);
-    el.innerHTML = `<b>${svg(T.ico)} ${T.nom}${T.spell ? '' : ' × ' + n}</b><div class="pw"><span>Force</span>${bars}</div><small>${I.st.usingPad ? '↑↓' : 'molette'} force · viser plus haut = plus court et en cloche${S.spell ? ` · <kbd>${I.label('fire')}</kbd> lancer` : ` · lâche <kbd>${I.label('grenade')}</kbd> pour lancer · <kbd>${I.label('reload')}</kbd> changer`} · <kbd>${I.label('aim')}</kbd> annuler</small>`;
+    el.innerHTML = `<b>${svg(T.ico)} ${T.nom}${T.spell ? '' : ' × ' + n}</b><div class="pw"><span>Force</span>${bars}</div><small>${I.st.usingTouch ? '' : (I.st.usingPad ? '↑↓' : 'molette') + ' force · '}viser plus haut = plus court et en cloche${S.spell ? ` · <kbd>${I.label('fire')}</kbd> lancer` : ` · lâche <kbd>${I.label('grenade')}</kbd> pour lancer · <kbd>${I.label('reload')}</kbd> changer`} · <kbd>${I.label('aim')}</kbd> annuler</small>`;
     el.classList.add('on');
   };
 

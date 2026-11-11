@@ -6,6 +6,8 @@ import { loadSkinBases, registerSkin, BUILTIN_SKINS, userSkins } from './skins.j
 import { createAudio } from './audio.js';
 import { createFX } from './fx.js';
 import { createInput } from './input.js';
+import { createTouch, isTouchDevice } from './tactile.js';
+import { NATIVE } from './natif.js';
 import { createNight } from './night.js';
 import { createCassables } from './cassables.js';
 import { createMetro } from './metro.js';
@@ -22,7 +24,7 @@ const fmt = (n) => Math.round(n).toLocaleString('fr-FR');
 const Q = new URLSearchParams(location.search);
 
 // ---------- sauvegarde ----------
-const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, cls: { ordre: 'intervention', civils: 'casseur' }, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Bloc_Cagoule', settings: { sens: 1, padSens: 1, assist: true, fps: false, teamSize: 50, invertY: false, dynres: true } };
+const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, cls: { ordre: 'intervention', civils: 'casseur' }, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Bloc_Cagoule', settings: { sens: 1, padSens: 1, touchSens: 1, fireAds: true, autoSprint: true, assist: true, fps: false, teamSize: 50, invertY: false, dynres: true } };
 const SAVE_KEY = 'frungz-save' + (Q.get('profil') ? '-' + Q.get('profil').replace(/\W/g, '').slice(0, 12) : ''); // ?profil=x : une autre sauvegarde (tester à plusieurs dans le même navigateur)
 let save; try { save = { ...DEFAULT, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; save.settings = { ...DEFAULT.settings, ...save.settings }; save.upgrades ||= {}; save.cls = { ...DEFAULT.cls, ...save.cls }; save.kit ||= {}; } catch { save = structuredClone(DEFAULT); }
 const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {} };
@@ -49,6 +51,8 @@ function switchMap(id, room) {
 const QUALITY = {
   bas: { pr: 0.75, prMin: 0.5, aa: false, shadows: false, shadowSize: 1024, soft: false, post: false, far: 480, fog: [90, 380], lod: 90, lodShadow: 0 },
   moyen: { pr: 1, prMin: 0.6, aa: true, shadows: true, shadowSize: 1024, soft: false, post: false, far: 900, fog: [130, 520], lod: 150, lodShadow: 30 },
+  // téléphone (iPhone récent, puce Apple) : ombres simples, pas de post-traitement, résolution qui s'adapte, brouillard plus proche
+  mobile: { pr: 1.25, prMin: 0.6, aa: false, shadows: true, shadowSize: 1024, soft: false, post: false, far: 620, fog: [100, 440], lod: 110, lodShadow: 20 },
   haut: { pr: 1.5, prMin: 0.7, aa: true, shadows: true, shadowSize: 2048, soft: true, post: true, far: 1700, fog: [150, 620], lod: 200, lodShadow: 45 },
 };
 function detectTier() {
@@ -56,12 +60,13 @@ function detectTier() {
     const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl'); if (!gl) return 'bas';
     const ext = gl.getExtension('WEBGL_debug_renderer_info'); const r = (ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) || '';
     const cores = navigator.hardwareConcurrency || 4, mem = navigator.deviceMemory || 8, mobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (/iPhone|iPad/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent))) return 'mobile';
     if (/SwiftShader|llvmpipe|Software|Mali|Adreno|PowerVR|GMA|HD Graphics [2-6]\d{2}\b|HD Graphics$/i.test(r) || cores <= 2 || mem <= 2 || mobile) return 'bas';
     if (/RTX|GTX 1[06-9]\d0|GTX [2-9]\d{3}|RX [5-9]\d{2,3}|Radeon Pro|Apple (M\d|GPU)|Arc/i.test(r) && cores >= 6) return 'haut';
     return 'moyen';
   } catch { return 'moyen'; }
 }
-if (!save.settings.quality || save.settings.quality === 'auto') { const t = detectTier(); save.settings.qualityAuto = t; if (!save.settings.quality) { save.settings.quality = 'auto'; if (t === 'bas' && save.settings.teamSize > 25) save.settings.teamSize = 25; } }
+if (!save.settings.quality || save.settings.quality === 'auto') { const t = detectTier(); save.settings.qualityAuto = t; if (!save.settings.quality) { save.settings.quality = 'auto'; if ((t === 'bas' || t === 'mobile') && save.settings.teamSize > 25) save.settings.teamSize = 25; } }
 const QN = Q.get('q') || (save.settings.quality === 'auto' ? save.settings.qualityAuto : save.settings.quality) || 'moyen';
 const QS = { ...(QUALITY[QN] || QUALITY.moyen) }; if (Q.has('noshadow')) QS.shadows = false; if (Q.has('nopost')) QS.post = false; if (Q.has('lowres')) QS.pr = Math.min(QS.pr, 1);
 window.__quality = QN;
@@ -113,6 +118,9 @@ async function setupPost() {
 setupPost();
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); composer?.setSize(innerWidth, innerHeight); });
 const audio = createAudio(); const input = createInput(renderer.domElement); Object.assign(input.settings, save.settings);
+// téléphone / tablette / app iPhone : joystick et boutons à l'écran (src/tactile.js)
+if (NATIVE) document.documentElement.classList.add('native');
+const touch = isTouchDevice() ? createTouch({ input, onTap: () => audio.init(), layout: save.settings.touchLayout, onSave: (l) => { save.settings.touchLayout = l; persist(); } }) : null; window.__touch = touch;
 const fx = createFX(scene, camera);
 
 // ---------- chargement ----------
@@ -134,9 +142,9 @@ async function loadAll() {
   $('loadtxt').textContent = 'Préparation du quartier…'; await new Promise((r) => setTimeout(r, 30));
   mapRoot = root; scene.add(root);
   // matières réalistes (grain, salissures, coulures, chaussée mouillée par plaques) : sauf en qualité basse
-  if (QN !== 'bas' && !Q.has('noreal')) { try { applyRealism(root, { wet: 0.4, presets: gp.realisme }); window.__real = realismUniforms; } catch (e) { console.warn('réalisme indisponible', e); } }
+  if (QN !== 'bas' && QN !== 'mobile' && !Q.has('noreal')) { try { applyRealism(root, { wet: 0.4, presets: gp.realisme }); window.__real = realismUniforms; } catch (e) { console.warn('réalisme indisponible', e); } }
   // allègements selon la qualité : pas d'ombre des feuillages en moyenne, pas de décor lointain en basse (caché par le brouillard)
-  root.traverse((o) => { if (!o.isMesh) return; const n = o.name || ''; if (QN !== 'haut' && /leaf/.test(n)) o.castShadow = false; if (QN === 'bas' && /decor_lointain/.test(n)) o.visible = false; });
+  root.traverse((o) => { if (!o.isMesh) return; const n = o.name || ''; if (QN !== 'haut' && /leaf/.test(n)) o.castShadow = false; if ((QN === 'bas' || QN === 'mobile') && /decor_lointain/.test(n)) o.visible = false; });
   const tw = performance.now(); world = new World(gp, ground); console.log('monde prêt en', (performance.now() - tw).toFixed(0), 'ms'); window.__world = world; window.__ground = ground;
   const tc = performance.now(); world.cass = createCassables({ nodes: cassables, scene, world, fx, audio }); world.metro = createMetro({ rame, gp, audio }); world.cass.onBreak((e, by, d) => game?.onCassable(e, by, d)); console.log('cassables', world.cass.list.length, 'fusionnés en', world.cass.merged.length, 'maillages,', (performance.now() - tc).toFixed(0), 'ms');
   night = createNight({ scene, sun, hemi, renderer, world, mapRoot: root, fx, quality: QN, getPost: () => composer }); night.set(!!save.settings.night); window.__night = night;
@@ -405,20 +413,27 @@ function padMenu(dt) {
 const pause = document.createElement('div'); pause.id = 'pause'; pause.className = 'screen panel hidden';
 pause.innerHTML = `<h2>PAUSE</h2>
 <div class="settings">
-<label>Sensibilité souris <input type="range" min="0.3" max="5" step="0.05" id="s-sens"></label>
+<label class="desk-only">Sensibilité souris <input type="range" min="0.3" max="5" step="0.05" id="s-sens"></label>
+<label class="touch-only">Sensibilité tactile <input type="range" min="0.3" max="3" step="0.05" id="s-touch"></label>
+<label class="touch-only"><input type="checkbox" id="s-fireads"> Tirer = viser puis tirer (comme CoD Mobile)</label>
+<label class="touch-only"><input type="checkbox" id="s-autosprint"> Sprint auto : joystick poussé à fond vers l'avant</label>
 <label>Sensibilité manette <input type="range" min="0.3" max="5" step="0.05" id="s-pad"></label>
-<label><input type="checkbox" id="s-assist"> Visée assistée (manette)</label>
+<label><input type="checkbox" id="s-assist"> Visée assistée (manette et tactile)</label>
 <label><input type="checkbox" id="s-inv"> Inverser l'axe vertical</label>
 <label><input type="checkbox" id="s-fps"> Vue première personne (V / R3)</label>
 <label><input type="checkbox" id="s-killcam"> Kill-cam en incrustation (bulle)</label>
-<label>Qualité graphique <select id="s-quality"><option value="auto">Auto</option><option value="bas">Basse (PC modestes)</option><option value="moyen">Moyenne</option><option value="haut">Haute</option></select></label>
+<label>Qualité graphique <select id="s-quality"><option value="auto">Auto</option><option value="bas">Basse (PC modestes)</option><option value="moyen">Moyenne</option><option value="mobile">Téléphone</option><option value="haut">Haute</option></select></label>
 <label><input type="checkbox" id="s-dynres"> Résolution adaptée aux images/s</label>
 <label><input type="checkbox" id="s-cine"> Rendu cinéma : flou de mouvement, mise au point en visée, grain (qualité haute)</label>
 <label>Images/s <b id="s-fpsn">–</b></label>
 <label>Joueurs par camp (prochaine partie) <select id="s-team"><option value="5">5 contre 5</option><option value="10">10 contre 10</option><option value="15">15 contre 15</option><option value="20">20 contre 20</option><option value="25">25 contre 25</option><option value="35">35 contre 35</option><option value="50">50 contre 50</option></select></label>
 </div>
-<div class="row-btns"><button class="big" id="resume">REPRENDRE</button><button class="ghost" id="quit">Quitter la partie</button><button class="ghost" id="s-fullscreen">Plein écran (⌘L)</button></div>
-<div class="controls"><div><h3>Manette</h3>
+<div class="row-btns"><button class="big" id="resume">REPRENDRE</button><button class="ghost touch-only" id="s-touchedit">Personnaliser les touches</button><button class="ghost" id="quit">Quitter la partie</button><button class="ghost desk-only" id="s-fullscreen">Plein écran (⌘L)</button></div>
+<div class="controls"><div class="touch-only"><h3>Tactile</h3>
+<p>Pouce gauche : joystick (il se pose où tu touches) · poussé à fond vers l'avant : sprint</p><p>Pouce droit : glisse n'importe où pour tourner la caméra</p>
+<p>Maintiens Tirer : tu mets en joue et ça tire · fusil de précision : vise en maintenant, le coup part quand tu lâches · le bouton de tir se fait glisser</p>
+<p>Accroupi en pleine course : glissade · Lancer : maintiens pour viser, lâche pour lancer</p><p>Agir apparaît quand une action est possible, Série quand un atout est prêt</p>
+<p>Touche une arme en bas pour la prendre · touche la minimap pour la carte</p><p>Personnaliser les touches : déplace, agrandis, rends transparentes, masque, ou ajoute des touches de l'inventaire (barricade, glissade, sprint, vue, arme suivante, sac, carte…)</p></div><div><h3>Manette</h3>
 <p><kbd>L</kbd> se déplacer · <kbd>R</kbd> regarder</p><p><kbd>R2</kbd> tirer · <kbd>L2</kbd> viser</p><p><kbd>✕</kbd> sauter / escalader · <kbd>○</kbd> roulade / glissade</p>
 <p><kbd>L1</kbd> s'accroupir · <kbd>L3</kbd> sprint · <kbd>R3</kbd> vue FPS / TPS</p><p><kbd>□</kbd> agir, ramasser, monter dans un véhicule · <kbd>△</kbd> changer d'arme</p>
 <p><kbd>R1</kbd> maintenir pour viser un lancer, lâcher pour lancer · <kbd>↑</kbd><kbd>↓</kbd> force · <kbd>←</kbd> changer · <kbd>L2</kbd> annuler</p>
@@ -436,7 +451,8 @@ document.body.appendChild(pause);
 const st = document.createElement('style'); st.textContent = `.padfocus{outline:3px solid #ffcc3d!important;outline-offset:3px;box-shadow:0 0 0 7px rgba(255,204,61,.22)!important}.settings{display:grid;gap:10px;text-align:left;background:rgba(255,255,255,.06);padding:16px;border-radius:12px;min-width:min(420px,100%)}.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left;margin-top:10px;font-size:13px}.controls h3{margin:0 0 6px;font:800 14px Inter}.controls p{margin:3px 0}@media(max-width:760px){.controls{grid-template-columns:1fr}}.settings label{display:flex;justify-content:space-between;gap:12px;align-items:center;font-weight:700}#minimap.big{width:min(700px,90vw);height:min(350px,45vw);left:50%;top:50%;transform:translate(-50%,-50%)}body.scoped #app canvas{}body.scoped::after{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 30vh,#000 30.5vh);z-index:1}body.scoped::before{content:'';position:fixed;left:50%;top:0;bottom:0;width:1px;background:#000;z-index:2;box-shadow:0 0 0 0 #000}`;
 document.head.appendChild(st);
 const bindSet = (id, key, prop = 'value', conv = Number) => { const el = $(id); el[prop] = save.settings[key]; el.addEventListener('input', () => { save.settings[key] = conv(el[prop]); input.settings[key] = save.settings[key]; persist(); if (key === 'fps' && game) { game.cam.fps = save.settings.fps; game.viewGun(); } }); };
-if (save.settings.killcam === undefined) save.settings.killcam = true; bindSet('s-killcam', 'killcam', 'checked', Boolean); bindSet('s-sens', 'sens'); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); if (save.settings.cine === undefined) save.settings.cine = true; bindSet('s-cine', 'cine', 'checked', Boolean); $('s-cine').addEventListener('input', () => { if (cine) cine.enabled2 = save.settings.cine; }); bindSet('s-team', 'teamSize');
+if (save.settings.killcam === undefined) save.settings.killcam = true; bindSet('s-killcam', 'killcam', 'checked', Boolean); bindSet('s-sens', 'sens'); bindSet('s-touch', 'touchSens'); bindSet('s-fireads', 'fireAds', 'checked', Boolean); bindSet('s-autosprint', 'autoSprint', 'checked', Boolean);
+$('s-touchedit')?.addEventListener('click', () => { if (!touch) return; const back = !pause.classList.contains('hidden'); pause.classList.add('hidden'); touch.openEditor(() => { if (back) pause.classList.remove('hidden'); }); }); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); if (save.settings.cine === undefined) save.settings.cine = true; bindSet('s-cine', 'cine', 'checked', Boolean); $('s-cine').addEventListener('input', () => { if (cine) cine.enabled2 = save.settings.cine; }); bindSet('s-team', 'teamSize');
 { const el = $('s-quality'); el.value = save.settings.quality || 'auto'; el.addEventListener('change', () => { save.settings.quality = el.value; persist(); location.reload(); }); }
 function openSettings() { pause.querySelector('h2').textContent = 'RÉGLAGES'; $('resume').style.display = 'none'; $('quit').textContent = 'Retour au salon'; pause.classList.remove('hidden'); audio.init(); audio.play('uiSelect'); }
 function openPause() { if (!game || game.over) return; pause.querySelector('h2').textContent = 'PAUSE'; $('resume').style.display = ''; $('quit').textContent = 'Quitter la partie'; game.paused = true; pause.classList.remove('hidden'); document.exitPointerLock?.(); $('s-fps').checked = game.cam.fps; }
@@ -545,6 +561,7 @@ function frame() {
     else { menuT += dt * 0.04; camera.position.set(Math.cos(menuT) * 150, 55, Math.sin(menuT) * 150); camera.lookAt(0, 4, 0); followShadow(camera.position); } world.metro?.update(menuT * 25, dt, null);
     input.poll(); padMenu(dt); input.endFrame(); night?.update(dt, camera.position, null);
   }
+  touch?.sync(game);
   if (cine) cineState(raw);
   if (Q.has('norender')) { window.__frames = (window.__frames || 0) + 1; return; } // tests : simulation seule (plusieurs joueurs dans un même navigateur)
   if (composer) composer.render(); else renderer.render(scene, camera); if (game && !game.paused) game.renderPip(renderer, scene); window.__frames = (window.__frames || 0) + 1;

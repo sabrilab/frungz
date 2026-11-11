@@ -237,7 +237,7 @@ export function installSeries(Game) {
     if ((I.down('fire') || I.st.triggerR > 0.4) && G.cd25 <= 0) { G.cd25 = 0.17; this.gsShoot(G, false); }
     const l2 = I.st.triggerL > 0.5; if ((I.pressed('aim') || (l2 && !G._l2)) && G.cd105 <= 0) { G.cd105 = 2.4; this.gsShoot(G, true); } G._l2 = l2;
     if (I.pressed('streak') && G.t > 0.6) G.t = G.life + 1;
-    if (!I.st.locked && !I.st.usingPad && I.pressed('fire')) this.renderer.domElement.requestPointerLock?.();
+    if (!I.st.locked && !I.st.usingPad && !I.st.usingTouch && I.pressed('fire')) this.renderer.domElement.requestPointerLock?.();
     a.wish = V(); a.wantSprint = false; a.wantJump = 0; this.aiming = false; a.spawnProt = Math.max(0, (a.spawnProt || 0) - dt);
   };
   const updateCamera = P.updateCamera;
