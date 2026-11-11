@@ -270,35 +270,21 @@ export function buildSkinScene(def, opts = {}) {
     if (!jog && /aucun|polo/.test(haut.id)) extra.push({ geo: buckle(L, B), bone: 'Hips', color: C(jean ? '#8d8a82' : '#2c2e33') }); // boucle, si le haut est rentré
   };
   // ---- chaussures
+  // chaussures : vraies pièces rigides (semelle, tige, laçage), skinnées sur le pied et les orteils (et le tibia pour la tige montante).
+  // Le pied nu est rentré dedans ; au-dessus d'une basket basse, une chaussette.
   const piedsLayer = () => {
     if (pieds.id === 'aucun') return;
-    const rg = pieds.id === 'rangers', mont = pieds.id === 'montantes', hi = rg ? 0.17 : mont ? 0.095 : 0.04, base = C(pieds.c), sole = C(pieds.c2 || '#ddd');
-    const lace = rg ? C('#0b0b0c') : lum(base) > 0.4 ? mix(base, C('#9a9a96'), 0.25, new THREE.Color()) : lift(base, 0.06), soleH = rg ? 0.038 : 0.03, accent = lum(base) > 0.4 ? C('#1b1c1f') : mix(sole, base, 0.15, new THREE.Color());
+    const rg = pieds.id === 'rangers', mont = pieds.id === 'montantes', base = C(pieds.c), sole = C(pieds.c2 || '#ddd');
+    const hi = rg ? 0.17 : mont ? (bas.id !== 'aucun' && !rangersTuck ? 0.065 : 0.095) : 0;
+    const accent = rg ? lift(base, 0.03) : lum(base) > 0.4 ? C('#1b1c1f') : mix(sole, base, 0.2, new THREE.Color());
+    const lace = rg ? C('#0b0b0c') : lum(base) > 0.4 ? mix(base, C('#9a9a96'), 0.3, new THREE.Color()) : lift(base, 0.08);
+    const P = { kind: pieds.id, base, sole, accent, lace, collar: rg ? lift(base, 0.02) : base.clone().multiplyScalar(0.7), soleH: rg ? 0.036 : 0.028, hi, th: rg ? 0.012 : 0.009 };
+    for (const sx of [1, -1]) extra.push(...shoeParts(B, sx, P));
+    const sock = C(lum(base) > 0.4 ? '#e9e9e6' : '#1a1a1c');
     layer(1, 0.0006, (q) => {
-      const y = q.y; if (!(q.p === 'foot' || (q.p === 'leg' && y < L.ankle.y + hi))) return null;
-      const sx = Math.sign(q.x) || 1, fx = q.x - sx * Math.abs(L.ankle.x), fz = q.z - L.ankle.z, top = q.ny > 0.3 && fz > 0.02;
-      let o = rg ? 0.012 : 0.01, s = 1, h = 0, col = base;
-      if (y < soleH) { // semelle : débord, rainure, crampons
-        o += 0.004 + 0.004 * sstep(soleH, soleH - 0.008, y); col = sole; h = 0.2;
-        if (y < 0.011) { s = 0.75; h = rg ? (Math.sin(q.z * 260) > 0 ? 1 : -1) : 0.5 * Math.sin(q.z * 400); }
-        if (Math.abs(y - soleH * 0.55) < 0.0018) { s *= 0.7; h = -1; } if (y > soleH - 0.003) s *= 1.08;
-        return set(o, col, 'Pieds', s, h); }
-      if (Math.abs(y - soleH) < 0.002) { s *= 0.55; h = -1; } // jonction semelle / tige
-      h += rg ? 0.25 * noise3(q.x * 500, y * 500, q.z * 500) : 0.15 * noise3(q.x * 300, y * 300, q.z * 300);
-      // bout renforcé, contrefort, col rembourré
-      if (fz > 0.1 && y < 0.07) { o += 0.0015; if (rg) { s *= 1.15; h = 0.3; } else col = mix(base, sole, 0.3, TC2); if (Math.abs(fz - 0.1) < 0.002) { s *= 0.6; h = -1; } }
-      if (fz < -0.03 && y < (rg ? 0.11 : 0.085)) { o += 0.002; s *= 0.92; if (!rg) col = accent; }
-      if (q.p === 'leg' && y > L.ankle.y + hi - 0.022) { o += 0.004; s *= 0.86; h = 0.6 * Math.sin(y * 900); }
-      // laçage : œillets et lacets croisés sur le dessus
-      if (top && Math.abs(fx) < (rg ? 0.03 : 0.026) && y > 0.045 && fz < 0.11) {
-        const w = rg ? 0.03 : 0.026, eye = Math.abs(Math.abs(fx) - w + 0.004) < 0.0035 && (((fz + y) / 0.012) % 1 + 1) % 1 < 0.45;
-        const cross = (((fz + y) / 0.013) % 1 + 1) % 1 < 0.45; // passages du lacet
-        if (eye) { col = rg ? C('#3a3c40') : accent; h = -0.5; o += 0.002; } else if (Math.abs(fx) < w - 0.006 && cross) { col = lace; h = 1; o += 0.0025; } else { s *= 0.8; o += 0.0015; }
-        return set(o, col, 'Pieds', s, h); }
-      // panneau latéral (forme générique) et surpiqûres
-      if (!rg && Math.abs(q.nx) > 0.5 && y > soleH + 0.006 && y < 0.075) { const v = y - (soleH + 0.01 + (0.06 - fz) * 0.22); if (Math.abs(v) < 0.007 && fz > -0.06 && fz < 0.09) { col = accent; o += 0.0012; h = 0.5; } if (Math.abs(v - 0.01) < 0.0011 && dash(fz, 0.006)) col = lift(base, 0.06); }
-      if (rg && Math.abs(q.nx) > 0.5 && Math.abs(y - (soleH + 0.04)) < 0.0012 && dash(q.z, 0.006)) col = lift(base, 0.04);
-      return set(o, col, 'Pieds', s, h);
+      if (q.p === 'foot') return set(-0.012, base, 'Pieds', 1, 0, true);
+      if (q.p === 'leg' && q.y < L.ankle.y + (hi ? hi - 0.012 : 0.03)) return hi ? set(-0.006, base, 'Pieds', 1, 0, true) : set(0.0015, sock, 'Pieds', 0.95, 0, true);
+      return null;
     });
   };
   if (rangersTuck) { basLayer(); piedsLayer(); } else { piedsLayer(); basLayer(); }
@@ -323,7 +309,7 @@ export function buildSkinScene(def, opts = {}) {
       let cover = false;
       if (torso) cover = y > bottom - (under && !tucked ? 0.02 : 0);
       else if (arm) cover = long ? a < 0.985 : a < 0.38;
-      else if (p === 'head') cover = collar >= 0.045 && y < L.eyeY - 0.1 && q.nz < 0.3; // col montant : jusque sous la mâchoire et la nuque (pas de frange de peau étirée)
+      else if (p === 'head') cover = collar >= 0.045 && y < L.eyeY - 0.1 + (q.pix ? 0.014 : 0) && q.nz < 0.3 + (q.pix ? 0.15 : 0); // col montant : jusque sous la mâchoire et la nuque (pas de frange de peau étirée)
       else if (p === 'neck') cover = collar >= 0.045 || y < L.neck.y + collar - 0.012 || (q.nz < -0.2 && y < L.neck.y + 0.025 + collar); // col montant : tout le cou (pas de bord en escalier sur la peau)
       if (!cover) return null;
       let o = bulk, s = 1, h = id === 'kway' || id === 'doudoune' ? 0.08 * noise3(q.x * 200, y * 200, q.z * 200) : knit(q), col = base;
@@ -362,7 +348,7 @@ export function buildSkinScene(def, opts = {}) {
       if (id === 'veste_mo' && c2 && (torso || arm)) { // renforts d'épaules et de coudes, surpiqués
         const sh = arm && a < 0.22 && q.ny > -0.3, el = arm && Math.abs(a - 0.5) < 0.09 && Math.sin(aa) < 0.3;
         if (sh || el) { o += 0.006; col = c2; h = 0.3; const e = sh ? 0.22 - a : 0.09 - Math.abs(a - 0.5); if (e < 0.008) { s *= 0.65; h = -1; } else if (e > 0.012 && e < 0.016 && dash(aa * 0.05, 0.006)) col = thr; } }
-      if (id === 'veste_mo' && torso && q.nz > 0.4 && q.x < -0.03 && q.x > -0.12 && Math.abs(y - (L.chest.y + 0.115)) < 0.017) { col = mix(base, C('#7d8590'), 0.35, TC2); o += 0.001; h = 0.6 * Math.sin(q.x * 900); } // bande velcro (grade)
+      if (id === 'veste_mo' && torso && q.nz > 0.4 && q.x < -0.03 && q.x > -0.12 && Math.abs(y - (L.chest.y + 0.115)) < 0.017) { col = mix(base, C('#7d8590'), 0.12, TC2); o += 0.001; h = 0.25 * Math.sin(q.x * 1400) * Math.sin(y * 1400); } // bande velcro (grade)
       if (id === 'kway' && torso && Math.abs(y - (L.chest.y + 0.06)) < 0.0022) { s *= 0.6; h = -1; } // empiècement de poitrine
       if (id === 'kway' && torso && q.nz > 0.3 && Math.abs(Math.abs(q.x) - 0.1 + (y - L.hips.y) * 0.25) < 0.0025 && y > L.hips.y + 0.04 && y < L.hips.y + 0.16) { col = zipC; h = -1; } // poches zippées
       // zip, rabat et revers du col ouvert
@@ -400,7 +386,7 @@ export function buildSkinScene(def, opts = {}) {
         if ((fr || bk) && Math.abs(q.x) < 0.13 && y > lo + 0.08 && y < L.chest.y + 0.08) o += 0.004; // plaques
         if ((fr || bk) && y > lo + 0.02 && y < lo + 0.14) { const row = ((y - lo - 0.02) % 0.025 + 0.025) % 0.025; if (row < 0.012) { col = web; h = 0.6; o += 0.001; if ((((q.x + 0.5) / 0.038) % 1) < 0.08) { s *= 0.55; h = -1; } } } // sangles MOLLE
         if (fr && tac && Math.abs(q.x) < 0.17 && y < lo + 0.11) { o += 0.01; col = c2; h = 0.2; const cell = Math.abs(((q.x + 0.17) / 0.113) % 1 - 0.5); if (cell > 0.44) { s = 0.55; h = -1; } if (y > lo + 0.095) { s *= 1.1; if (Math.abs(y - (lo + 0.095)) < 0.002) { s *= 0.6; h = -1; } } } // porte-chargeurs à rabat
-        if (fr && Math.abs(q.x) < 0.07 && Math.abs(y - (L.chest.y + 0.03)) < 0.028) { o += 0.0015; col = mix(base, C('#8a919c'), 0.25, TC2); h = 0.5 * Math.sin(q.x * 1100) * Math.sin(y * 1100); } // velcro de poitrine
+        if (fr && Math.abs(q.x) < 0.07 && Math.abs(y - (L.chest.y + 0.03)) < 0.028) { o += 0.0015; col = mix(base, C('#8a919c'), 0.1, TC2); h = 0.25 * Math.sin(q.x * 1400) * Math.sin(y * 1400); } // velcro de poitrine
         if (ta > 1.0 && ta < 2.1 && y < lo + 0.12) { s *= 0.85; if (((y - lo) % 0.03) < 0.008) { s *= 0.75; h = -1; } } // ceinture latérale
       } else if (Math.abs(y - (lo + 0.07)) < 0.016 || Math.abs(y - (lo + 0.2)) < 0.016) { col = refl; h = 0.3; } // bandes réfléchissantes
       if (e < 0.008) { col = bind; o += 0.0015; h = 0.5; s = 1; if (e > 0.006 && dash(q.x + y, 0.006)) col = lift(bind, 0.04); } // biais de bordure
@@ -486,6 +472,7 @@ export function buildSkinScene(def, opts = {}) {
 
   // ---- passe 1 : les sommets (épaisseur, ampleur, plis)
   const off = new Float32Array(n), loose = new Float32Array(n), wr = new Float32Array(n), q = {}, st = { off: 0, tag: 'Skin' };
+  q.pix = false;
   for (let i = 0; i < n; i++) { setQ(q, pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2], wn[i * 3], wn[i * 3 + 1], wn[i * 3 + 2], part[i], boneName[i]); st.off = 0; st.tag = 'Skin';
     for (const Ly of layers) { const r = Ly.fn(q, st); if (!r) continue; st.off = r.abs ? r.o : Math.max(r.o, st.off > 0 ? st.off + 0.0018 : r.o); st.tag = r.t; loose[i] = Math.max(loose[i], Ly.lo); wr[i] = Ly.wr; }
     off[i] = st.off; }
@@ -494,7 +481,7 @@ export function buildSkinScene(def, opts = {}) {
 
   // ---- passe 2 : la texture (couleur et relief, pixel par pixel dans les UV du corps)
   const tex = paintTexture(B, TEX, (x, y, z, nx, ny, nz, vi, out) => {
-    setQ(q, x, y, z, nx, ny, nz, part[vi], boneName[vi]); st.off = 0; st.tag = 'Skin'; let top = null;
+    setQ(q, x, y, z, nx, ny, nz, part[vi], boneName[vi]); st.off = 0; st.tag = 'Skin'; let top = null; q.pix = true;
     for (const Ly of layers) { const r = Ly.fn(q, st); if (!r) continue; st.off = r.abs ? r.o : Math.max(r.o, st.off > 0 ? st.off + 0.0018 : r.o); st.tag = r.t; top = r; out.r = r.c.r; out.g = r.c.g; out.b = r.c.b; out.s = r.s; out.h = r.h; }
     return !!top; }, skinCol);
 
@@ -507,6 +494,11 @@ export function buildSkinScene(def, opts = {}) {
   { const g = new THREE.BufferGeometry(), P3 = new Float32Array(n * 3), v = V(), nn = V(), col = new Float32Array(n * 3).fill(1);
     // lâche et plis sont lissés sur les sommets soudés (sinon marches aux coutures), puis : position = corps → corps lissé, + épaisseur le long de la normale, + plis
     const gl = new Float32Array(B.ng), go = new Float32Array(B.ng), gw = new Float32Array(B.ng), gc = new Float32Array(B.ng); for (let i = 0; i < n; i++) { const g = B.wid[i]; gl[g] += loose[i]; go[g] += off[i]; gw[g] += wr[i]; gc[g]++; }
+    // marches entre couches de tissu adoucies (sur les sommets habillés seulement) : sans ça, le bord d'un gilet, d'une poche ou d'un renfort
+    // suit les sommets en escalier et paraît déchiqueté ; la couleur, elle, reste nette au pixel
+    { let a = new Float32Array(B.ng); for (let g = 0; g < B.ng; g++) a[g] = gc[g] ? go[g] / gc[g] : 0;
+      for (let it = 0; it < 3; it++) { const t = a.slice(); for (let g = 0; g < B.ng; g++) { if (t[g] <= 0) continue; let sm = 0, m = 0; for (const h of B.nbl[g]) if (t[h] > 0) { sm += t[h]; m++; } if (m) a[g] = t[g] * 0.45 + (sm / m) * 0.55; } }
+      for (let g = 0; g < B.ng; g++) go[g] = a[g] * gc[g]; }
     for (let i = 0; i < n; i++) { const g = B.wid[i], k = gc[g], lo = gl[g] / k, of = go[g] / k, w = gw[g] / k; v.fromArray(pos, i * 3); if (of > 0) { v.lerp(nn.fromArray(B.smooth, i * 3), 0.8 + 0.2 * Math.min(1, lo * 3)); if (lo > 0) v.lerp(nn.fromArray(B.hull, i * 3), lo * lo); } nn.fromArray(wn, i * 3);
       const wz = of > 0 ? w * noise3(v.x * 9, v.y * 9, v.z * 9) : 0; v.addScaledVector(nn, of + wz);
       // entrejambe : le tissu du pantalon passe à plat devant (pas de relief marqué), au niveau du devant des cuisses
@@ -514,7 +506,7 @@ export function buildSkinScene(def, opts = {}) {
       P3.set([v.x, v.y, v.z], i * 3); }
     // marches entre couches : ombre au pied de la marche (les surcouches se lisent) ; teinte par sommet, multipliée à la texture
     { const ga = new Float32Array(B.ng); for (let g = 0; g < B.ng; g++) ga[g] = go[g] / (gc[g] || 1); const sh = new Float32Array(B.ng).fill(1);
-      for (let g = 0; g < B.ng; g++) { let up = 0, dn = 0; for (const h of B.nbl[g]) { up = Math.max(up, ga[h] - ga[g]); dn = Math.max(dn, ga[g] - ga[h]); } if (up > 0.0012) sh[g] = 1 - Math.min(0.35, (up - 0.0008) * 40); else if (dn > 0.0012 && ga[g] > 0) sh[g] = 1 + Math.min(0.08, dn * 16); }
+      for (let g = 0; g < B.ng; g++) { let up = 0, dn = 0; for (const h of B.nbl[g]) { up = Math.max(up, ga[h] - ga[g]); dn = Math.max(dn, ga[g] - ga[h]); } if (up > 0.0012) sh[g] = 1 - Math.min(0.25, (up - 0.0008) * 30); }
       for (let i = 0; i < n; i++) col.fill(sh[B.wid[i]], i * 3, i * 3 + 3); }
     // normales recalculées sur la forme habillée, soudées
     const gn = new Float32Array(B.ng * 3), I = sg.index, a = V(), b = V(), d = V(), e1 = V(), e2 = V();
@@ -541,8 +533,9 @@ export function buildSkinScene(def, opts = {}) {
   if (def.barbe && !beardHidden) keepMesh('Hair_Beard', null, def.hairColor || '#2b1d14');
   const bIdx = new Map(B.skel.bones.map((b, i) => [b.name, i]));
   for (const e of extra) { const g = e.geo.index ? e.geo : mergeV(e.geo); const nv = g.attributes.position.count;
-    const ci = new Float32Array(nv * 3); for (let i = 0; i < nv; i++) { c.copy(e.color).multiplyScalar(0.96 + hash(i + 7) * 0.08); ci.set([c.r, c.g, c.b], i * 3); }
-    const sI = new Uint16Array(nv * 4), sW = new Float32Array(nv * 4); const bi = bIdx.get(e.bone) ?? 0; for (let i = 0; i < nv; i++) { sI[i * 4] = bi; sW[i * 4] = 1; }
+    const ci = new Float32Array(nv * 3); for (let i = 0; i < nv; i++) { if (e.colors) c.fromArray(e.colors, i * 3); else c.copy(e.color).multiplyScalar(0.96 + hash(i + 7) * 0.08); ci.set([c.r, c.g, c.b], i * 3); }
+    const sI = new Uint16Array(nv * 4), sW = new Float32Array(nv * 4); const bi = bIdx.get(e.bone) ?? 0;
+    for (let i = 0; i < nv; i++) { if (e.weights) { e.weights[i].forEach(([nm, w], k) => { sI[i * 4 + k] = bIdx.get(nm) ?? bi; sW[i * 4 + k] = w; }); } else { sI[i * 4] = bi; sW[i * 4] = 1; } }
     const gg = new THREE.BufferGeometry(); gg.setAttribute('position', g.attributes.position.clone()); gg.setAttribute('normal', g.attributes.normal.clone()); gg.setAttribute('color', new THREE.BufferAttribute(ci, 3)); gg.setAttribute('skinIndex', new THREE.BufferAttribute(sI, 4)); gg.setAttribute('skinWeight', new THREE.BufferAttribute(sW, 4)); gg.setIndex(g.index);
     gg.applyMatrix4(B.Wi); parts.push({ g: gg, name: 'Extra' }); }
   for (const p of parts) if (!p.g.attributes.uv) { const nv = p.g.attributes.position.count, uv = new Float32Array(nv * 2); for (let i = 0; i < nv; i++) { uv[i * 2] = WH[0]; uv[i * 2 + 1] = WH[1]; } p.g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); }
@@ -577,7 +570,7 @@ function paintTexture(B, N, paint, skinCol) {
       const vi = w0 >= w1 && w0 >= w2 ? A : w1 >= w2 ? Bv : Cv; let nx = P(wn, 0), ny = P(wn, 1), nz = P(wn, 2); const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
       let r, g, b, h = 0;
       if (paint(P(pos, 0), P(pos, 1), P(pos, 2), nx, ny, nz, vi, out)) { r = out.r; g = out.g; b = out.b; const s = out.s, lm = (r + g + b) / 3; h = out.h;
-        if (lm < 0.05 && s !== 1) { const d = s < 1 ? (1 - s) * 0.075 : (s - 1) * 0.06; r += d; g += d; b += d * 1.05; } else { r *= s; g *= s; b *= s; }
+        if (lm < 0.05 && s !== 1) { const d = s < 1 ? (1 - s) * 0.04 : (s - 1) * 0.05; r += d; g += d; b += d * 1.05; } else { r *= s; g *= s; b *= s; }
         const gr = 1 + 0.035 * (hash(k) - 0.5); r *= gr; g *= gr; b *= gr; }
       else { r = P(skinCol, 0); g = P(skinCol, 1); b = P(skinCol, 2); }
       rgb[k * 4] = toSRGB(r); rgb[k * 4 + 1] = toSRGB(g); rgb[k * 4 + 2] = toSRGB(b); const hv = Math.round(128 + 110 * Math.max(-1, Math.min(1, h))); bump[k * 4] = bump[k * 4 + 1] = bump[k * 4 + 2] = hv; } }
@@ -659,6 +652,53 @@ function visorShell(L) { // visière relevée : posée sur le haut du casque, de
 function hoodShell(L) { // capuche relevée : ouverte sur le visage (front → menton), encadre le visage, tombe sur la nuque et les épaules derrière
   const fore = yl(L, L.eyeY + 0.06), chin = yl(L, L.eyeY - 0.16), back = yl(L, L.eyeY - 0.3);
   return headShell(L, { pad: [0.034, 0.04, 0.028, 0.055], peak: 0.14, tuck: 0.35, cinch: 0.16, flare: 0.22, thick: 0.011, seg: [48, 18], edge: (f) => { const a = Math.abs(f); return a < 0.75 ? fore + (chin - fore) * sstep(0.2, 0.75, a) : chin + (back - chin) * sstep(1.2, 2.4, a); } });
+}
+// ---- chaussures rigides : sections arrondies prises sur la forme du pied (tranches de l'avant à l'arrière), fermées aux deux bouts
+const sgnPow = (v, e) => Math.sign(v) * Math.pow(Math.abs(v), e);
+function shoeParts(B, sx, P) {
+  const S = sx > 0 ? 'L' : 'R', bone = (n) => B.skel.bones.find((b) => b.name === n).getWorldPosition(V()), ank = bone('Foot' + S), toe = bone('Toe' + S);
+  const idx = []; for (let i = 0; i < B.n; i++) if (Math.sign(B.pos[i * 3]) === sx && (B.part[i] === 'foot' || (B.part[i] === 'leg' && B.pos[i * 3 + 1] < ank.y + 0.02))) idx.push(i);
+  let z0 = 1e9, z1 = -1e9; for (const i of idx) if (B.part[i] === 'foot') { z0 = Math.min(z0, B.pos[i * 3 + 2]); z1 = Math.max(z1, B.pos[i * 3 + 2]); }
+  z0 -= 0.014; z1 += 0.018; const len = z1 - z0, NZ = 40, NA = 36, th = P.th;
+  const xa = new Float32Array(NZ).fill(1e9), xb = new Float32Array(NZ).fill(-1e9), yt = new Float32Array(NZ).fill(-1e9);
+  for (const i of idx) { const k = Math.max(0, Math.min(NZ - 1, Math.round((B.pos[i * 3 + 2] - z0) / len * (NZ - 1)))), x = B.pos[i * 3], y = B.pos[i * 3 + 1];
+    if (y < 0.07) { xa[k] = Math.min(xa[k], x); xb[k] = Math.max(xb[k], x); } yt[k] = Math.max(yt[k], y); }
+  for (let pass = 0; pass < 2; pass++) for (let k = 0; k < NZ; k++) { const j = pass ? NZ - 1 - k : k, pj = pass ? j + 1 : j - 1; if (xa[j] > 1e8 && pj >= 0 && pj < NZ) { xa[j] = xa[pj]; xb[j] = xb[pj]; } if (yt[j] < -1e8 && pj >= 0 && pj < NZ) yt[j] = yt[pj]; }
+  const sm = (a) => { for (let it = 0; it < 3; it++) { const t = a.slice(); for (let k = 1; k < NZ - 1; k++) a[k] = (t[k - 1] + 2 * t[k] + t[k + 1]) / 4; } };
+  const cx = new Float32Array(NZ), hw = new Float32Array(NZ); for (let k = 0; k < NZ; k++) { cx[k] = (xa[k] + xb[k]) / 2; hw[k] = Math.max(0.025, (xb[k] - xa[k]) / 2); } sm(cx); sm(hw);
+  const uAnk = (ank.z - z0) / len, uToe = (toe.z - z0) / len;
+  const top = new Float32Array(NZ); for (let k = 0; k < NZ; k++) { const u = k / (NZ - 1); const cap = ank.y - 0.006 + 0.022 * sstep(uAnk, uAnk + 0.25, u); top[k] = Math.min(Math.max(0.045, yt[k] + th), cap); } sm(top);
+  const pos = [], col = [], wts = [], ind = [], c = new THREE.Color();
+  for (let k = 0; k < NZ; k++) { const u = k / (NZ - 1), z = z0 + u * len, d = Math.max(0, 0.1 - u) / 0.1, d2 = Math.max(0, u - 0.86) / 0.14, e = Math.sqrt(Math.max(0, 1 - Math.max(d * d, d2 * d2)));
+    const tp = top[k] * (0.55 + 0.45 * e), a = (hw[k] + th) * e, wT = sstep(uToe - 0.04, uToe + 0.1, u);
+    for (let j = 0; j < NA; j++) { const t = j / NA * Math.PI * 2, ux = Math.cos(t), uy = Math.sin(t);
+      let px = cx[k] + a * sgnPow(ux, 2 / 3.4), py = tp / 2 + tp / 2 * sgnPow(uy, 2 / 3.4); py = Math.max(0, py);
+      if (py < P.soleH) px = cx[k] + (px - cx[k]) * 1.05; // semelle qui déborde
+      pos.push(px, py + (u > 0.85 ? 0.01 * sstep(0.85, 1, u) * (1 - py / tp) : 0), z);
+      const side = Math.abs(ux) > 0.62, mid = Math.abs(px - cx[k]);
+      c.copy(P.base);
+      if (py < P.soleH || (P.kind === 'baskets' && u > 0.9 && py < P.soleH + 0.014)) { c.copy(P.sole); if (py < 0.008) c.multiplyScalar(P.kind === 'rangers' ? (Math.sin(z * 260) > 0 ? 0.6 : 1) : 0.85); if (Math.abs(py - P.soleH * 0.55) < 0.002) c.multiplyScalar(0.8); }
+      else if (uy > 0.45 && u > uAnk + 0.02 && u < uToe - 0.02 && mid < 0.026) { c.copy(mid < 0.016 ? P.lace : P.base).multiplyScalar(mid < 0.016 ? 1 : 0.88); }
+      else if (u < uAnk + 0.06 && py > tp - 0.013) c.copy(P.collar);
+      else if (P.kind !== 'rangers' && u < 0.07 && py > P.soleH) c.copy(P.accent);
+      else if (u > uToe + 0.06 && py > P.soleH) c.multiplyScalar(P.kind === 'rangers' ? 1.12 : 0.94); // bout renforcé
+      c.multiplyScalar(0.97 + hash(k * NA + j) * 0.06); col.push(c.r, c.g, c.b);
+      wts.push([['Foot' + S, 1 - wT], ['Toe' + S, wT]]); } }
+  for (let k = 0; k < NZ - 1; k++) for (let j = 0; j < NA; j++) { const a = k * NA + j, b = k * NA + (j + 1) % NA, c2 = a + NA, d = b + NA; ind.push(a, b, d, a, d, c2); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(ind); g.computeVertexNormals();
+  const out = [{ geo: g, colors: new Float32Array(col), weights: wts, bone: 'Foot' + S, color: P.base }];
+  if (P.hi > 0) { // tige montante : anneaux autour de la cheville et du bas du tibia
+    const y0 = ank.y - 0.03, y1 = ank.y + P.hi, NR = 12, NB = 32, sp = [], sc = [], sw = [], si = [];
+    for (let r = 0; r <= NR; r++) { const y = y0 + (y1 - y0) * r / NR; let xa = 1e9, xb = -1e9, za = 1e9, zb = -1e9;
+      for (let i = 0; i < B.n; i++) { if (Math.sign(B.pos[i * 3]) !== sx || (B.part[i] !== 'leg' && B.part[i] !== 'foot') || Math.abs(B.pos[i * 3 + 1] - y) > 0.015 || B.pos[i * 3 + 2] > ank.z + 0.06) continue; xa = Math.min(xa, B.pos[i * 3]); xb = Math.max(xb, B.pos[i * 3]); za = Math.min(za, B.pos[i * 3 + 2]); zb = Math.max(zb, B.pos[i * 3 + 2]); }
+      const pad = th + 0.004 * (r === NR ? 1 : 0), rx = (xb - xa) / 2 + pad, rz = (zb - za) / 2 + pad, ccx = (xa + xb) / 2, ccz = (za + zb) / 2, wL = sstep(ank.y - 0.01, ank.y + 0.09, y);
+      for (let j = 0; j < NB; j++) { const t = j / NB * Math.PI * 2, ux = Math.sin(t), uz = Math.cos(t); sp.push(ccx + rx * sgnPow(ux, 2 / 2.4), y, ccz + rz * sgnPow(uz, 2 / 2.4));
+        c.copy(P.base); if (r >= NR - 1) c.copy(P.collar); else if (uz > 0.82 && Math.abs(ux) < 0.4) c.copy(((y / 0.012) % 1) < 0.5 ? P.lace : P.accent); else if (P.kind === 'rangers' && uz < -0.9) c.multiplyScalar(0.85);
+        c.multiplyScalar(0.97 + hash(r * NB + j + 999) * 0.06); sc.push(c.r, c.g, c.b); sw.push([['Foot' + S, 1 - wL], ['LowerLeg' + S, wL]]); } }
+    for (let r = 0; r < NR; r++) for (let j = 0; j < NB; j++) { const a = r * NB + j, b = r * NB + (j + 1) % NB; si.push(a, b + NB, b, a, a + NB, b + NB); }
+    const gs = new THREE.BufferGeometry(); gs.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3)); gs.setIndex(si); gs.computeVertexNormals();
+    out.push({ geo: gs, colors: new Float32Array(sc), weights: sw, bone: 'Foot' + S, color: P.base }); }
+  return out;
 }
 function chinStrap(L) { const g = new THREE.TorusGeometry(L.headR * 0.92, 0.006, 4, 20, Math.PI); g.rotateZ(Math.PI); g.rotateY(Math.PI / 2); g.rotateX(0.35); g.translate(0, L.eyeY - 0.035, L.headC.z - 0.01); return g; }
 function goggles(L, which) {
