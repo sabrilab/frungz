@@ -5,14 +5,15 @@ import * as THREE from 'three';
 import { makeCharacter, attachGun, tintTeam, chars } from './assets.js';
 import { holdPose } from './hold.js';
 import { TEAMS, classOf } from './data.js';
+import { createDecor } from './salon-decor.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 // places : toi devant au centre, puis gauche, droite, loin à droite (en mètres, repère de la scène : x à droite, z vers la caméra)
 export const SLOTS = [[0, 0.5], [-1.6, -0.6], [1.6, -0.6], [-2.95, -1.6]];
 
-export function createLobby({ scene, camera, world, Q }) {
-  // lieu : sur la place, la fontaine et le kiosque derrière l'équipe ; réglable par ?lobby=x,z,yaw pour essayer d'autres décors
-  const L = (Q.get('lobby') || world.gp.lobby?.join(',') || '1.5,-22,3.1416').split(',').map(Number);
+export function createLobby({ scene, camera, world, Q, sun, hemi, renderer, night }) {
+  // lieu : sur le pont, entre les pieds de la Tour Eiffel, le Trocadéro au fond (Paris) ; réglable par ?lobby=x,z,yaw pour essayer d'autres décors
+  const L = (Q.get('lobby') || world.gp.lobby?.join(',') || '0,-150,0').split(',').map(Number);
   const root = new THREE.Group(); root.name = 'lobby'; root.visible = false; scene.add(root);
   const gy = world.groundY(L[0], L[1], 2);
   root.position.set(L[0], gy, L[1]); root.rotation.y = L[2] || 0;
@@ -28,6 +29,9 @@ export function createLobby({ scene, camera, world, Q }) {
   const beamMat = () => new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, uniforms: { c: { value: new THREE.Color('#fff') }, a: { value: 0.3 }, t: { value: 0 } },
     vertexShader: 'varying vec2 vU; void main(){ vU = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: 'uniform vec3 c; uniform float a, t; varying vec2 vU; void main(){ float f = pow(1.0 - vU.y, 2.2); float s = 0.75 + 0.25 * sin(vU.x * 62.83 + t * 1.5); gl_FragColor = vec4(c * s, f * a); }' });
+  // décor : barrières, fumigènes, poussière dans la lumière, coucher de soleil (ou tour qui scintille la nuit)
+  let decor = null; try { if (sun && renderer) decor = createDecor({ root, scene, sun, hemi, renderer, night, world, camera }); } catch (e) { console.warn('décor du salon indisponible', e); }
+  let teamCol = '#34c759';
   const pads = SLOTS.map(([x, z], i) => {
     const g = new THREE.Group(); g.position.set(x, 0.02, z);
     const disc = new THREE.Mesh(discGeo, new THREE.MeshStandardMaterial({ color: '#14161c', roughness: 0.35, metalness: 0.4 }));
@@ -67,11 +71,11 @@ export function createLobby({ scene, camera, world, Q }) {
 
   return {
     root,
-    show(on) { root.visible = on; if (on) { camera.fov = 30; camera.updateProjectionMatrix(); } else { camera.fov = 70; camera.updateProjectionMatrix(); } },
+    show(on) { root.visible = on; if (!on) decor?.hide(); if (on) { camera.fov = 30; camera.updateProjectionMatrix(); } else { camera.fov = 70; camera.updateProjectionMatrix(); } },
     get visible() { return root.visible; },
     // membres : tableau de 4 éléments (null = place libre)
     setParty(list, team) {
-      party = list; const col = new THREE.Color(TEAMS[team].color);
+      party = list; const col = new THREE.Color(TEAMS[team].color); teamCol = TEAMS[team].color;
       pads.forEach((p, i) => {
         dress(p, list[i]);
         const on = !!list[i]; const c = i === 0 ? new THREE.Color('#ffc23d') : col;
@@ -84,6 +88,7 @@ export function createLobby({ scene, camera, world, Q }) {
     // glisser pour faire tourner ton perso
     drag(dx) { dragV += dx * 0.012; },
     update(dt) {
+      decor?.update(dt, teamCol); key.intensity = night?.on ? 40 : 95;
       t += dt; const V0 = VIEWS[view], kk = 1 - Math.pow(0.004, dt); camPos.lerp(V0.pos, kk); camLook.lerp(V0.look, kk);
       pads.forEach((p, i) => { if (i) p.g.visible = view === 'salon'; });
       dragV *= Math.pow(0.02, dt); drag += dragV * dt * 60 * 0.06; drag *= Math.pow(0.35, dt);
@@ -106,6 +111,7 @@ export function createLobby({ scene, camera, world, Q }) {
         return { x: (tmp.x * 0.5 + 0.5) * w, y: (-tmp.y * 0.5 + 0.5) * h, fy: (-top.y * 0.5 + 0.5) * h, vis: tmp.z < 1 };
       });
     },
+    relight() { decor?.relight(); },
     focusPoint() { const p = V(0, 1, 0); root.localToWorld(p); return p; },
   };
 }

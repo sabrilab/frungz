@@ -165,7 +165,7 @@ async function loadAll() {
   const tw = performance.now(); world = new World(gp, ground); console.log('monde prêt en', (performance.now() - tw).toFixed(0), 'ms'); window.__world = world; window.__ground = ground;
   const tc = performance.now(); world.cass = createCassables({ nodes: cassables, scene, world, fx, audio }); world.metro = createMetro({ rame, gp, audio }); world.cass.onBreak((e, by, d) => game?.onCassable(e, by, d)); console.log('cassables', world.cass.list.length, 'fusionnés en', world.cass.merged.length, 'maillages,', (performance.now() - tc).toFixed(0), 'ms');
   night = createNight({ scene, sun, hemi, renderer, world, mapRoot: root, fx, quality: QN, getPost: () => composer }); night.set(!!save.settings.night); window.__night = night;
-  try { lobby = createLobby({ scene, camera, world, Q }); lobby.show(!game); window.__lobby = lobby; $('menu').classList.add('ready'); } catch (e) { console.warn('salon 3D indisponible', e); }
+  try { lobby = createLobby({ scene, camera, world, Q, sun, hemi, renderer, night }); lobby.show(!game); window.__lobby = lobby; $('menu').classList.add('ready'); } catch (e) { console.warn('salon 3D indisponible', e); }
   renderMenu();
   $('loading').classList.add('hidden'); $('play').disabled = false; renderNet(); if (pendingStart) startGuest();
   window.__loaded = true;
@@ -579,7 +579,7 @@ function frame() {
   } else if (world) {
     // menu : survol lent de la place
     // salon : l'équipe sur la place (sinon, survol lent au-dessus des toits)
-    if (lobby?.visible) { lobby.update(dt); placePlates(); followShadow(lobby.focusPoint()); }
+    if (lobby?.visible) { lobby.update(dt); placePlates(); followShadow(lobby.focusPoint()); lobby.relight(); }
     else { menuT += dt * 0.04; camera.position.set(Math.cos(menuT) * 150, 55, Math.sin(menuT) * 150); camera.lookAt(0, 4, 0); followShadow(camera.position); } world.metro?.update(menuT * 25, dt, null);
     input.poll(); padMenu(dt); input.endFrame(); night?.update(dt, camera.position, null);
   }
