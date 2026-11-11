@@ -275,12 +275,13 @@ export function createFX(scene, camera) {
   const PUFFS = 420;
   const wind = new THREE.Vector3((Math.random() - 0.5) * 1.2, 0, (Math.random() - 0.5) * 1.2);
   let puffCount = 0;
-  function cloud(pos, kind, owner) {
+  // signal : fumigène de désignation (atouts de série), de la couleur donnée, sans effet sur les lignes de vue
+  function cloud(pos, kind, owner, color) {
     if (!fin(pos)) return null;
-    const gas = kind === 'gas', dark = kind === 'smoke-dark';
-    const base = new THREE.Color(gas ? '#dcdccb' : dark ? '#4a4846' : '#d9dadc');
-    const tint = gas ? null : dark ? null : new THREE.Color(['#ffb08a', '#ffc2dd', '#bfe9ff', '#d9ffc2'][(Math.random() * 4) | 0]);
-    const c = { pos: pos.clone(), src: pos.clone(), kind, owner, r: 0.5, maxR: gas ? 6 : 5.5, t: 0, emitT: dark ? 1.2 : gas ? 9 : 10, life: dark ? 9 : gas ? 22 : 24, puffs: [], acc: 0, base, tint };
+    const gas = kind === 'gas', dark = kind === 'smoke-dark', sig = kind === 'signal';
+    const base = new THREE.Color(sig ? color || '#c8463c' : gas ? '#dcdccb' : dark ? '#4a4846' : '#d9dadc');
+    const tint = gas || dark ? null : sig ? new THREE.Color('#d8d8d4') : new THREE.Color(['#ffb08a', '#ffc2dd', '#bfe9ff', '#d9ffc2'][(Math.random() * 4) | 0]);
+    const c = { pos: pos.clone(), src: pos.clone(), kind, owner, r: 0.5, maxR: gas ? 6 : sig ? 3 : 5.5, t: 0, emitT: dark ? 1.2 : gas ? 9 : sig ? 5 : 10, life: dark ? 9 : gas ? 22 : sig ? 12 : 24, puffs: [], acc: 0, base, tint };
     // trop de nuages : les plus anciens arrêtent d'émettre
     if (clouds.length >= 14) clouds[0].emitT = Math.min(clouds[0].emitT, clouds[0].t);
     clouds.push(c); return c;
@@ -330,6 +331,12 @@ export function createFX(scene, camera) {
     }
     return Math.min(1.5, d);
   }
+  // bouffée isolée (traînée de fumée d'un projectile, poussière de roues, embruns) : fumée à mélange normal, pas de halo
+  function wisp(pos, { color = '#b8b8b4', s0 = 0.25, s1 = 1.4, a = 0.38, life = 1.4, vel = null, up = 0.25 } = {}) {
+    if (!fin(pos) || smoke.live.length > 600 || Math.random() > load + 0.2) return;
+    const v = vel ? vel.clone() : null;
+    sprite(smoke, pos, s0, new THREE.Color(color), 0, life, (o, k, dt) => { o.size = s0 + (s1 - s0) * Math.sqrt(k); o.a = a * (k < 0.12 ? k / 0.12 : 1) * (1 - k); if (v) { o.p.addScaledVector(v, dt); v.multiplyScalar(Math.exp(-dt * 2.2)); } o.p.y += up * dt; o.p.addScaledVector(wind, dt * 0.5); });
+  }
   // explosion
   const BOOM = new THREE.Color('#ff9a3d');
   function explosion(pos) {
@@ -360,5 +367,5 @@ export function createFX(scene, camera) {
   }
   function setLoad(k) { load = Math.max(0.35, Math.min(1, k)); }
   function stats() { return { items: items.length, parts: parts.lit.length + parts.glow.length + parts.glass.length, puffs: puffCount, smoke: smoke.live.length, glow: glow.live.length, tracers: tracers.length, clouds: clouds.length, load }; }
-  return { _meshes: { glow: glow.mesh, smoke: smoke.mesh }, casing, dust, clearDecals, setGround, tracer, muzzle, burst, impact, shatter, number, cloud, clouds, density, wind, explosion, ring, update, glowT, setLoad, stats };
+  return { _meshes: { glow: glow.mesh, smoke: smoke.mesh }, wisp, casing, dust, clearDecals, setGround, tracer, muzzle, burst, impact, shatter, number, cloud, clouds, density, wind, explosion, ring, update, glowT, setLoad, stats };
 }

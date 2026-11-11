@@ -6,6 +6,7 @@ import { mergeGeometries, toCreasedNormals } from 'three/examples/jsm/utils/Buff
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { loader, loadGLB } from './world.js';
+import { buildGun, hasBuild } from './armurerie.js';
 import { WEAPONS } from './data.js';
 
 const CHAR_H = 1.8;
@@ -121,7 +122,8 @@ export function makeCharacter(name) {
 
 // matières des armes : [couleur, rugosité, métal]. Les couleurs du pack sont presque noires : on les remonte en acier bronzé, polymère mat et bois verni pour que les volumes se lisent
 const GUN_MATS = { Black: ['#262a30', 0.6, 0.1], Black2: ['#1c1f24', 0.65, 0.1], Grey: ['#4a4f57', 0.5, 0.35], Metal: ['#646b75', 0.3, 0.9], DarkMetal: ['#3d424a', 0.36, 0.85], LightMetal: ['#a3abb6', 0.22, 0.95],
-  Wood: ['#8f5d3b', 0.55, 0], DarkWood: ['#6e472f', 0.6, 0], Glass: ['#16304d', 0.08, 0.3], Main: ['#333e49', 0.5, 0.3], MainLight: ['#465563', 0.45, 0.4], MainDark: ['#232b34', 0.55, 0.25], Green: ['#5e6c4b', 0.6, 0.1] };
+  Wood: ['#8f5d3b', 0.55, 0], DarkWood: ['#6e472f', 0.6, 0], Glass: ['#16304d', 0.08, 0.3], Main: ['#333e49', 0.5, 0.3], MainLight: ['#465563', 0.45, 0.4], MainDark: ['#232b34', 0.55, 0.25], Green: ['#4f5a3e', 0.62, 0.08],
+  Tan: ['#a08a66', 0.6, 0.05], Brass: ['#b08a3e', 0.35, 0.85], Rubber: ['#17191c', 0.88, 0], GlassLens: ['#9fd8ff', 0.05, 0], GlowDot: ['#dfffe0', 0.4, 0], LOD: ['#ffffff', 0.5, 0.45] };
 // Matière d'une pièce d'arme. Le grain est calculé dans le shader à partir de la position sur l'arme (les modèles n'ont pas d'UV) :
 // acier brossé dans le sens du canon, bois veiné, polymère finement grainé. « unit » convertit les unités du modèle en mètres.
 const GUN_GRAIN = `
@@ -130,10 +132,11 @@ float gNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 *
   return mix(mix(mix(gHash(i), gHash(i + vec3(1,0,0)), f.x), mix(gHash(i + vec3(0,1,0)), gHash(i + vec3(1,1,0)), f.x), f.y),
              mix(mix(gHash(i + vec3(0,0,1)), gHash(i + vec3(1,0,1)), f.x), mix(gHash(i + vec3(0,1,1)), gHash(i + vec3(1,1,1)), f.x), f.y), f.z); }`;
 const gunMatCache = {};
-function gunMaterial(name, unit) {
+export function gunMaterial(name, unit = 1) {
   const key = name + '|' + unit.toFixed(5); if (gunMatCache[key]) return gunMatCache[key];
-  const P = GUN_MATS[name] || GUN_MATS.Black, kind = /Metal/.test(name) ? 1 : /Wood/.test(name) ? 2 : /Glass/.test(name) ? 3 : 0;
+  const P = GUN_MATS[name] || GUN_MATS.Black, kind = /Metal|Brass/.test(name) ? 1 : /Wood/.test(name) ? 2 : /Glass|GlowDot|LOD/.test(name) ? 3 : 0;
   const m = new THREE.MeshStandardMaterial({ color: P[0], roughness: P[1], metalness: P[2], envMapIntensity: P[2] > 0.5 ? 1.7 : 1.0, name });
+  if (name === 'GlassLens') { m.transparent = true; m.opacity = 0.16; m.depthWrite = false; m.envMapIntensity = 2.5; } else if (name === 'GlowDot') { m.emissive = new THREE.Color('#9dffb0'); m.emissiveIntensity = 1.4; } else if (name === 'LOD') m.vertexColors = true;
   if (kind !== 3) { m.onBeforeCompile = (sh) => { sh.uniforms.gUnit = { value: unit };
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGunP; uniform float gUnit;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvGunP = position * gUnit;');
     const body = kind === 1
@@ -152,6 +155,7 @@ export async function loadGuns(onEach) {
   await Promise.all(ids.map(async (id) => {
     const W = WEAPONS[id];
     if (W.build) { guns[id] = buildLauncher(id); onEach?.(); return; } // lanceurs : modèle construit en code
+    if (hasBuild(id)) { try { guns[id] = buildGun(id, gunMaterial); gunsLo[id] = buildGun(id, gunMaterial, true); onEach?.(); return; } catch (e) { console.warn('armurerie', id, e); } } /* armes modélisées en code (src/armurerie.js) ; version légère pour les autres personnages */
     try {
     const mtl = await new MTLLoader().setPath('assets/guns/').loadAsync(`${W.model}.mtl`); mtl.preload();
     const obj = await new OBJLoader().setMaterials(mtl).setPath('assets/guns/').loadAsync(`${W.model}.obj`);
@@ -180,14 +184,16 @@ export async function loadGuns(onEach) {
   // modèle manquant : on prend celui d'une arme de la même famille (le jeu reste jouable)
   for (const id of ids) if (!guns[id]) { const alt = ids.find((j) => guns[j] && WEAPONS[j].cat === WEAPONS[id].cat) || 'pistol'; const g = guns[alt].clone(true); g.userData.muzzle = g.children[1]; guns[id] = g; }
 }
-export function gunInstance(id) { const g = guns[id].clone(true); g.userData.muzzle = g.children[1]; return g; }
+const gunsLo = {};
+// lo : version légère (un seul maillage) pour les personnages vus de loin
+export function gunInstance(id, lo = false) { const g = ((lo && gunsLo[id]) || guns[id]).clone(true); g.userData.muzzle = g.children[1]; return g; }
 
 // réglage de la prise en main (repère de l'os de la main droite, renommé WristR)
 export const GRIP = { rot: [-1.96, 1.452, -2.725], off: [0, 0.08, 0.0] }; // os de la main droite des persos Fantasy (tools/bake-anims/calib.html)
 // accroche l'arme à la main droite (os WristR), orientée canon vers l'avant du personnage
-export function attachGun(ch, id) {
+export function attachGun(ch, id, lo = false) {
   const w = ch.bones.WristR; if (ch.gun) ch.gun.parent?.remove(ch.gun);
-  const g = gunInstance(id); ch.model.updateMatrixWorld(true); const ws = new THREE.Vector3(); w.getWorldScale(ws);
+  const g = gunInstance(id, lo); ch.model.updateMatrixWorld(true); const ws = new THREE.Vector3(); w.getWorldScale(ws);
   g.scale.multiplyScalar(1 / ws.x); g.rotation.set(...GRIP.rot); g.position.set(GRIP.off[0] / ws.x, GRIP.off[1] / ws.x, GRIP.off[2] / ws.x);
   w.add(g); ch.gun = g; return g;
 }

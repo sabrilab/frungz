@@ -39,7 +39,7 @@ function heliMesh(team) {
   g.add(part(box(0.3, 0.3, 0.9), dark, 0, -0.75, 2.4)); // tourelle
   const rotor = new THREE.Group(); rotor.position.y = 1.05; rotor.add(part(box(10, 0.06, 0.32), dark), part(box(0.32, 0.06, 10), dark), part(box(0.3, 0.3, 0.3), dark)); g.add(rotor);
   const tail = new THREE.Group(); tail.position.set(0.12, 0.8, -5.8); tail.add(part(box(0.04, 1.8, 0.16), dark)); g.add(tail);
-  const beam = new THREE.Mesh(cone(), BEAM); beam.position.set(0, -0.8, 2.4); beam.rotation.x = 0.5; g.add(beam);
+  const beam = new THREE.Mesh(cone(), BEAM); beam.position.set(0, -0.8, 2.4); beam.rotation.x = 0.5; // faisceau retiré (voile lumineux peu réaliste de jour)
   const l1 = part(box(0.14, 0.14, 0.14), mat('#ff2a2a', 3), -0.9, -0.5, 0.2), l2 = part(box(0.14, 0.14, 0.14), mat(civ ? '#ffd23d' : '#2a6bff', 3), 0.9, -0.5, 0.2); g.add(l1, l2);
   g.userData = { rotor, tail, l1, l2, beam }; g.traverse((o) => { if (o.isMesh && o !== beam) o.castShadow = true; }); return g;
 }
@@ -76,7 +76,7 @@ export function installSeries(Game) {
     if (busy) { if (a === this.player) this.toast('Une canonnière de ton camp est déjà en l\'air', '#ccc'); else a.ai.streakT = 6; return; }
     const i = a.rewards.lastIndexOf(id); if (i < 0) return; a.rewards.splice(i, 1); this.streakCd[a.team] = this.time + 20; this.streakDirty = 1;
     const def = this.streakDef(a, id), me = a === this.player;
-    if (me) { this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,.35), ${T.col})`); this.audio.streakGo(); this.cam.trauma = Math.min(1, this.cam.trauma + 0.5); this.input.rumble(1, 1, 400); this.streakUsed = id; }
+    if (me) { this.audio.streakGo(); this.cam.trauma = Math.min(1, this.cam.trauma + 0.5); this.input.rumble(1, 1, 400); this.streakUsed = id; }
     else if (a.team === this.player.team) this.toast(`${a.name} lance : ${def.nom}`, TEAMS[a.team].color);
     if (id === 'canon') this.startGunship(a, def);
     else this.ultimate(a, def);
@@ -146,7 +146,7 @@ export function installSeries(Game) {
   };
   P.jetTick = function (J, dt) {
     if (J.t < 0) return true; J.m.visible = true; J.m.position.copy(J.start).addScaledVector(J.dir, J.t * J.speed);
-    if ((J.tp = (J.tp || 0) - dt) <= 0) { J.tp = 0.03; this.trailPuff(J.m.position.clone().addScaledVector(J.dir, -6), '#ffb070', 0.3, 0, 0.2); this.trailPuff(J.m.position.clone().addScaledVector(J.dir, -7), '#9a9a9a', 1.2, 0.2, 0.4); }
+    if ((J.tp = (J.tp || 0) - dt) <= 0) { J.tp = 0.03; this.trailPuff(J.m.position.clone().addScaledVector(J.dir, -6), '#ffb070', 0.3, 0, 0.2); this.fx.wisp(J.m.position.clone().addScaledVector(J.dir, -7), { color: '#c4c2bc', s0: 0.6, s1: 2.6, a: 0.3, life: 1.6, up: 0 }); }
     return J.t < J.life + 0.5;
   };
 
@@ -154,11 +154,16 @@ export function installSeries(Game) {
   P.startSwarm = function (owner, p) {
     const T = THROWS.essaim, team = owner.team; this.mark(p, 3, T.col, 2.5);
     if (this.player.team !== team && this.player.pos.distanceTo(p) < 70) this.bigText(`${svg('swarm')} ESSAIM DE DRONES`, 'ils te cherchent : tire-les ou cours !', '#ff4a4a', 't3');
-    for (let i = 0; i < 6; i++) { const m = kamikazeMesh(); m.position.copy(p).add(V(rnd(-1, 1), 0.5, rnd(-1, 1))); this.root.add(m);
-      (this.air ||= []).push({ type: 'kami', team, owner, m, vel: V(rnd(-2, 2), 7, rnd(-2, 2)), t: -i * 0.18, life: 14, tgt: null, look: 0 }); }
+    // ils décollent du lanceur, rejoignent la fumée en vol groupé puis chacun choisit sa cible
+    const from = owner.pos.clone().add(V(0, 1.6, 0)), go = Math.min(4, 0.8 + from.distanceTo(p) / 16);
+    for (let i = 0; i < 6; i++) { const m = kamikazeMesh(); m.position.copy(from); this.root.add(m); const a = (i / 6) * Math.PI * 2;
+      (this.air ||= []).push({ type: 'kami', team, owner, m, vel: V(0, 0, 0), t: -i * 0.15, life: 14 + go, tgt: null, look: 0, from, go, over: p.clone().add(V(Math.cos(a) * 2.5, 7, Math.sin(a) * 2.5)) }); }
   };
   P.kamiTick = function (K, dt) {
     if (K.t < 0) { K.m.visible = false; return true; } K.m.visible = true; const m = K.m;
+    if (K.go && K.t < K.go) { const k = K.t / K.go, e = k * k * (3 - 2 * k); const prev = m.position.clone(); m.position.lerpVectors(K.from, K.over, e); m.position.y += Math.sin(k * Math.PI) * 4;
+      K.vel.copy(m.position).sub(prev).divideScalar(Math.max(dt, 1e-3)); m.lookAt(m.position.clone().add(K.vel)); if ((K.snd = (K.snd || 0) - dt) <= 0) { K.snd = 0.7; this.audio.buzz(m.position, 0.4); } return true; }
+    if (K.go) { K.t -= K.go; K.life -= K.go; K.go = 0; }
     if ((K.look -= dt) <= 0) { K.look = 0.5; if (!K.tgt?.alive) { let best = 70 * 70; K.tgt = null; const taken = new Set(this.air.filter((x) => x.type === 'kami' && x !== K && x.tgt).map((x) => x.tgt));
       for (const t of this.actors) { if (!t.alive || t.gone || t.team === K.team || (t.inCar && !t.inCar.kind)) continue; const d2 = t.pos.distanceToSquared(m.position) * (taken.has(t) ? 3 : 1); if (d2 < best) { best = d2; K.tgt = t; } } } }
     const want = K.t < 0.8 ? V(0, 8, 0) : K.tgt ? K.tgt.pos.clone().add(V(0, 1, 0)).sub(m.position).normalize().multiplyScalar(17) : V(0, -4, 0);
@@ -254,16 +259,16 @@ export function installSeries(Game) {
     if (me) this.bigText(big, 'toutes les zones adverses sous le feu', '#c27bff', 't6');
     else if (this.player.team === team) this.bigText(big, `${a.name} a tout déclenché`, '#c27bff', 't6');
     else this.bigText(big, `${a.name} lance l'assaut : planque-toi !`, '#ff4a4a', 't6');
-    this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,.4), ${me || this.player.team === team ? '#c27bffcc' : '#ff2a2acc'})`); this.cam.trauma = 1; this.input.rumble(1, 1, 900);
+    this.flash('rgba(255,255,255,.35)'); this.cam.trauma = 1; this.input.rumble(1, 1, 900);
     $('hud')?.classList.remove('shake'); void $('hud')?.offsetWidth; $('hud')?.classList.add('shake'); this.audio.streakReady(6);
     // pluie de projectiles sur chaque zone qui n'est pas au camp (étalée dans le temps : jamais plus d'une dizaine en vol)
     const zones = this.zoneState.filter((z) => z.owner !== team); let k = 0;
     for (const z of zones) { const zc = V(z.center[0], 0, z.center[1]); zc.y = this.world.groundY(zc.x, zc.z, (z.y ?? 0.17) + 0.5); const from = V(rnd(-1, 1), 0, rnd(-1, 1)).normalize().multiplyScalar(40);
-      this.mark(zc, 12, civ ? '#ff4fa0' : '#ff3d3d', 6);
+      this.mark(zc, 12, civ ? '#ff4fa0' : '#ff3d3d', 6, null, { smoke: true });
       for (let i = 0; i < 9; i++) { const tgt = zc.clone().add(V(rnd(-11, 11), 0, rnd(-11, 11))); tgt.y = this.world.groundY(tgt.x, tgt.z, zc.y + 3);
         const start = tgt.clone().add(from).add(V(rnd(-6, 6), rnd(70, 90), rnd(-6, 6))); (this.pendingRockets ||= []).push({ at: this.time + 1.5 + k * 0.22, kind: civ ? 'fw' : 'missile', start, tgt, owner: a }); k++; } }
     for (const t of this.actors) if (foe(t)) { t.spotMark = this.time + 30; if (t.ai) { t.stunT = Math.max(t.stunT || 0, 1.5); } }
-    this.reinforce(a, 6, a.pos, true);
+    if (this.startConvoy) this.startConvoy(civ ? 'emeute' : 'crs', a, a.pos.clone()); else this.reinforce(a, 6, a.pos, false);
   };
 
   // ================================================================ boucle commune

@@ -16,6 +16,7 @@ import { installSeries } from './series.js';
 import { installConvois } from './convois.js';
 import { installBarricades, TIERS, tierInfo, fmtG } from './barricades.js';
 import { installLanceurs } from './lanceurs.js';
+import { installManiement } from './maniement.js';
 import { installTurrets } from './tourelles.js';
 import { createFeedback } from './feedback.js';
 
@@ -38,20 +39,20 @@ const $ = (id) => document.getElementById(id);
 const GRAV = 19, EYE = 1.62;
 // séries d'éliminations (sans mourir) : 3, 5, 7, puis des paliers de plus en plus lourds jusqu'à 25 (voir src/series.js)
 const STREAKS = {
-  ordre: [{ n: 3, id: 'drone', nom: 'Drone', icon: '🛸', ico: 'drone', desc: 'lance-le : il survole la zone et repère les Frungz' }, { n: 5, id: 'crs', nom: 'Renforts CRS', icon: '🪂', ico: 'parachute', desc: '4 CRS blindés largués là où tu vises' }, { n: 6, id: 'tourelle', side: 2, nom: 'Tourelle de garde', ico: 'turret', desc: 'tourelle automatique à poser : □ devant elle pour l\'améliorer (3 niveaux, selon tes galons), ↓ pour la démonter et la déplacer' }, { n: 7, id: 'lacry', nom: 'Salve lacrymogène', icon: '🚀', ico: 'missile', desc: 'salve de grenades lacrymogènes sur la zone visée' },
+  ordre: [{ n: 3, id: 'drone', nom: 'Drone', icon: '🛸', ico: 'drone', desc: 'lance le fumigène : le drone décolle de ta main, rejoint la fumée et repère les Frungz' }, { n: 5, id: 'crs', nom: 'Renforts CRS', icon: '🪂', ico: 'truck', desc: 'lance le fumigène : un fourgon de CRS arrive par la rue et dépose 4 CRS blindés' }, { n: 6, id: 'tourelle', side: 2, nom: 'Tourelle de garde', ico: 'turret', desc: 'tourelle automatique à poser : □ devant elle pour l\'améliorer (3 niveaux, selon tes galons), ↓ pour la démonter et la déplacer' }, { n: 7, id: 'lacry', nom: 'Salve lacrymogène', icon: '🚀', ico: 'missile', desc: 'lance le fumigène : depuis le bout de la rue, 8 grenades lacrymogènes tombent en cloche sur la zone' },
     { n: 10, id: 'heli', nom: 'Hélico de la Gendarmerie', ico: 'heli', desc: 'un hélicoptère armé tourne 35 s au-dessus de la zone visée et mitraille les Frungz' },
     { n: 12, id: 'eau', nom: 'Camion lanceur d\'eau', ico: 'water', desc: 'un camion blindé arrive sur la zone visée et balaie les Frungz au canon à eau pendant 30 s' },
     { n: 14, id: 'frappe', nom: 'Frappe aérienne', ico: 'jet', desc: 'un chasseur passe en rase-mottes et tapisse de bombes une ligne vers la zone visée' },
     { n: 18, id: 'canon', nom: 'Canonnière', ico: 'gunship', desc: 'tu prends les commandes d\'un avion-canon : 25 mm et 105 mm vus du ciel pendant 25 s' },
     { n: 21, id: 'armee', nom: 'Escouade militaire', ico: 'truck', desc: 'deux camions de l\'armée déposent 8 soldats lourdement armés sur la zone visée' },
-    { n: 25, id: 'ultime', nom: 'Assaut général', ico: 'nuke', desc: 'bombardement de toutes les zones ennemies, Frungz repérés 30 s et renforts largués' }],
-  civils: [{ n: 3, id: 'petards', nom: 'Pétards', icon: '🧨', ico: 'petards', desc: 'lance-le : il sonne les flics de la zone' }, { n: 5, id: 'emeute', nom: 'Renforts émeutiers', icon: '🪂', ico: 'parachute', desc: '4 émeutiers largués là où tu vises' }, { n: 6, id: 'tourelle', side: 2, nom: 'Tourelle bricolée', ico: 'turret', desc: 'tourelle automatique à poser : □ devant elle pour l\'améliorer (3 niveaux, selon tes galons), ↓ pour la démonter et la déplacer' }, { n: 7, id: 'artifice', nom: "Mortiers d'artifice", icon: '🎆', ico: 'artifice', desc: 'tir de mortiers sur la zone visée' },
+    { n: 25, id: 'ultime', nom: 'Assaut général', ico: 'nuke', desc: 'bombardement de toutes les zones ennemies, Frungz repérés 30 s et un fourgon de renforts' }],
+  civils: [{ n: 3, id: 'petards', nom: 'Pétards', icon: '🧨', ico: 'petards', desc: 'lance-le : il sonne les flics de la zone' }, { n: 5, id: 'emeute', nom: 'Renforts émeutiers', icon: '🪂', ico: 'truck', desc: 'lance le fumigène : un utilitaire arrive par la rue et dépose 4 émeutiers' }, { n: 6, id: 'tourelle', side: 2, nom: 'Tourelle bricolée', ico: 'turret', desc: 'tourelle automatique à poser : □ devant elle pour l\'améliorer (3 niveaux, selon tes galons), ↓ pour la démonter et la déplacer' }, { n: 7, id: 'artifice', nom: "Mortiers d'artifice", icon: '🎆', ico: 'artifice', desc: 'lance le fumigène : depuis le bout de la rue, 12 mortiers d\'artifice retombent sur la zone' },
     { n: 10, id: 'essaim', nom: 'Essaim de drones', ico: 'swarm', desc: '6 drones kamikazes qui traquent chacun un flic et explosent au contact' },
     { n: 12, id: 'belier', nom: 'Camion-bélier', ico: 'ram', desc: 'un poids lourd fonce à travers la zone visée et écrase flics, barricades et voitures' },
     { n: 14, id: 'hdetourne', nom: 'Hélico détourné', ico: 'heli', desc: 'un hélicoptère volé tourne 35 s au-dessus de la zone visée et arrose la Brigade' },
     { n: 18, id: 'canon', nom: 'Canonnière détournée', ico: 'gunship', desc: 'tu prends les commandes d\'un avion-canon : 25 mm et 105 mm vus du ciel pendant 25 s' },
     { n: 21, id: 'bande', nom: 'Bande organisée', ico: 'truck', desc: 'deux fourgons volés déposent 8 Frungz armés jusqu\'aux dents sur la zone visée' },
-    { n: 25, id: 'ultime', nom: 'Frungzpocalypse', ico: 'nuke', desc: 'pluie de feu sur toutes les zones de la Brigade, flics repérés 30 s et renforts largués' }],
+    { n: 25, id: 'ultime', nom: 'Frungzpocalypse', ico: 'nuke', desc: 'pluie de feu sur toutes les zones de la Brigade, flics repérés 30 s et un utilitaire de renforts' }],
 };
 const STREAK_BY_ID = Object.fromEntries(Object.values(STREAKS).flat().map((r) => [r.id, r]));
 export { STREAKS };
@@ -269,11 +270,11 @@ export class Game {
   }
   equip(a, i, silent) {
     if (!a.slots[i]) return; a.cur = i; a.reloadT = 0; a.burstLeft = 0; a.fireT = Math.max(a.fireT, 0.25);
-    attachGun(a.ch, a.slots[i].id); if (!silent) Anim.swap(a); a.ch.meshes = null; a.lodShadow = undefined; const rc = RARITY[a.slots[i].rarity].color;
+    attachGun(a.ch, a.slots[i].id, a !== this.player); if (!silent) Anim.swap(a); a.ch.meshes = null; a.lodShadow = undefined; const rc = RARITY[a.slots[i].rarity].color;
     a.ch.gun.traverse((o) => { if (o.isMesh && a.slots[i].rarity !== 'commun') { o.material = o.material.map ? o.material : (Array.isArray(o.material) ? o.material.map((m) => tint(m, rc)) : tint(o.material, rc)); } });
     if (a.overs) a.overs = a.overs.filter((o) => o.name !== 'U_Reload'); if (!silent) this.overlay(a, 'U_Draw', 0.45, { busy: true });
     if (!a.bot) { this.viewGun(); if (!silent) this.audio.play('cloth', null, 0.5); }
-    function tint(m, c) { const n = m.clone(); if (/Main|Body|Wood|Metal/i.test(m.name)) { n.emissive = new THREE.Color(c); n.emissiveIntensity = 0.12; } return n; }
+    function tint(m, c) { const n = m.clone(); if (/Main|Body|Wood|Metal|LOD|Tan|Green/i.test(m.name)) { n.emissive = new THREE.Color(c); n.emissiveIntensity = 0.12; } return n; }
   }
   respawn(a, first) {
     const sp = pick(this.world.spawns[a.team].slice(0, Math.max(20, this.opts.teamSize))); const [x, z] = this.world.randomFree(sp.x, sp.z, this.actors.length > 50 ? 4 : 2.5);
@@ -1722,10 +1723,10 @@ export class Game {
     this.vgun.updateMatrixWorld(true); const inv = this.vgun.matrixWorld.clone().invert(), vs = [], tmp = V();
     g.traverse((o) => { if (!o.isMesh) return; const m = inv.clone().multiply(o.matrixWorld), p = o.geometry.attributes.position; for (let i = 0; i < p.count; i++) { tmp.fromBufferAttribute(p, i).applyMatrix4(m); vs.push([tmp.x, tmp.y, tmp.z]); } });
     const bb = this.vgunBB, cx = (bb.min.x + bb.max.x) / 2; let gb = Infinity, front = Infinity;
-    for (const v of vs) if (Math.abs(v[2]) < 0.035 && v[1] < gb) gb = v[1]; if (!isFinite(gb)) gb = bb.min.y;
+    for (const v of vs) if (Math.abs(v[2]) < 0.035 && v[1] < gb) gb = v[1]; if (!isFinite(gb)) gb = bb.min.y; const meta = g.userData.meta; if (meta) gb = meta.gb; /* armes de l'armurerie : cotes connues */
     for (const v of vs) if (v[1] > gb + 0.005 && v[1] < gb + 0.04 && v[2] > -0.07 && v[2] < 0.03 && v[2] < front) front = v[2]; front = isFinite(front) ? clamp(front, -0.05, -0.015) : -0.03;
-    const sup = WEAPONS[this.weapon(a).id].support; let support = sup ? V(cx, sup[1], -sup[0]) : V(cx, bb.max.y - 0.09, bb.min.z * 0.55);
-    if (!sup && !P) { const up = V(0, 1, 0).transformDirection(this.vgun.matrixWorld), z0 = front - 0.13, z1 = z0 + (bb.min.z + 0.06 - z0) * 0.7, hits = [];
+    const sup = WEAPONS[this.weapon(a).id].support || meta?.fore; let support = sup ? V(cx, sup[1], -sup[0]) : V(cx, bb.max.y - 0.09, bb.min.z * 0.55);
+    if (!sup && meta?.support) support = V(cx, meta.support[1], -meta.support[0]); else if (!sup && !P) { const up = V(0, 1, 0).transformDirection(this.vgun.matrixWorld), z0 = front - 0.13, z1 = z0 + (bb.min.z + 0.06 - z0) * 0.7, hits = [];
       for (let i = 0; i < 7; i++) { const z = z1 < z0 ? z0 + (z1 - z0) * i / 6 : bb.min.z * 0.6; const h = new THREE.Raycaster(this.vgun.localToWorld(V(cx, bb.min.y - 0.2, z)), up, 0, 1).intersectObject(g, true)[0]; if (h) hits.push([z, this.vgun.worldToLocal(h.point.clone()).y]); }
       if (hits.length) { const top = Math.max(...hits.map((h) => h[1])); const h = hits.find((h) => h[1] > top - 0.02); support = V(cx, h[1], h[0]); } } // le premier appui haut en partant de la poignée : le garde-main, pas le chargeur
     const chain = [B.ShoulderR, B.UpperArmR, B.LowerArmR, B.WristR, B.ShoulderL, B.UpperArmL, B.LowerArmL, B.WristL].filter(Boolean);
@@ -1749,6 +1750,7 @@ export class Game {
     // main gauche : paume sous le garde-main, doigts qui remontent de l'autre côté (fusils) ; plaquée à gauche de la poignée, doigts par-dessus ceux de la main droite (pistolets)
     const [lp, lq] = A.pistol ? place(A.hands.L, dir(0.15, -0.35, -0.9), dir(1, 0, 0.15), V(-0.032, A.gb + 0.025, A.front - 0.022), 1, 0) : A.fore ? place(A.hands.L, dir(0.2, -0.25, -0.95), dir(1, 0, 0.1), A.support.clone().add(V(-0.03, 0, -0.02)), 1, 0) /* poignée avant verticale : main refermée autour */
       : place(A.hands.L, dir(0.5, -0.5, -0.7), dir(0.72, 0.68, 0.1), A.support.clone().add(V(-0.012, 0.004, 0)), 0.62, 0.014); /* paume contre l'arête basse gauche du garde-main : on voit le dos de la main et le pouce, les doigts passent dessous */
+    { const O = this.vhand; if (O) { /* maniement : pompe (la main suit le fût), chargeur, verrou */ if (O.Ls.lengthSq() > 0) lp.add(O.Ls.clone().applyQuaternion(vq)); if (O.Lw > 0) lp.lerp(this.vgun.localToWorld(O.L.clone()), O.Lw); if (O.Rw > 0) rp.lerp(this.vgun.localToWorld(O.R.clone()), O.Rw); } }
     const down = V(0, -1, 0).applyQuaternion(vq), right = V(1, 0, 0).applyQuaternion(vq);
     for (const [S, tp, tq, pole, td] of [['R', rp, rq, down.clone().addScaledVector(right, 0.5), dir(-0.22, -0.05, -0.97)], ['L', lp, lq, down.clone().addScaledVector(right, -0.6), A.pistol ? dir(0.1, 0.15, -1) : dir(0.12, 0.12, -0.98)]]) {
       // bras allongé au besoin (la main garde sa taille) : l'arme est tenue loin devant, l'épaule reste hors champ
@@ -2021,5 +2023,6 @@ installThrows(Game);
 installSeries(Game);
 installConvois(Game);
 installBarricades(Game);
+installManiement(Game);
 installLanceurs(Game); // après les barricades : complète this.blast (vitrines)
 installTurrets(Game); // après les barricades : enrobe blast, wallPrompt, placeWall, updateWalls
