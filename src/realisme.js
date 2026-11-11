@@ -92,7 +92,7 @@ export function patchMaterial(m, P) {
     float rCut = texture2D(uDetail, rUV * 0.46 + vRPos.y * 0.17).b + rGrain * 0.4;
     float rNear = uReal * (1.0 - smoothstep(22.0, 48.0, rDist));
     float rEdge = 1.0 - abs(dot(normalize(vRNrm), normalize(cameraPosition - vRPos))); // (v11) la découpe ronge surtout la silhouette : contour déchiqueté, cœur plein
-    if (rCut < 0.62 * rEdge * rEdge * rNear * smoothstep(1.7, 3.2, vRPos.y)) discard;
+    if (rCut < 0.36 * rEdge * rEdge * rNear * smoothstep(1.7, 3.2, vRPos.y)) discard;
     diffuseColor.rgb *= mix(1.0, mix(0.7, 1.1, smoothstep(0.22, 0.6, rCut)), uReal); // creux entre les touffes
     diffuseColor.rgb *= 1.0 - uReal * 0.22 * (1.0 - rEdge) * smoothstep(0.1, -0.5, normalize(vRNrm).y); // dessous des masses plus sombre
     diffuseColor.rgb *= 1.0 + uReal * (rBlot * 0.55 + rGrain * 0.3 + (rCut - 0.5) * 0.3);
@@ -172,7 +172,7 @@ export function patchMaterial(m, P) {
   }`);
   };
   const key = m.customProgramCacheKey?.bind(m);
-  m.customProgramCacheKey = () => (key ? key() : '') + '|real12' + (LEAF ? 'L' : '');
+  m.customProgramCacheKey = () => (key ? key() : '') + '|real13' + (LEAF ? 'L' : '');
   m.needsUpdate = true;
 }
 
