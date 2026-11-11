@@ -370,7 +370,7 @@ export function buildSkinScene(def, opts = {}) {
   // ---- gilet
   const gilet = piece(def, 'gilet');
   if (gilet.id !== 'aucun') {
-    const base = C(gilet.c), c2 = C(gilet.c2 || gilet.c), fluo = gilet.id === 'fluo', tac = gilet.id === 'tactique', bind = lum(base) < 0.03 ? lift(base, 0.03) : base.clone().multiplyScalar(fluo ? 0.8 : 1.4);
+    const base = C(gilet.c), c2 = C(gilet.c2 || gilet.c), fluo = gilet.id === 'fluo', tac = gilet.id === 'tactique', bind = lum(base) < 0.03 ? lift(base, 0.012) : base.clone().multiplyScalar(fluo ? 0.8 : 1.15);
     const web = lum(base) < 0.03 ? lift(base, 0.012) : base.clone().multiplyScalar(0.85), refl = C(gilet.c2 || '#c4c8cc');
     layer(0.75, fluo ? 0.003 : 0.0006, (q, st) => {
       const y = q.y; if (q.p !== 'torso' && !(tac && q.arm)) return null;
@@ -389,7 +389,7 @@ export function buildSkinScene(def, opts = {}) {
         if (fr && Math.abs(q.x) < 0.07 && Math.abs(y - (L.chest.y + 0.03)) < 0.028) { o += 0.0015; col = mix(base, C('#8a919c'), 0.1, TC2); h = 0.25 * Math.sin(q.x * 1400) * Math.sin(y * 1400); } // velcro de poitrine
         if (ta > 1.0 && ta < 2.1 && y < lo + 0.12) { s *= 0.85; if (((y - lo) % 0.03) < 0.008) { s *= 0.75; h = -1; } } // ceinture latérale
       } else if (Math.abs(y - (lo + 0.07)) < 0.016 || Math.abs(y - (lo + 0.2)) < 0.016) { col = refl; h = 0.3; } // bandes réfléchissantes
-      if (e < 0.008) { col = bind; o += 0.0015; h = 0.5; s = 1; if (e > 0.006 && dash(q.x + y, 0.006)) col = lift(bind, 0.04); } // biais de bordure
+      if (e < 0.008) { col = bind; o += 0.0015; h = 0.5; s = 1; if (e > 0.006 && dash(q.x + y, 0.006)) col = lift(bind, 0.012); } // biais de bordure
       return set(o, col, 'Gilet', s, h, true);
     });
   }
@@ -470,19 +470,36 @@ export function buildSkinScene(def, opts = {}) {
   if (ex.has('sac')) { const col = exC('sac'); layer(1, 0.001, (q, st) => (isTorso(q) && q.nz > 0.1 && Math.abs(Math.abs(q.x) - 0.095) < 0.018 && q.y > L.chest.y - 0.12) ? set(st.off + 0.004, col, 'Extra', Math.abs(Math.abs(q.x) - 0.095) > 0.014 ? 0.75 : 0.95, 0.4 * Math.sin(q.y * 900), true) : null); } // bretelles
   if (ex.has('banane')) { const col = exC('banane'); layer(1, 0.001, (q, st) => (isTorso(q) && Math.abs(q.y - (L.chest.y + 0.02 - (q.x + 0.15) * 0.75)) < 0.018 && q.nz > -0.2) ? set(st.off + 0.004, col, 'Extra', 0.9, 0.4 * Math.sin(q.x * 900), true) : null); } // sangle en bandoulière
 
+  // ---- parties du corps lissées : la partie d'un sommet vient de son os dominant, ce qui fait des frontières en dents de scie
+  // (buste/bras à l'épaule, cou, poignet…) ; on lisse les appartenances sur le maillage soudé puis on les interpole au pixel,
+  // pour que les bords des vêtements qui suivent une frontière de partie soient des coupes nettes et non des stries
+  const PK = ['torso', 'arm', 'neck', 'head', 'leg', 'hand', 'foot'], NP = PK.length, ng = B.ng;
+  const pm = new Float32Array(ng * (NP + 1)), cnt = new Float32Array(ng);
+  for (let i = 0; i < n; i++) { const g = B.wid[i], k = PK.indexOf(part[i]); if (k >= 0) pm[g * (NP + 1) + k] += 1; if (isArmPB(part[i], boneName[i], pos[i * 3])) pm[g * (NP + 1) + NP] += 1; cnt[g]++; }
+  for (let g = 0; g < ng; g++) if (cnt[g]) for (let k = 0; k <= NP; k++) pm[g * (NP + 1) + k] /= cnt[g];
+  for (let it = 0; it < 3; it++) { const t = pm.slice(); for (let g = 0; g < ng; g++) { const nb = B.nbl[g]; if (!nb.length) continue; for (let k = 0; k <= NP; k++) { let sm = 0; for (const h of nb) sm += t[h * (NP + 1) + k]; pm[g * (NP + 1) + k] = t[g * (NP + 1) + k] * 0.5 + (sm / nb.length) * 0.5; } } }
+  const pv = new Float32Array(NP + 1), lab = { p: 'torso', arm: false };
+  const label = (ids, ws) => { pv.fill(0); for (let j = 0; j < ids.length; j++) { const o = B.wid[ids[j]] * (NP + 1); for (let k = 0; k <= NP; k++) pv[k] += pm[o + k] * ws[j]; }
+    let bk = 0; for (let k = 1; k < NP; k++) if (pv[k] > pv[bk]) bk = k; lab.p = PK[bk]; lab.arm = pv[NP] > 0.5 * (pv[0] + pv[1]) && (bk === 0 || bk === 1); return lab; };
+  const pure = (A, Bv, Cv) => part[A] === part[Bv] && part[A] === part[Cv] && (part[A] !== 'torso' && part[A] !== 'arm');
+  const setQL = (q, x, y, z, nx, ny, nz, l, b) => { setQ(q, x, y, z, nx, ny, nz, l.p, b); q.arm = l.arm; return q; };
+  const ID1 = [0], W1 = [1], ID3 = [0, 0, 0], W3 = [0, 0, 0];
+
   // ---- passe 1 : les sommets (épaisseur, ampleur, plis)
   const off = new Float32Array(n), loose = new Float32Array(n), wr = new Float32Array(n), q = {}, st = { off: 0, tag: 'Skin' };
   q.pix = false;
-  for (let i = 0; i < n; i++) { setQ(q, pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2], wn[i * 3], wn[i * 3 + 1], wn[i * 3 + 2], part[i], boneName[i]); st.off = 0; st.tag = 'Skin';
+  for (let i = 0; i < n; i++) { ID1[0] = i; setQL(q, pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2], wn[i * 3], wn[i * 3 + 1], wn[i * 3 + 2], label(ID1, W1), boneName[i]); st.off = 0; st.tag = 'Skin';
     for (const Ly of layers) { const r = Ly.fn(q, st); if (!r) continue; st.off = r.abs ? r.o : Math.max(r.o, st.off > 0 ? st.off + 0.0018 : r.o); st.tag = r.t; loose[i] = Math.max(loose[i], Ly.lo); wr[i] = Ly.wr; }
     off[i] = st.off; }
   if (ex.has('sac')) { let bo = 0; for (let i = 0; i < n; i++) if (part[i] === 'torso' && wn[i * 3 + 2] < -0.7 && Math.abs(pos[i * 3]) < 0.08 && Math.abs(pos[i * 3 + 1] - (L.chest.y - 0.05)) < 0.06) bo = Math.max(bo, off[i]); B.backOff = bo + 0.012; extra.push({ geo: backpack(L, B), bone: 'Chest', color: exC('sac') }); }
   if (ex.has('banane')) extra.push({ geo: pouch(L), bone: 'Chest', color: exC('banane') });
 
   // ---- passe 2 : la texture (couleur et relief, pixel par pixel dans les UV du corps)
-  const tex = paintTexture(B, TEX, (x, y, z, nx, ny, nz, vi, out) => {
-    setQ(q, x, y, z, nx, ny, nz, part[vi], boneName[vi]); st.off = 0; st.tag = 'Skin'; let top = null; q.pix = true;
+  const tex = paintTexture(B, TEX, (x, y, z, nx, ny, nz, vi, out, A, Bv, Cv, w0, w1, w2) => {
+    if (pure(A, Bv, Cv)) setQ(q, x, y, z, nx, ny, nz, part[vi], boneName[vi]);
+    else { ID3[0] = A; ID3[1] = Bv; ID3[2] = Cv; W3[0] = w0; W3[1] = w1; W3[2] = w2; setQL(q, x, y, z, nx, ny, nz, label(ID3, W3), boneName[vi]); } st.off = 0; st.tag = 'Skin'; let top = null; q.pix = true;
     for (const Ly of layers) { const r = Ly.fn(q, st); if (!r) continue; st.off = r.abs ? r.o : Math.max(r.o, st.off > 0 ? st.off + 0.0018 : r.o); st.tag = r.t; top = r; out.r = r.c.r; out.g = r.c.g; out.b = r.c.b; out.s = r.s; out.h = r.h; }
+    out.o = st.off;
     return !!top; }, skinCol);
 
   // ---- assemblage : corps déformé + yeux + sourcils + coiffure + accessoires, un seul maillage indexé
@@ -497,17 +514,16 @@ export function buildSkinScene(def, opts = {}) {
     // marches entre couches de tissu adoucies (sur les sommets habillés seulement) : sans ça, le bord d'un gilet, d'une poche ou d'un renfort
     // suit les sommets en escalier et paraît déchiqueté ; la couleur, elle, reste nette au pixel
     { let a = new Float32Array(B.ng); for (let g = 0; g < B.ng; g++) a[g] = gc[g] ? go[g] / gc[g] : 0;
-      for (let it = 0; it < 3; it++) { const t = a.slice(); for (let g = 0; g < B.ng; g++) { if (t[g] <= 0) continue; let sm = 0, m = 0; for (const h of B.nbl[g]) if (t[h] > 0) { sm += t[h]; m++; } if (m) a[g] = t[g] * 0.45 + (sm / m) * 0.55; } }
+      // d'abord une dilatation (la couche du dessus garde toute son épaisseur jusqu'à son bord, la rampe tombe sur la couche du dessous,
+      // d'une seule couleur), puis un lissage large : plus de marche à l'échelle des triangles, donc plus de liseré en dents de scie
+      for (let it = 0; it < 2; it++) { const t = a.slice(); for (let g = 0; g < B.ng; g++) { if (t[g] <= 0) continue; let mx = t[g]; for (const h of B.nbl[g]) if (t[h] > mx) mx = t[h]; a[g] = mx; } }
+      for (let it = 0; it < 7; it++) { const t = a.slice(); for (let g = 0; g < B.ng; g++) { if (t[g] <= 0) continue; let sm = 0, m = 0; for (const h of B.nbl[g]) if (t[h] > 0) { sm += t[h]; m++; } if (m) a[g] = t[g] * 0.45 + (sm / m) * 0.55; } }
       for (let g = 0; g < B.ng; g++) go[g] = a[g] * gc[g]; }
     for (let i = 0; i < n; i++) { const g = B.wid[i], k = gc[g], lo = gl[g] / k, of = go[g] / k, w = gw[g] / k; v.fromArray(pos, i * 3); if (of > 0) { v.lerp(nn.fromArray(B.smooth, i * 3), 0.8 + 0.2 * Math.min(1, lo * 3)); if (lo > 0) v.lerp(nn.fromArray(B.hull, i * 3), lo * lo); } nn.fromArray(wn, i * 3);
       const wz = of > 0 ? w * noise3(v.x * 9, v.y * 9, v.z * 9) : 0; v.addScaledVector(nn, of + wz);
       // entrejambe : le tissu du pantalon passe à plat devant (pas de relief marqué), au niveau du devant des cuisses
       if (of > 0 && part[i] !== 'foot' && Math.abs(pos[i * 3]) < 0.075 && wn[i * 3 + 2] > 0) { const y = pos[i * 3 + 1], w2 = sstep(0.075, 0.035, Math.abs(pos[i * 3])) * gauss((y - (L.hips.y - 0.045)) / 0.05); if (w2 > 0.01) { const zf = crotchZ(y) + of + 0.004; if (v.z > zf) v.z = lerp(v.z, zf, w2); } }
       P3.set([v.x, v.y, v.z], i * 3); }
-    // marches entre couches : ombre au pied de la marche (les surcouches se lisent) ; teinte par sommet, multipliée à la texture
-    { const ga = new Float32Array(B.ng); for (let g = 0; g < B.ng; g++) ga[g] = go[g] / (gc[g] || 1); const sh = new Float32Array(B.ng).fill(1);
-      for (let g = 0; g < B.ng; g++) { let up = 0, dn = 0; for (const h of B.nbl[g]) { up = Math.max(up, ga[h] - ga[g]); dn = Math.max(dn, ga[g] - ga[h]); } if (up > 0.0012) sh[g] = 1 - Math.min(0.25, (up - 0.0008) * 30); }
-      for (let i = 0; i < n; i++) col.fill(sh[B.wid[i]], i * 3, i * 3 + 3); }
     // normales recalculées sur la forme habillée, soudées
     const gn = new Float32Array(B.ng * 3), I = sg.index, a = V(), b = V(), d = V(), e1 = V(), e2 = V();
     for (let t = 0; t < I.count; t += 3) { const ia = I.getX(t), ib = I.getX(t + 1), ic = I.getX(t + 2); a.fromArray(P3, ia * 3); b.fromArray(P3, ib * 3); d.fromArray(P3, ic * 3); e1.subVectors(b, a); e2.subVectors(d, a); e1.cross(e2); for (const qq of [ia, ib, ic]) { const g = B.wid[qq] * 3; gn[g] += e1.x; gn[g + 1] += e1.y; gn[g + 2] += e1.z; } }
@@ -556,9 +572,9 @@ export function buildSkinScene(def, opts = {}) {
 // (position, normale interpolées ; os du sommet le plus proche). paint(...) → false : peau (couleur des sommets).
 // Les pixels hors du corps restent blancs (les pièces sans UV y lisent leur couleur de sommet), les bords sont étendus de 2 pixels.
 const toSRGB = (l) => Math.round(255 * Math.min(1, Math.max(0, l <= 0.0031308 ? l * 12.92 : 1.055 * Math.pow(l, 1 / 2.4) - 0.055)));
-function paintTexture(B, N, paint, skinCol) {
+function paintRaw(B, N, paint, skinCol) {
   const sg = B.meshes.Skin.geometry, uv = sg.attributes.uv, I = sg.index.array, pos = B.pos, wn = B.wn;
-  const rgb = new Uint8Array(N * N * 4).fill(255), bump = new Uint8Array(N * N * 4).fill(128), done = new Uint8Array(N * N), out = { r: 0, g: 0, b: 0, s: 1, h: 0 };
+  const ofs = new Float32Array(N * N), rgb = new Uint8Array(N * N * 4).fill(255), bump = new Uint8Array(N * N * 4).fill(128), done = new Uint8Array(N * N), out = { r: 0, g: 0, b: 0, s: 1, h: 0 };
   for (let t = 0; t < I.length; t += 3) { const A = I[t], Bv = I[t + 1], Cv = I[t + 2];
     const ax = uv.getX(A) * N - 0.5, ay = uv.getY(A) * N - 0.5, bx = uv.getX(Bv) * N - 0.5, by = uv.getY(Bv) * N - 0.5, cx = uv.getX(Cv) * N - 0.5, cy = uv.getY(Cv) * N - 0.5;
     const den = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy); if (Math.abs(den) < 1e-9) continue;
@@ -568,12 +584,32 @@ function paintTexture(B, N, paint, skinCol) {
       if (w0 < -0.01 || w1 < -0.01 || w2 < -0.01) continue; const k = py * N + px; if (done[k]) continue; done[k] = 1;
       const P = (arr, j) => arr[A * 3 + j] * w0 + arr[Bv * 3 + j] * w1 + arr[Cv * 3 + j] * w2;
       const vi = w0 >= w1 && w0 >= w2 ? A : w1 >= w2 ? Bv : Cv; let nx = P(wn, 0), ny = P(wn, 1), nz = P(wn, 2); const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
-      let r, g, b, h = 0;
-      if (paint(P(pos, 0), P(pos, 1), P(pos, 2), nx, ny, nz, vi, out)) { r = out.r; g = out.g; b = out.b; const s = out.s, lm = (r + g + b) / 3; h = out.h;
+      let r, g, b, h = 0; out.o = 0;
+      if (paint(P(pos, 0), P(pos, 1), P(pos, 2), nx, ny, nz, vi, out, A, Bv, Cv, w0, w1, w2)) { r = out.r; g = out.g; b = out.b; const s = out.s, lm = (r + g + b) / 3; h = out.h;
         if (lm < 0.05 && s !== 1) { const d = s < 1 ? (1 - s) * 0.04 : (s - 1) * 0.05; r += d; g += d; b += d * 1.05; } else { r *= s; g *= s; b *= s; }
         const gr = 1 + 0.035 * (hash(k) - 0.5); r *= gr; g *= gr; b *= gr; }
       else { r = P(skinCol, 0); g = P(skinCol, 1); b = P(skinCol, 2); }
-      rgb[k * 4] = toSRGB(r); rgb[k * 4 + 1] = toSRGB(g); rgb[k * 4 + 2] = toSRGB(b); const hv = Math.round(128 + 110 * Math.max(-1, Math.min(1, h))); bump[k * 4] = bump[k * 4 + 1] = bump[k * 4 + 2] = hv; } }
+      ofs[k] = out.o; rgb[k * 4] = toSRGB(r); rgb[k * 4 + 1] = toSRGB(g); rgb[k * 4 + 2] = toSRGB(b); const hv = Math.round(128 + 110 * Math.max(-1, Math.min(1, h))); bump[k * 4] = bump[k * 4 + 1] = bump[k * 4 + 2] = hv; } }
+  // ombre au pied des surcouches (bord d'un gilet sur le sweat, d'une poche…), calculée au pixel : un fondu net qui suit le bord exact
+  { const R = Math.max(2, Math.round(N / 340)), dk = new Float32Array(N * N).fill(1); let D = ofs.slice(), T = new Float32Array(N * N);
+    for (let r = 1; r <= R; r++) { // D = plus grande épaisseur dans un carré de rayon r (dilatations 3×3 séparables)
+      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const k = y * N + x; let m = D[k]; if (x > 0 && D[k - 1] > m) m = D[k - 1]; if (x < N - 1 && D[k + 1] > m) m = D[k + 1]; T[k] = m; }
+      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const k = y * N + x; let m = T[k]; if (y > 0 && T[k - N] > m) m = T[k - N]; if (y < N - 1 && T[k + N] > m) m = T[k + N]; D[k] = m; }
+      const f = (1 - r / (R + 0.5)) ** 2;
+      for (let k = 0; k < N * N; k++) { if (!done[k] || ofs[k] <= 0) continue; const up = D[k] - ofs[k]; if (up < 0.0015) continue; const v = 1 - Math.min(0.32, up * 28) * f; if (v < dk[k]) dk[k] = v; } }
+    for (let k = 0; k < N * N; k++) if (dk[k] < 1) for (let j = 0; j < 3; j++) rgb[k * 4 + j] = Math.round(rgb[k * 4 + j] * dk[k]); }
+  // bords étendus (pas de liseré blanc aux coutures d'UV ni dans les petits niveaux de mipmap)
+  for (let it = 0; it < 2; it++) { const add = []; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const k = y * N + x; if (done[k]) continue; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= N || yy >= N) continue; const kk = yy * N + xx; if (done[kk]) { add.push([k, kk]); break; } } }
+    for (const [k, kk] of add) { for (let j = 0; j < 4; j++) { rgb[k * 4 + j] = rgb[kk * 4 + j]; bump[k * 4 + j] = bump[kk * 4 + j]; } done[k] = 1; } }
+  return { rgb, bump, done };
+}
+// texture des vêtements : peinte en sur-échantillonnage (SS×SS points par pixel) puis moyennée, pour que les surpiqûres, mailles
+// et sangles fines ne crénèlent pas (sinon petites stries et bords déchiquetés à l'écran, surtout en 512)
+function paintTexture(B, N, paint, skinCol, SS = 2) {
+  const M = N * SS, R = paintRaw(B, M, paint, skinCol), rgb = new Uint8Array(N * N * 4).fill(255), bump = new Uint8Array(N * N * 4).fill(128), done = new Uint8Array(N * N);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { let c = 0; const acc = [0, 0, 0, 0];
+    for (let sy = 0; sy < SS; sy++) for (let sx = 0; sx < SS; sx++) { const kk = (y * SS + sy) * M + x * SS + sx; if (!R.done[kk]) continue; c++; for (let j = 0; j < 3; j++) acc[j] += R.rgb[kk * 4 + j]; acc[3] += R.bump[kk * 4]; }
+    if (!c) continue; const k = y * N + x; done[k] = 1; for (let j = 0; j < 3; j++) rgb[k * 4 + j] = Math.round(acc[j] / c); bump[k * 4] = bump[k * 4 + 1] = bump[k * 4 + 2] = Math.round(acc[3] / c); }
   // bords étendus (pas de liseré blanc aux coutures d'UV ni dans les petits niveaux de mipmap)
   for (let it = 0; it < 2; it++) { const add = []; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const k = y * N + x; if (done[k]) continue; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= N || yy >= N) continue; const kk = yy * N + xx; if (done[kk]) { add.push([k, kk]); break; } } }
     for (const [k, kk] of add) { for (let j = 0; j < 4; j++) { rgb[k * 4 + j] = rgb[kk * 4 + j]; bump[k * 4 + j] = bump[kk * 4 + j]; } done[k] = 1; } }
