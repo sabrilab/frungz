@@ -11,16 +11,18 @@ const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const G = 19; // même gravité que le jeu
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (l) => l[(Math.random() * l.length) | 0];
+// couleur de fumée réaliste à partir de la couleur de l'atout (moins saturée, comme une vraie grenade fumigène)
+export const signalCol = (c) => new THREE.Color(c).lerp(new THREE.Color('#a9a8a2'), 0.32);
 
 export const THROWS = {
   gas: { nom: 'Lacrymo', icon: '💨', ico: 'gas', fuse: 1.6, r: 5, col: '#e8e2b0' },
   smoke: { nom: 'Fumigène', icon: '🌫️', ico: 'smoke', fuse: 1.6, r: 5, col: '#ff4fa0' },
   frag: { nom: 'Grenade', icon: '💣', ico: 'frag', fuse: 2.0, r: 6, col: '#ff7a2f' },
   petards: { spell: 1, nom: 'Pétards', icon: '🧨', ico: 'petards', r: 9, col: '#ffd23d' },
-  emeute: { spell: 1, nom: 'Renforts émeutiers', icon: '🪂', ico: 'parachute', r: 5, col: '#34c759' },
+  emeute: { spell: 1, nom: 'Renforts émeutiers', icon: '', ico: 'truck', r: 5, col: '#34c759' },
   artifice: { spell: 1, nom: "Mortiers d'artifice", icon: '🎆', ico: 'artifice', r: 12, col: '#ff4fa0' },
   drone: { spell: 1, nom: 'Drone', icon: '🛸', ico: 'drone', r: 40, col: '#5ab4ff', ringR: 8 },
-  crs: { spell: 1, nom: 'Renforts CRS', icon: '🪂', ico: 'parachute', r: 5, col: '#3d8bff' },
+  crs: { spell: 1, nom: 'Renforts CRS', icon: '', ico: 'truck', r: 5, col: '#3d8bff' },
   lacry: { spell: 1, nom: 'Salve lacrymogène', icon: '🚀', ico: 'missile', r: 12, col: '#ff3d3d' },
 };
 
@@ -32,8 +34,9 @@ function throwMesh(kind) {
   if (kind === 'frag') { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.075, 0), mat('#4a5a32')); g.add(b); g.add(cyl(0.02, 0.025, 0.05, 6, mat('#999'), 0.08)); }
   else if (kind === 'gas' || kind === 'smoke') { g.add(cyl(0.05, 0.05, 0.16, 8, mat(kind === 'gas' ? '#7d8a6a' : '#ff4fa0'))); g.add(cyl(0.02, 0.02, 0.04, 6, mat('#333'), 0.1)); }
   else if (kind === 'petards') { for (let i = 0; i < 7; i++) { const c = cyl(0.025, 0.025, 0.2, 6, mat(pick(['#e33', '#ffd23d', '#2a8'])), 0); c.position.set(Math.cos(i) * 0.05, 0, Math.sin(i) * 0.05); g.add(c); } g.add(cyl(0.008, 0.008, 0.12, 4, mat('#fff', 1), 0.15)); }
-  else if (kind === 'drone') { g.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.3), mat('#20252d'))); }
-  else { g.add(cyl(0.045, 0.045, 0.22, 8, mat(T.col))); g.add(cyl(0.03, 0.03, 0.05, 6, mat('#fff', 2), 0.13)); } // fusée de signalisation
+  else { // atout : grenade fumigène de désignation (corps kaki, bague de la couleur de la fumée, cuillère), qui fume déjà en vol
+    g.add(cyl(0.05, 0.05, 0.17, 10, mat('#4b5236'))); g.add(cyl(0.052, 0.052, 0.035, 10, mat(signalCol(T.col).getStyle()), 0.045)); g.add(cyl(0.022, 0.022, 0.03, 6, mat('#2a2c2e'), 0.1));
+    const lever = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.13, 0.03), mat('#8b8f93')); lever.position.set(0.055, 0.03, 0); g.add(lever); }
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; }); return g;
 }
 function droneMesh() {
@@ -45,7 +48,7 @@ function droneMesh() {
   const l1 = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), mat('#ff2a2a', 3)); l1.position.set(0.2, -0.08, 0.2); const l2 = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), mat('#2a6bff', 3)); l2.position.set(-0.2, -0.08, 0.2); g.add(l1, l2);
   // cône de projecteur (léger, sans vraie lumière)
   const cone = new THREE.Mesh(new THREE.ConeGeometry(4, 13, 24, 1, true), new THREE.MeshBasicMaterial({ color: '#bfe0ff', transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-  cone.position.y = -6.5; g.add(cone);
+  cone.position.y = -6.5; // plus de cône de lumière en plein jour (effet brumeux) : gardé hors scène
   g.scale.setScalar(1.4); g.userData = { rotors, l1, l2 }; return g;
 }
 function rocketMesh(kind) {
@@ -54,6 +57,12 @@ function rocketMesh(kind) {
   else { g.add(cyl(0.16, 0.16, 1.5, 10, mat('#d9dde2'))); const n = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.45, 10), mat('#c42')); n.position.y = 0.97; g.add(n);
     for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.35, 0.3), mat('#555')); f.rotation.y = (i * Math.PI) / 2; f.position.y = -0.6; f.translateZ(0.2); g.add(f); } g.userData.c = '#ffb347'; }
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; }); return g;
+}
+function shellMesh(kind) {
+  const g = new THREE.Group();
+  if (kind === 'artifice') { g.add(cyl(0.09, 0.09, 0.28, 8, mat('#2b2b2b'))); g.add(cyl(0.092, 0.092, 0.06, 8, mat('#c8343a'), 0.05)); }
+  else { g.add(cyl(0.035, 0.035, 0.2, 8, mat('#3e4a33'))); g.add(cyl(0.036, 0.036, 0.04, 8, mat('#d8d0a0'), 0.06)); }
+  g.scale.setScalar(2.2); return g; // un peu grossi pour rester lisible à 30 m
 }
 function chute(team) {
   // même parachute pour les deux camps, aux couleurs du camp (fini le parapluie : ton sérieux)
@@ -185,20 +194,21 @@ export function installThrows(Game) {
     this.audio.play('cloth', p, 0.8);
     const me = a === this.player, mine = a.team === this.player.team;
     if (T.spell) {
-      if (me) { this.flash(`radial-gradient(ellipse at center, rgba(255,255,255,.3), ${T.col})`); this.audio.streakGo(); this.cam.trauma = Math.min(1, this.cam.trauma + 0.5); this.input.rumble(1, 1, 300); this.bigText(`${svg(T.ico)} ${T.nom.toUpperCase()}`, 'lancé !', T.col); this.streakUsed = kind; }
+      if (me) { this.audio.streakGo(); this.cam.trauma = Math.min(1, this.cam.trauma + 0.5); this.input.rumble(1, 1, 300); this.bigText(`${svg(T.ico)} ${T.nom.toUpperCase()}`, 'fumigène lancé : il arrive là où ça fume', T.col); this.streakUsed = kind; }
       else if (mine) this.toast(`${T.icon} ${a.name} lance : ${T.nom}`, TEAMS[a.team].color);
     } else if (me) this.toast(`${T.icon} ${T.nom} ${kind === 'smoke' ? 'lancé' : 'lancée'}`, '#ddd');
   };
   P.updateThrown = function (dt) {
     if (!this.thr && document.getElementById('throwhud')?.classList.contains('on')) { this.arcHide(); this.drawThrowHud(); }
-    this.trailUpdate(dt); this.updateMarks(dt); this.updateRockets(dt); this.updateDrones(dt); this.updateChutes(dt);
+    this.trailUpdate(dt); this.updateMarks(dt); this.updateRockets(dt); this.updateShells(dt); this.updateDrones(dt); this.updateChutes(dt);
     const L = this.thrown; if (!L) return;
     for (let i = L.length - 1; i >= 0; i--) {
       const g = L[i], T = THROWS[g.kind]; g.t += dt; g.vel.y -= G * dt;
       const d = g.vel.clone().multiplyScalar(dt), len = d.length(); let landed = false;
       if (len > 0) { const h = this.world.ray(g.pos, d.clone().divideScalar(len), len); if (h) { const n = V(...h.n); g.pos.addScaledVector(d.divideScalar(len), h.t * 0.9); if (T.spell && n.y > 0.45) landed = true; else { g.vel.reflect(n).multiplyScalar(0.4); if (len > 0.05) this.audio.play('thud', g.pos, 0.25, [2, 2.6], 0.05); if (T.spell && g.vel.length() < 1) landed = true; } } else g.pos.add(d); }
       g.m.position.copy(g.pos); g.m.rotation.x += g.spin.x * dt; g.m.rotation.z += g.spin.z * dt;
-      if (T.spell || g.kind === 'frag') if (((g.tr = (g.tr || 0) - dt)) <= 0) { g.tr = 0.025; this.trailPuff(g.pos, T.spell ? T.col : '#ffb070', T.spell ? 0.7 : 0.3, 0.2, 0.15); }
+      if (T.spell) { if (((g.tr = (g.tr || 0) - dt)) <= 0) { g.tr = 0.04; this.fx.wisp(g.pos, { color: signalCol(T.col), s0: 0.12, s1: 0.9, a: 0.45, life: 1.1, up: 0.15 }); } }
+      else if (g.kind === 'frag') if (((g.tr = (g.tr || 0) - dt)) <= 0) { g.tr = 0.025; this.trailPuff(g.pos, '#ffb070', 0.3, 0.2, 0.15); }
       if (g.kind === 'petards' && Math.random() < dt * 20) this.trailPuff(g.pos.clone().add(V(0, 0.15, 0)), '#ffe9a0', 0.15, 2, 1);
       if (landed || g.t > (T.spell ? 5 : T.fuse) || g.pos.y < -40) { this.root.remove(g.m); L.splice(i, 1); this.detonate(g.kind, g.pos.clone(), g.owner); }
     }
@@ -218,44 +228,63 @@ export function installThrows(Game) {
     const dc = this.player.pos.distanceTo(p); if (dc < R * 5) { this.cam.trauma = Math.min(1, this.cam.trauma + 0.9 * (1 - dc / (R * 5))); this.input.rumble(0.8, 1, 250); }
   };
 
-  // ----- marquage au sol (visible par tous) : anneau qui pulse + fumée colorée qui monte
-  P.mark = function (p, r, color, life, label) {
-    const g = new THREE.Group();
-    const ring = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 56).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide }));
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(1, 56).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide }));
-    ring.scale.setScalar(r); disc.scale.setScalar(r); g.add(ring, disc); g.position.copy(p); g.position.y += 0.07; this.root.add(g);
-    (this.marks ||= []).push({ g, ring, disc, p: p.clone(), r, color, t: 0, life });
+  // ----- marquage au sol (visible par tous) : la grenade fumigène crache une vraie fumée colorée, un cercle discret
+  // montre la zone et une étiquette dit ce qui arrive (en rouge pour le camp visé). Plus de colonne lumineuse.
+  // Le premier marquage d'un atout fume ; les suivants (ligne de la frappe, route du bélier) ne posent que le cercle.
+  P.mark = function (p, r, color, life, label, opts = {}) {
+    const g = new THREE.Group(); const sc = signalCol(color);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.96, 1, 64).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: sc, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide }));
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: sc, transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide }));
+    ring.scale.setScalar(r); disc.scale.setScalar(r); g.add(ring, disc); g.position.copy(p); g.position.y += 0.06; this.root.add(g);
+    const ctx = this._spellCtx; const smoke = opts.smoke ?? !!ctx; if (ctx) this._spellCtx = null;
+    if (smoke) { this.fx.cloud(p.clone(), 'signal', null, sc); this.audio.play('thud', p, 0.4, [1.6, 2], 0.05); }
+    const k = { g, ring, disc, p: p.clone(), r, color, t: 0, life: Math.max(life, smoke ? 5 : life) };
+    if (ctx) k.tag = this.zoneTag(p, ctx, k.life);
+    (this.marks ||= []).push(k);
     if (label && this.player.team !== label.team && this.player.pos.distanceTo(p) < r + 30) this.bigText(label.big, label.small, '#ff4a4a');
   };
+  // étiquette accrochée à la zone : ce qui arrive et à quelle distance (DOM, projetée chaque image)
+  P.zoneTag = function (p, ctx, life) {
+    let layer = document.getElementById('zonetags'); if (!layer) { layer = document.createElement('div'); layer.id = 'zonetags'; document.getElementById('hud')?.appendChild(layer); }
+    const T = THROWS[ctx.kind]; const foe = ctx.team !== this.player.team; const el = document.createElement('div');
+    el.className = 'ztag' + (foe ? ' foe' : ''); el.style.setProperty('--c', foe ? '#ff4a3d' : signalCol(T.col).getStyle());
+    el.innerHTML = `<b>${svg(T.ico)} ${foe ? '⚠ ' : ''}${(ctx.nom || T.nom).toUpperCase()}</b><small></small><i></i>`; layer.appendChild(el);
+    return { el, sm: el.querySelector('small'), p: p.clone().add(V(0, 3.2, 0)), life, foe };
+  };
+  const _pv = V();
   P.updateMarks = function (dt) {
     const L = this.marks; if (!L) return;
-    for (let i = L.length - 1; i >= 0; i--) { const k = L[i]; k.t += dt; const u = k.t / k.life;
-      k.ring.material.opacity = 0.9 * (1 - u) * (0.6 + 0.4 * Math.sin(k.t * 14)); k.disc.material.opacity = 0.18 * (1 - u); k.ring.scale.setScalar(k.r * (1 + 0.03 * Math.sin(k.t * 10)));
-      if ((k.pt = (k.pt || 0) - dt) <= 0) { k.pt = 0.05; this.trailPuff(k.p.clone().add(V(rnd(-0.3, 0.3), 0.2, rnd(-0.3, 0.3))), k.color, 1.6, 3.2, 0.35); }
-      if (u >= 1) { this.root.remove(k.g); L.splice(i, 1); } }
+    for (let i = L.length - 1; i >= 0; i--) { const k = L[i]; k.t += dt; const u = k.t / k.life; const fade = u > 0.75 ? (1 - u) / 0.25 : 1;
+      k.ring.material.opacity = 0.5 * fade; k.disc.material.opacity = 0.07 * fade;
+      const tg = k.tag; if (tg) { _pv.copy(tg.p).project(this.camera); const el = tg.el;
+        if (_pv.z > 1 || Math.abs(_pv.x) > 1.2 || Math.abs(_pv.y) > 1.2) el.style.display = 'none';
+        else { el.style.display = ''; el.style.transform = `translate(${((_pv.x * 0.5 + 0.5) * innerWidth) | 0}px,${((-_pv.y * 0.5 + 0.5) * innerHeight) | 0}px) translate(-50%,-100%)`; el.style.opacity = fade;
+          const d = Math.round(this.player.pos.distanceTo(k.p)); if (tg.d !== d) { tg.d = d; tg.sm.textContent = tg.foe ? `${d} m · dégage !` : `${d} m`; } } }
+      if (u >= 1) { this.root.remove(k.g); k.ring.geometry.dispose(); k.disc.geometry.dispose(); k.ring.material.dispose(); k.disc.material.dispose(); tg?.el.remove(); L.splice(i, 1); } }
   };
 
   // ----- les sorts
   P.landSpell = function (kind, p, owner) {
     const T = THROWS[kind], team = owner.team, foe = (t) => t.alive && !t.inCar && t.team !== team;
     if (kind === 'petards') {
-      this.mark(p, T.r, T.col, 3, { team, big: '🧨 PÉTARDS', small: 'les Frungz te sonnent' });
+      this.mark(p, T.r, T.col, 3, { team, big: `${svg('petards')} PÉTARDS`, small: 'les Frungz te sonnent' });
       for (let i = 0; i < 26; i++) this.strikes.push({ t: this.time + i * 0.09 + rnd(0, 0.05), kind: 'petard2', pos: p.clone().add(V(rnd(-T.r, T.r) * 0.8, 0.2, rnd(-T.r, T.r) * 0.8)), owner });
       for (const t of this.actors) if (foe(t) && t.pos.distanceTo(p) < T.r) { t.stunT = 3.5; if (t.ai) { t.ai.target = null; t.ai.react = 1; } this.damage(t, 12, owner.alive ? owner : null, { blast: true }); if (t === this.player) { this.cam.trauma = 1; this.input.rumble(1, 1, 500); } }
     } else if (kind === 'emeute' || kind === 'crs') {
-      this.mark(p, 4, T.col, 4); this.reinforce(owner, 4, p, true);
+      this.mark(p, 4, T.col, 4); this.reinforce(owner, 4, p, false);
       if (this.player.team !== team && this.player.pos.distanceTo(p) < 60) this.toast(kind === 'crs' ? '🪂 Des CRS tombent du ciel !' : '🪂 Des renforts émeutiers sont largués !', '#ff4a4a');
     } else if (kind === 'artifice' || kind === 'lacry') {
-      const fw = kind === 'artifice', n = fw ? 16 : 8;
-      this.mark(p, T.r, T.col, 4.5, { team, big: fw ? '🎆 MORTIERS' : '🚀 SALVE LACRYMOGÈNE', small: 'sors de la zone !' });
-      // tous viennent du même coin du ciel, en pluie
-      const from = V(rnd(-1, 1), 0, rnd(-1, 1)).normalize().multiplyScalar(fw ? 30 : 45);
-      for (let i = 0; i < n; i++) { const tgt = p.clone().add(V(rnd(-1, 1) * T.r * 0.85, 0, rnd(-1, 1) * T.r * 0.85)); tgt.y = this.world.groundY(tgt.x, tgt.z, p.y + 2);
-        const start = tgt.clone().add(from).add(V(rnd(-6, 6), fw ? rnd(55, 75) : rnd(80, 95), rnd(-6, 6)));
-        (this.pendingRockets ||= []).push({ at: this.time + 1.3 + i * (fw ? 0.17 : 0.32), kind: fw ? 'fw' : 'missile', start, tgt, owner }); }
+      // tirés depuis le sol, au bout de la rue la plus dégagée : lance-grenades de la Brigade, mortiers d'artifice des Frungz.
+      // Chaque obus monte en cloche (on le voit partir et retomber) ; la lacrymo fume en vol puis dégage son gaz au sol.
+      const fw = kind === 'artifice', n = fw ? 12 : 8;
+      this.mark(p, T.r, T.col, 5, { team, big: fw ? `${svg('artifice')} MORTIERS D'ARTIFICE` : `${svg('missile')} SALVE LACRYMOGÈNE`, small: 'ça part du bout de la rue : sors de la zone !' });
+      const path = this.convoyPath ? this.convoyPath(p, 40) : { dir: V(1, 0, 0), len: 30 };
+      const base = p.clone().addScaledVector(path.dir, Math.max(14, path.len)); base.y = this.world.groundY(base.x, base.z, p.y + 3) + 1.2;
+      for (let i = 0; i < n; i++) { const tgt = p.clone().add(V(rnd(-1, 1) * T.r * 0.75, 0, rnd(-1, 1) * T.r * 0.75)); tgt.y = this.world.groundY(tgt.x, tgt.z, p.y + 2);
+        (this.pendingShells ||= []).push({ at: this.time + 1 + i * (fw ? 0.22 : 0.35), kind, start: base.clone().add(V(rnd(-1.2, 1.2), 0, rnd(-1.2, 1.2))), tgt, owner }); }
     } else if (kind === 'drone') {
-      const m = droneMesh(); m.position.copy(p).add(V(0, 0.3, 0)); this.root.add(m);
-      (this.drones ||= []).push({ m, p: p.clone(), t: 0, life: 25, owner, team });
+      const m = droneMesh(); const from = owner.pos.clone().add(V(0, 1.6, 0)); m.position.copy(from); this.root.add(m);
+      (this.drones ||= []).push({ m, p: p.clone(), from, t: 0, life: 25, owner, team, go: Math.min(5, 1 + from.distanceTo(p) / 14) });
       this.mark(p, T.ringR, T.col, 2);
       if (this.player.team !== team) this.toast('🛸 Un drone de la Brigade survole le secteur : tu es repéré', '#ff4a4a');
     }
@@ -266,7 +295,7 @@ export function installThrows(Game) {
       m.quaternion.setFromUnitVectors(V(0, 1, 0), v.clone().normalize()); (this.rockets ||= []).push({ ...q, m, pos: q.start.clone(), vel: v, t: 0 }); this.audio.whistle(q.tgt, q.start.distanceTo(q.tgt) / sp); }
     const L = this.rockets; if (!L) return;
     for (let i = L.length - 1; i >= 0; i--) { const r = L[i]; r.t += dt; r.pos.addScaledVector(r.vel, dt); r.m.position.copy(r.pos);
-      if (q2(r)) { this.trailPuff(r.pos, r.kind === 'fw' ? r.m.userData.c : '#ffd9a0', r.kind === 'fw' ? 0.5 : 0.35, 0.3, 0.2); this.trailPuff(r.pos, r.kind === 'fw' ? '#ffffff' : '#666666', r.kind === 'fw' ? 0.25 : 1.4, 0.4, 0.3); }
+      if (q2(r)) { this.trailPuff(r.pos, r.kind === 'fw' ? r.m.userData.c : '#ffd9a0', r.kind === 'fw' ? 0.5 : 0.25, 0.3, 0.2); if (r.kind !== 'fw' || Math.random() < 0.4) this.fx.wisp(r.pos, { color: r.kind === 'fw' ? '#cfcac0' : '#b9b6b0', s0: 0.3, s1: 1.8, a: 0.4, life: 1.8, up: 0.2 }); }
       const gy = this.world.groundY(r.pos.x, r.pos.z, r.pos.y + 1);
       if (r.pos.y <= gy + 0.2 || r.pos.distanceTo(r.tgt) < 0.6 || r.t > 4) { this.root.remove(r.m); L.splice(i, 1); const p = r.pos.clone(); p.y = gy;
         if (r.kind === 'fw') { // gerbe de couleurs + dégâts
@@ -276,10 +305,32 @@ export function installThrows(Game) {
       } }
     function q2(r) { r.tp = (r.tp || 0) - dt; if (r.tp <= 0) { r.tp = 0.02; return true; } return false; }
   };
+  P.updateShells = function (dt) {
+    const Q = this.pendingShells; if (Q) for (let i = Q.length - 1; i >= 0; i--) { const q = Q[i]; if (this.time < q.at) continue; Q.splice(i, 1);
+      const fw = q.kind === 'artifice'; const v = solveThrow(q.start, q.tgt, fw ? 1.45 : 1.25); const m = shellMesh(q.kind); m.position.copy(q.start); this.root.add(m);
+      (this.shells ||= []).push({ ...q, m, pos: q.start.clone(), vel: v, t: 0 });
+      // départ visible : lueur et fumée au tube, coup sourd
+      this.fx.muzzle?.(q.start.clone(), 1.6); for (let k = 0; k < 3; k++) this.fx.wisp(q.start, { color: '#bdb9b0', s0: 0.4, s1: 2.4, a: 0.45, life: 2, vel: v.clone().normalize().multiplyScalar(3) });
+      this.audio.play('thud', q.start, 0.9, [0.5, 0.65], 0.05); }
+    const L = this.shells; if (!L) return;
+    for (let i = L.length - 1; i >= 0; i--) { const r = L[i]; r.t += dt; r.vel.y -= G * dt; r.pos.addScaledVector(r.vel, dt); r.m.position.copy(r.pos); r.m.quaternion.setFromUnitVectors(V(0, 1, 0), r.vel.clone().normalize());
+      const fw = r.kind === 'artifice';
+      if ((r.tp = (r.tp || 0) - dt) <= 0) { r.tp = fw ? 0.02 : 0.05; if (fw) this.trailPuff(r.pos, pick(['#ffd27a', '#ffb347', '#fff1c0']), 0.35, -0.5, 0.6); else this.fx.wisp(r.pos, { color: '#e2e1d6', s0: 0.15, s1: 1.1, a: 0.5, life: 1.3, up: 0.1 }); }
+      const gy = this.world.groundY(r.pos.x, r.pos.z, r.pos.y + 1);
+      const burstHere = fw && r.vel.y < 0 && r.pos.y < r.tgt.y + 2.2;
+      if (burstHere || r.pos.y <= gy + 0.1 || r.t > 6) { this.root.remove(r.m); L.splice(i, 1); const p = r.pos.clone(); p.y = Math.max(gy, Math.min(p.y, gy + 2.2));
+        if (fw) { const c = pick(['#ff4fa0', '#ffd23d', '#5ad1ff', '#9ff59f', '#c27bff']); for (let k = 0; k < 36; k++) this.trailPuff(p.clone(), pick([c, c, '#ffffff', '#ffd23d']), rnd(0.5, 1.1), rnd(-2, 5), 7);
+          this.boom(p, 5, 75, r.owner, c, { fw: true, foesOnly: true }); }
+        else { p.y = gy; // la grenade lacrymogène ne détone pas : elle tombe, rebondit un peu et crache son gaz
+          this.audio.play('thud', p, 0.5, [1.4, 1.8], 0.05); this.fx.cloud(p, 'gas', r.owner);
+          for (const t of this.actors) if (t.alive && !t.inCar && t.team !== r.owner.team && t.pos.distanceTo(p) < 1.6) this.damage(t, 30, r.owner?.alive ? r.owner : null, { blast: true }); }
+      } }
+  };
   P.updateDrones = function (dt) {
     const L = this.drones; if (!L) return;
     for (let i = L.length - 1; i >= 0; i--) { const d = L[i]; d.t += dt; const u = d.m.userData;
-      const h = Math.min(14, d.t * 9); d.m.position.set(d.p.x + Math.sin(d.t * 0.6) * 3, d.p.y + 0.3 + h, d.p.z + Math.cos(d.t * 0.45) * 3); d.m.rotation.y += dt * 0.6; d.m.rotation.z = Math.sin(d.t * 1.3) * 0.06;
+      const h = 14; d.m.position.set(d.p.x + Math.sin(d.t * 0.6) * 3, d.p.y + 0.3 + h, d.p.z + Math.cos(d.t * 0.45) * 3);
+      if (d.from && d.t < d.go) { const k = d.t / d.go, e = k * k * (3 - 2 * k); d.m.position.lerpVectors(d.from, d.m.position, e); d.m.position.y = d.from.y + (d.m.position.y - d.from.y) * Math.min(1, k * 2.5); } d.m.rotation.y += dt * 0.6; d.m.rotation.z = Math.sin(d.t * 1.3) * 0.06;
       for (const r of u.rotors) r.rotation.y += dt * 60; const blink = Math.sin(d.t * 12) > 0; u.l1.visible = blink; u.l2.visible = !blink;
       if ((d.rt = (d.rt || 0) - dt) <= 0) { d.rt = 0.5; for (const t of this.actors) if (t.alive && t.team !== d.team && t.pos.distanceTo(d.p) < THROWS.drone.r) t.spotted = this.time; if (this.player.pos.distanceTo(d.m.position) < 40) this.audio.buzz(d.m.position, 0.5); }
       if (d.t > d.life) { d.m.position.y += dt * 20; if (d.t > d.life + 1.5) { this.root.remove(d.m); L.splice(i, 1); } } }
