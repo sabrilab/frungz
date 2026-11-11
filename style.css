@@ -585,3 +585,128 @@ body.scoped #cross, body.scoped #streakbar { visibility: hidden; }
 .lb-dock { width: 360px; }
 .loadout .txt b { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .loadout .txt small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ======================================================================
+   Tactile (téléphone, tablette, app iPhone) : src/tactile.js
+   Disposition à la Call of Duty Mobile : joystick à gauche, tir et actions à droite.
+   ====================================================================== */
+.touch-only { display: none !important; }
+body.touch .touch-only { display: revert !important; }
+body.touch .desk-only { display: none !important; }
+body.touch { --sl: max(env(safe-area-inset-left, 0px), 10px); --sr: max(env(safe-area-inset-right, 0px), 10px); --sb: max(env(safe-area-inset-bottom, 0px), 8px); --st: max(env(safe-area-inset-top, 0px), 8px);
+  -webkit-touch-callout: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; touch-action: manipulation; }
+body.touch canvas { touch-action: none; }
+#touch { position: fixed; inset: 0; display: none; touch-action: none; z-index: 3; }
+#touch.on { display: block; }
+/* joystick flottant */
+#touch .joy { position: absolute; left: 0; top: 0; width: 116px; height: 116px; margin: -58px 0 0 -58px; border-radius: 50%; opacity: 0; transition: opacity .12s;
+  background: radial-gradient(circle, rgba(255,255,255,.06) 55%, rgba(255,255,255,.14) 56%, rgba(255,255,255,.04) 70%); border: 2px solid rgba(255,255,255,.28); pointer-events: none; }
+#touch .joy.on { opacity: 1; }
+#touch .joy .knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: rgba(255,255,255,.85); box-shadow: 0 3px 10px rgba(0,0,0,.45); }
+#touch .joy .sprint { position: absolute; left: 50%; top: -30px; transform: translateX(-50%); font: 900 10px Inter; letter-spacing: .12em; color: #fff; padding: 2px 8px; border-radius: 6px; background: rgba(0,0,0,.45); opacity: .5; }
+#touch .joy.sprinting .sprint { opacity: 1; background: var(--gold, #ffcc3d); color: #111; }
+#touch .joy.sprinting .knob { background: var(--gold, #ffcc3d); }
+/* repère du joystick au repos */
+#touch::before { content: ''; position: absolute; left: calc(var(--sl) + 70px); bottom: calc(var(--sb) + 40px); width: 96px; height: 96px; border-radius: 50%; border: 2px dashed rgba(255,255,255,.18); pointer-events: none; }
+#touch:has(.joy.on)::before { opacity: 0; }
+/* boutons */
+#touch .tb { position: absolute; width: 56px; height: 56px; margin: 0; padding: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); background: rgba(14,18,28,.42); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); box-shadow: 0 3px 10px rgba(0,0,0,.3); font: inherit; pointer-events: auto; }
+#touch .tb .ic { display: flex; width: 58%; height: 58%; }
+#touch .tb .ic svg { width: 100%; height: 100%; }
+#touch .tb small { position: absolute; bottom: -15px; left: 50%; transform: translateX(-50%); font: 800 9px Inter; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; color: rgba(255,255,255,.85); text-shadow: 0 1px 2px #000; }
+#touch .tb.down { transform: scale(.92); background: rgba(255,255,255,.3); }
+#touch .tb.on { background: rgba(255,204,61,.85); color: #111; border-color: #ffe69a; }
+#touch .tb.sm { width: 40px; height: 40px; border-radius: 12px; }
+/* pied : tir principal et sa couronne */
+#touch .tb-fire { width: 84px; height: 84px; right: calc(var(--sr) + 92px); bottom: calc(var(--sb) + 78px); border: 3px solid rgba(255,255,255,.55); background: rgba(200,40,30,.38); }
+#touch .tb-fire.down { background: rgba(255,70,50,.7); }
+#touch .tb-fire2 { width: 50px; height: 50px; left: calc(var(--sl) + 132px); top: 30%; background: rgba(200,40,30,.3); }
+#touch .tb-aim { width: 60px; height: 60px; right: calc(var(--sr) + 192px); bottom: calc(var(--sb) + 132px); }
+#touch .tb-jump { width: 62px; height: 62px; right: calc(var(--sr) + 16px); bottom: calc(var(--sb) + 30px); }
+#touch .tb-duck { right: calc(var(--sr) + 196px); bottom: calc(var(--sb) + 50px); width: 50px; height: 50px; }
+#touch .tb-slide { right: calc(var(--sr) + 116px); bottom: calc(var(--sb) + 14px); width: 48px; height: 48px; }
+#touch .tb-reload { right: calc(var(--sr) + 22px); bottom: calc(var(--sb) + 124px); width: 48px; height: 48px; }
+#touch .tb-grenade { right: calc(var(--sr) + 54px); bottom: calc(var(--sb) + 196px); width: 46px; height: 46px; }
+#touch .tb-build { right: calc(var(--sr) + 122px); bottom: calc(var(--sb) + 196px); width: 46px; height: 46px; }
+#touch .tb-view { right: calc(var(--sr) + 6px); top: calc(var(--st) + 112px); width: 42px; height: 42px; }
+#touch .tb-streak { right: calc(var(--sr) + 6px); top: calc(var(--st) + 170px); width: 46px; height: 46px; display: none; }
+#touch.ready .tb-streak { display: flex; background: rgba(255,204,61,.9); color: #111; border-color: #fff3c4; animation: rdypulse 1s infinite alternate; }
+#touch .tb-interact { right: calc(var(--sr) + 268px); bottom: calc(var(--sb) + 100px); width: 64px; height: 64px; display: none; background: rgba(255,255,255,.88); color: #111; border-color: #fff; }
+#touch.prompt .tb-interact { display: flex; animation: tbin .18s ease-out; }
+#touch .tb-breath { display: none; right: calc(var(--sr) + 268px); bottom: calc(var(--sb) + 100px); }
+#touch.scope .tb-breath { display: flex; }
+#touch.scope.prompt .tb-breath { bottom: calc(var(--sb) + 186px); }
+#touch .tb-pause { left: calc(var(--sl) + 4px); top: calc(var(--st) + 4px); }
+#touch .tb-bag { left: calc(var(--sl) + 50px); top: calc(var(--st) + 4px); }
+@keyframes tbin { from { transform: scale(.6); opacity: 0; } }
+/* boutons par mode */
+#touch .tb-brake, #touch .tb-horn, #touch .tb-exit, #touch .tb-up, #touch .tb-down, #touch .tb-hfire, #touch .tb-arsenal { display: none; }
+#touch:not([data-mode="foot"]) :is(.tb-fire, .tb-fire2, .tb-aim, .tb-jump, .tb-duck, .tb-slide, .tb-reload, .tb-grenade, .tb-build, .tb-interact, .tb-streak, .tb-breath) { display: none; }
+#touch[data-mode="car"] :is(.tb-brake, .tb-horn, .tb-exit), #touch[data-mode="heli"] :is(.tb-up, .tb-down, .tb-hfire, .tb-arsenal, .tb-exit) { display: flex; }
+#touch.skate .tb-horn { display: none !important; }
+#touch .tb-brake { width: 74px; height: 74px; right: calc(var(--sr) + 24px); bottom: calc(var(--sb) + 40px); }
+#touch .tb-horn { right: calc(var(--sr) + 120px); bottom: calc(var(--sb) + 26px); }
+#touch .tb-exit { right: calc(var(--sr) + 24px); bottom: calc(var(--sb) + 150px); width: 54px; height: 54px; }
+#touch .tb-hfire { width: 80px; height: 80px; right: calc(var(--sr) + 96px); bottom: calc(var(--sb) + 70px); background: rgba(200,40,30,.38); }
+#touch .tb-up { right: calc(var(--sr) + 18px); bottom: calc(var(--sb) + 76px); }
+#touch .tb-down { right: calc(var(--sr) + 18px); bottom: calc(var(--sb) + 6px); width: 50px; height: 50px; }
+#touch .tb-arsenal { right: calc(var(--sr) + 196px); bottom: calc(var(--sb) + 110px); }
+#touch[data-mode="heli"] .tb-exit { bottom: calc(var(--sb) + 210px); }
+#touch[data-mode="dead"] .tb:not(.tb-pause):not(.tb-bag) { display: none; }
+#touch.thr .tb-grenade { background: rgba(255,204,61,.85); color: #111; }
+
+/* HUD compact sur téléphone */
+body.touch #keys, body.touch #rank, body.touch #compass, body.touch #streakbar, body.touch #bag { display: none !important; }
+body.touch #score { top: calc(var(--st) + 2px); transform: translateX(-50%) scale(.72); transform-origin: top center; }
+body.touch #timer { top: calc(var(--st) + 30px); font-size: 11px; }
+body.touch #minimap:not(.big) { top: calc(var(--st) + 50px) !important; bottom: auto !important; left: var(--sl) !important; width: 104px !important; height: 104px !important; pointer-events: auto; }
+body.touch #minimap.big { width: min(560px, 80vw) !important; height: min(330px, 84vh) !important; }
+body.touch #money { left: calc(var(--sl) + 98px); top: calc(var(--st) + 4px) !important; font-size: 15px; padding: 2px 8px; }
+body.touch #mats { left: calc(var(--sl) + 112px); top: calc(var(--st) + 50px) !important; font-size: 12px; padding: 2px 8px; }
+body.touch #feed { top: calc(var(--st) + 4px); right: var(--sr); transform: scale(.8); transform-origin: top right; }
+body.touch #toasts { left: calc(var(--sl) + 112px); top: calc(var(--st) + 80px); max-width: 260px; font-size: 12px; }
+body.touch #vitals { bottom: calc(var(--sb) + 2px); width: 200px; left: 50%; }
+body.touch #vitals .bar { height: 8px; } body.touch #vitals .armor { height: 4px; } body.touch #hpn { font-size: 12px; }
+body.touch #weapons { right: auto; left: auto; right: calc(50% - 20px); transform: none; bottom: calc(var(--sb) + 26px); gap: 4px; }
+body.touch #weapons div { width: 58px; height: 38px; font-size: 8px; }
+body.touch #weapons div em .ico { width: 18px; height: 18px; }
+body.touch #weapons div.thr { display: none; }
+body.touch #ammo { right: auto; left: calc(50% + 70px); bottom: calc(var(--sb) + 24px); top: auto; text-align: left; }
+body.touch #ammo b { font-size: 22px; } body.touch #ammo #reserve { font-size: 11px; } body.touch #ammo #wname { display: none; }
+body.touch #prompt { bottom: auto; top: 64%; font-size: 12px; padding: 6px 10px; max-width: 46vw; white-space: normal; text-align: center; }
+body.touch #car { bottom: calc(var(--sb) + 30px); }
+body.touch #hud:has(#car.on) :is(#weapons, #ammo) { display: none; }
+body.touch #capbox { top: calc(var(--st) + 70px); transform: translateX(-50%) scale(.7); }
+body.touch #capbox.on { transform: translateX(-50%) scale(.75); }
+body.touch #center { font-size: 24px; top: 18%; }
+body.touch #multik { font-size: 36px; }
+body.touch #killcam { transform: scale(.6); transform-origin: top left; }
+body.touch #scope .breath { display: none; }
+
+/* menus au doigt (paysage, petit écran) */
+body.touch button { touch-action: manipulation; }
+@media (max-height: 500px) {
+  body.touch .lb-top { height: 54px; gap: 10px; padding: 0 max(env(safe-area-inset-right), 12px) 0 max(env(safe-area-inset-left), 12px); }
+  body.touch .lb-logo img, body.touch .lb-logo .logo-img { max-height: 44px; width: auto; }
+  body.touch .lb-nav { gap: 4px; }
+  body.touch .lb-nav .tab { padding: 6px 10px; font-size: 11px; }
+  body.touch .lb-wallet { gap: 4px; } body.touch .lb-wallet .chip.lvl { display: none; }
+  body.touch .lb-left { left: max(env(safe-area-inset-left), 12px); top: 60px; bottom: 30px; width: 300px; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+  body.touch .lb-right { right: max(env(safe-area-inset-right), 12px); bottom: 28px; width: 270px; gap: 8px; }
+  body.touch .lb-dock { left: max(env(safe-area-inset-left), 12px); bottom: 28px; width: 300px; }
+  body.touch .lobby .help { bottom: 6px; font-size: 10px; }
+  body.touch .screen.panel { justify-content: flex-start; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; padding: 12px max(env(safe-area-inset-right), 16px) 20px max(env(safe-area-inset-left), 16px); }
+  body.touch #pause .settings { max-width: 640px; width: 100%; box-sizing: border-box; grid-template-columns: 1fr 1fr; gap: 8px 22px; font-size: 12px; }
+  body.touch #pause h2 { margin: 4px 0; font-size: 26px; }
+  body.touch #pause .settings label:has(input[type=checkbox]) { justify-content: flex-start; }
+  body.touch #pause .row-btns .big { padding: 10px 26px; font-size: 20px; }
+  body.touch #pause input[type=range] { width: 120px; }
+}
+/* rotation : le jeu se joue en paysage */
+#rotate { display: none; }
+@media (orientation: portrait) { body.touch #rotate { display: flex; position: fixed; inset: 0; z-index: 99; background: #0d1016; color: #fff; flex-direction: column; align-items: center; justify-content: center; gap: 14px; font: 700 16px Inter; text-align: center; padding: 24px; }
+  body.touch #rotate b { font: 26px Bungee, Inter; } body.touch #rotate i { width: 64px; height: 100px; border: 4px solid #fff; border-radius: 12px; animation: rot 1.6s ease-in-out infinite; } }
+@keyframes rot { 0%, 20% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+/* app iPhone : vrai bord à bord */
+html.native, html.native body { background: #000; }
