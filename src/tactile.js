@@ -47,22 +47,23 @@ const P = {
 // ctx : n'apparaît que quand elle sert (action possible, série prête, lunette).
 const KEYS = [
   // à pied : l'essentiel, serré autour du tir en bas à droite
-  { id: 'fire', act: ['fire'], ico: 'fire', lbl: 'Tirer', modes: ['foot'], size: 86, x: 0.855, y: 0.66, on: true, fire: true, drag: true },
+  { id: 'fire', act: ['fire'], ico: 'fire', lbl: 'Tirer', modes: ['foot'], size: 86, x: 0.873, y: 0.648, on: true, fire: true, drag: true },
   { id: 'fire2', act: ['fire'], ico: 'fire', lbl: 'Tir gauche', modes: ['foot'], size: 54, x: 0.17, y: 0.34, on: true, fire: true },
-  { id: 'aim', act: ['aim'], ico: 'aim', lbl: 'Viser', modes: ['foot'], size: 54, x: 0.735, y: 0.87, on: true, toggle: true },
-  { id: 'jump', act: ['jump'], ico: 'jump', lbl: 'Saut', modes: ['foot'], size: 60, x: 0.948, y: 0.86, on: true },
-  { id: 'crouch', act: ['duck'], ico: 'duck', lbl: 'Accroupi', modes: ['foot'], size: 52, x: 0.955, y: 0.59, on: true, combo: true },
-  { id: 'reload', act: ['reload'], ico: 'reload', lbl: 'Recharger', modes: ['foot'], size: 48, x: 0.87, y: 0.36, on: true },
-  { id: 'grenade', act: ['grenade'], ico: 'grenade', lbl: 'Lancer', modes: ['foot'], size: 46, x: 0.957, y: 0.33, on: true },
-  { id: 'interact', act: ['interact', 'car'], ico: 'interact', lbl: 'Agir', modes: ['foot'], size: 62, x: 0.70, y: 0.6, on: true, ctx: 'prompt' },
+  { id: 'aim', act: ['aim'], ico: 'aim', lbl: 'Viser', modes: ['foot'], size: 54, x: 0.707, y: 0.858, on: true, toggle: true },
+  { id: 'jump', act: ['jump'], ico: 'jump', lbl: 'Saut', modes: ['foot'], size: 60, x: 0.786, y: 0.587, on: true },
+  { id: 'crouch', act: ['duck'], ico: 'duck', lbl: 'Accroupi', modes: ['foot'], size: 52, x: 0.862, y: 0.858, on: true, combo: true },
+  { id: 'reload', act: ['reload'], ico: 'reload', lbl: 'Recharger', modes: ['foot'], size: 48, x: 0.778, y: 0.757, on: true },
+  { id: 'grenade', act: ['grenade'], ico: 'grenade', lbl: 'Lancer', modes: ['foot'], size: 46, x: 0.956, y: 0.329, on: true },
+  { id: 'interact', act: ['interact', 'car'], ico: 'interact', lbl: 'Agir', modes: ['foot'], size: 62, x: 0.665, y: 0.561, on: true, ctx: 'prompt' },
   { id: 'streak', act: ['streak'], ico: 'streak', lbl: 'Série', modes: ['foot'], size: 50, x: 0.957, y: 0.13, on: true, ctx: 'ready' },
-  { id: 'breath', act: ['sprint'], ico: 'breath', lbl: 'Souffle', modes: ['foot'], size: 52, x: 0.70, y: 0.36, on: true, ctx: 'scope' },
-  { id: 'pause', act: ['pause'], ico: 'pause', lbl: '', modes: ['foot', 'car', 'heli', 'dead'], size: 40, x: 0.035, y: 0.08, on: true, sq: true },
+  { id: 'breath', act: ['sprint'], ico: 'breath', lbl: 'Souffle', modes: ['foot'], size: 52, x: 0.699, y: 0.362, on: true, ctx: 'scope' },
+  { id: 'pause', act: ['pause'], ico: 'pause', lbl: '', modes: ['foot', 'car', 'heli', 'dead'], size: 40, x: 0.0375, y: 0.078, on: true, sq: true },
+  // disposition par défaut : celle réglée par Sabri sur son iPhone (11 nov. 2026)
   // inventaire (rangées par défaut, à ajouter dans l'éditeur)
-  { id: 'build', act: ['build'], ico: 'build', lbl: 'Barricade', modes: ['foot'], size: 46, x: 0.79, y: 0.3, on: false },
+  { id: 'build', act: ['build'], ico: 'build', lbl: 'Barricade', modes: ['foot'], size: 46, x: 0.864, y: 0.398, on: true },
   { id: 'slide', act: ['crouch'], ico: 'slide', lbl: 'Glissade', modes: ['foot'], size: 48, x: 0.62, y: 0.86, on: false },
   { id: 'sprint', act: ['sprint'], ico: 'sprint', lbl: 'Sprint', modes: ['foot'], size: 48, x: 0.17, y: 0.58, on: false, toggle: true },
-  { id: 'view', act: ['view'], ico: 'view', lbl: 'Vue', modes: ['foot'], size: 42, x: 0.86, y: 0.13, on: false },
+  { id: 'view', act: ['view'], ico: 'view', lbl: 'Vue', modes: ['foot'], size: 42, x: 0.86, y: 0.13, on: true },
   { id: 'next', act: ['next'], ico: 'next', lbl: 'Arme', modes: ['foot'], size: 46, x: 0.62, y: 0.62, on: false },
   { id: 'bag', act: ['inv'], ico: 'bag', lbl: 'Sac', modes: ['foot', 'car', 'heli'], size: 40, x: 0.09, y: 0.08, on: false, sq: true },
   { id: 'map', act: ['map'], ico: 'map', lbl: 'Carte', modes: ['foot', 'car', 'heli'], size: 40, x: 0.145, y: 0.08, on: false, sq: true },
@@ -79,7 +80,7 @@ const KEYS = [
 ];
 const K = Object.fromEntries(KEYS.map((k) => [k.id, k]));
 const MODES = { foot: 'À pied', car: 'Véhicule', heli: 'Hélico' };
-const defaults = () => ({ alpha: 0.85, keys: Object.fromEntries(KEYS.map((k) => [k.id, { x: k.x, y: k.y, s: 1, o: 1, on: k.on }])) });
+const defaults = () => ({ alpha: 0.8, keys: Object.fromEntries(KEYS.map((k) => [k.id, { x: k.x, y: k.y, s: 1, o: 1, on: k.on }])) });
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export function createTouch({ input, onTap, layout, onSave }) {
