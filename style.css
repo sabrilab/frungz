@@ -528,3 +528,60 @@ body.scoped #cross, body.scoped #streakbar { visibility: hidden; }
 #zonetags .ztag.foe b { background: rgba(60,8,6,.85); animation: ztag-blink .6s steps(2) infinite; }
 @keyframes ztag-blink { 50% { border-color: transparent; } }
 #hud.gs #zonetags { display: none; }
+/* ===================== Salon, 2e passe : deux vues claires =====================
+   Salon : l'équipe au centre, rien par-dessus ; en bas à gauche ce que tu emportes + ton équipe, en bas à droite carte + JOUER.
+   Casier : gros plan sur ton perso à droite, réglages (camp, classe, armes, tenue) à gauche. */
+.lb-nav .tab { display: inline-flex; align-items: center; gap: 7px; }
+.lb-nav .tab i { font: 900 10px Inter; font-style: normal; width: 18px; height: 18px; border-radius: 6px; display: grid; place-items: center; background: rgba(255,255,255,.14); }
+.lb-nav .tab.on i { background: rgba(80,30,0,.18); }
+.lobby.v-salon .lb-left { opacity: 0; transform: translateX(-30px); pointer-events: none; }
+.lobby .lb-left { transition: opacity .25s, transform .25s; width: 380px; }
+.lobby.v-casier .lb-right, .lobby.v-casier .lb-dock, .lobby.v-casier #plates { opacity: 0; pointer-events: none; }
+.lobby .lb-right, .lobby .lb-dock, .lobby #plates { transition: opacity .25s; }
+.lobby.v-salon .casier-only, .lobby.v-casier .salon-only { display: none; }
+.backsalon { margin-top: 2px; align-self: flex-start; }
+/* fond : on n'assombrit plus que les bords utiles */
+#menu.lobby { background: linear-gradient(180deg, rgba(7,8,12,.6) 0, transparent 15%, transparent 70%, rgba(7,8,12,.75) 100%); }
+#menu.lobby.v-casier { background: linear-gradient(90deg, rgba(7,8,12,.82) 0, rgba(7,8,12,.5) 30%, transparent 48%), linear-gradient(180deg, rgba(7,8,12,.6) 0, transparent 15%); }
+#menu.lobby::after { display: none; }
+
+/* bas gauche : ce que tu emportes + équipe */
+.lb-dock { position: absolute; left: 26px; bottom: 44px; width: 330px; display: flex; flex-direction: column; gap: 10px; z-index: 2; }
+.loadout { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; text-align: left; color: #fff; background: var(--ink2);
+  box-shadow: inset 0 0 0 2px var(--edge), 0 5px 0 rgba(0,0,0,.42); transition: transform .14s cubic-bezier(.3,1.8,.5,1), box-shadow .15s; }
+.loadout:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 2px var(--team), 0 7px 0 rgba(0,0,0,.42); }
+.loadout .ico { width: 52px; height: 52px; flex: none; border-radius: 13px; display: grid; place-items: center; font-size: 30px; background: var(--team); box-shadow: 0 3px 0 var(--team-d); transform: rotate(-4deg); }
+.loadout .ico svg { width: 34px; height: 34px; }
+.loadout .txt { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.loadout .txt small { font: 800 10px Inter; letter-spacing: .12em; text-transform: uppercase; color: var(--team); }
+.loadout .txt b { font: 20px/1.1 Bungee, Inter; }
+.loadout .txt span { font: 700 12px Inter; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.loadout .go { font: 12px Bungee, Inter; padding: 7px 10px 6px; border-radius: 9px; color: #2a1300; background: linear-gradient(180deg, #ffe17a, #ff9a2a); box-shadow: 0 3px 0 #b04f0c; }
+
+/* bas droite : carte, nuit, JOUER */
+.lobby .lb-right { bottom: 44px; width: 340px; gap: 10px; }
+.lb-right .lbl { font: 800 11px Inter; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); margin-bottom: -4px; }
+.maptiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.maptiles button { position: relative; height: 104px; border-radius: 14px; overflow: hidden; padding: 0; text-align: left; color: #fff; background: #1a1d26; box-shadow: inset 0 0 0 2px var(--edge), 0 4px 0 rgba(0,0,0,.45); transition: transform .14s cubic-bezier(.3,1.8,.5,1), box-shadow .15s, filter .15s; filter: saturate(.55) brightness(.75); }
+.maptiles img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.maptiles button::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 35%, rgba(0,0,0,.8)); }
+.maptiles b, .maptiles small { position: absolute; left: 10px; z-index: 1; } .maptiles b { bottom: 20px; font: 19px Bungee, Inter; } .maptiles small { bottom: 7px; font: 700 10.5px Inter; color: #e4e8f0; }
+.maptiles button:hover { filter: none; transform: translateY(-2px); }
+.maptiles button.on { filter: none; box-shadow: inset 0 0 0 3px #ffe17a, 0 4px 0 #b04f0c, 0 0 18px rgba(255,200,80,.35); transform: rotate(-1.5deg); }
+.maptiles button.on::before { content: 'CHOISIE'; position: absolute; right: 7px; top: 7px; z-index: 1; font: 900 9px Inter; letter-spacing: .1em; padding: 3px 6px; border-radius: 6px; background: #ffe17a; color: #3a1d00; }
+.modeline { font: 700 12px Inter; color: var(--dim); text-align: center; } .modeline #mapName { color: #fff; font-weight: 900; }
+.lobby .help { bottom: 12px; }
+@media (max-width: 1100px) { .lb-dock { width: 280px; } .lobby .lb-right { width: 290px; } .maptiles button { height: 86px; } }
+@media (max-width: 760px) { .lb-dock { left: 16px; right: 16px; width: auto; bottom: 330px; } .lobby .lb-right { left: 16px; right: 16px; width: auto; bottom: 30px; } .lobby .lb-left { width: auto; } }
+.lobby .clsinfo { display: flex; flex-direction: column; gap: 8px; }
+.lobby .kitrow { justify-content: flex-start; gap: 5px; }
+.lobby .kitrow label { flex-basis: 100%; min-width: 0; text-align: left; margin: 2px 0 0; font: 800 10px Inter; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.lobby .kitrow button { padding: 6px 9px; border: 0; border-radius: 9px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.07), 0 2px 0 rgba(0,0,0,.4); }
+.lobby .kitrow button.on { background: linear-gradient(180deg, #ffe17a, #ff9a2a); color: #2a1300; box-shadow: 0 2px 0 #b04f0c; }
+.lobby .clsinfo p { margin: 2px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.lobby .clsinfo p span:last-child { display: block; padding: 7px 9px; border-radius: 10px; background: rgba(255,204,61,.1); box-shadow: inset 0 0 0 1.5px rgba(255,204,61,.35); color: #ffe7a6; }
+.lobby .kitrow button.on, .lobby .kitrow button.on * { color: #2a1300; }
+.lobby .kitrow button span { border: 0 !important; background: none !important; padding: 0 !important; box-shadow: none !important; }
+.lb-dock { width: 360px; }
+.loadout .txt b { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.loadout .txt small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -16,6 +16,7 @@ import { installSeries } from './series.js';
 import { installConvois } from './convois.js';
 import { installBarricades, TIERS, tierInfo, fmtG } from './barricades.js';
 import { installLanceurs } from './lanceurs.js';
+import { installManiement } from './maniement.js';
 import { installTurrets } from './tourelles.js';
 import { createFeedback } from './feedback.js';
 
@@ -269,11 +270,11 @@ export class Game {
   }
   equip(a, i, silent) {
     if (!a.slots[i]) return; a.cur = i; a.reloadT = 0; a.burstLeft = 0; a.fireT = Math.max(a.fireT, 0.25);
-    attachGun(a.ch, a.slots[i].id); if (!silent) Anim.swap(a); a.ch.meshes = null; a.lodShadow = undefined; const rc = RARITY[a.slots[i].rarity].color;
+    attachGun(a.ch, a.slots[i].id, a !== this.player); if (!silent) Anim.swap(a); a.ch.meshes = null; a.lodShadow = undefined; const rc = RARITY[a.slots[i].rarity].color;
     a.ch.gun.traverse((o) => { if (o.isMesh && a.slots[i].rarity !== 'commun') { o.material = o.material.map ? o.material : (Array.isArray(o.material) ? o.material.map((m) => tint(m, rc)) : tint(o.material, rc)); } });
     if (a.overs) a.overs = a.overs.filter((o) => o.name !== 'U_Reload'); if (!silent) this.overlay(a, 'U_Draw', 0.45, { busy: true });
     if (!a.bot) { this.viewGun(); if (!silent) this.audio.play('cloth', null, 0.5); }
-    function tint(m, c) { const n = m.clone(); if (/Main|Body|Wood|Metal/i.test(m.name)) { n.emissive = new THREE.Color(c); n.emissiveIntensity = 0.12; } return n; }
+    function tint(m, c) { const n = m.clone(); if (/Main|Body|Wood|Metal|LOD|Tan|Green/i.test(m.name)) { n.emissive = new THREE.Color(c); n.emissiveIntensity = 0.12; } return n; }
   }
   respawn(a, first) {
     const sp = pick(this.world.spawns[a.team].slice(0, Math.max(20, this.opts.teamSize))); const [x, z] = this.world.randomFree(sp.x, sp.z, this.actors.length > 50 ? 4 : 2.5);
@@ -1722,10 +1723,10 @@ export class Game {
     this.vgun.updateMatrixWorld(true); const inv = this.vgun.matrixWorld.clone().invert(), vs = [], tmp = V();
     g.traverse((o) => { if (!o.isMesh) return; const m = inv.clone().multiply(o.matrixWorld), p = o.geometry.attributes.position; for (let i = 0; i < p.count; i++) { tmp.fromBufferAttribute(p, i).applyMatrix4(m); vs.push([tmp.x, tmp.y, tmp.z]); } });
     const bb = this.vgunBB, cx = (bb.min.x + bb.max.x) / 2; let gb = Infinity, front = Infinity;
-    for (const v of vs) if (Math.abs(v[2]) < 0.035 && v[1] < gb) gb = v[1]; if (!isFinite(gb)) gb = bb.min.y;
+    for (const v of vs) if (Math.abs(v[2]) < 0.035 && v[1] < gb) gb = v[1]; if (!isFinite(gb)) gb = bb.min.y; const meta = g.userData.meta; if (meta) gb = meta.gb; /* armes de l'armurerie : cotes connues */
     for (const v of vs) if (v[1] > gb + 0.005 && v[1] < gb + 0.04 && v[2] > -0.07 && v[2] < 0.03 && v[2] < front) front = v[2]; front = isFinite(front) ? clamp(front, -0.05, -0.015) : -0.03;
-    const sup = WEAPONS[this.weapon(a).id].support; let support = sup ? V(cx, sup[1], -sup[0]) : V(cx, bb.max.y - 0.09, bb.min.z * 0.55);
-    if (!sup && !P) { const up = V(0, 1, 0).transformDirection(this.vgun.matrixWorld), z0 = front - 0.13, z1 = z0 + (bb.min.z + 0.06 - z0) * 0.7, hits = [];
+    const sup = WEAPONS[this.weapon(a).id].support || meta?.fore; let support = sup ? V(cx, sup[1], -sup[0]) : V(cx, bb.max.y - 0.09, bb.min.z * 0.55);
+    if (!sup && meta?.support) support = V(cx, meta.support[1], -meta.support[0]); else if (!sup && !P) { const up = V(0, 1, 0).transformDirection(this.vgun.matrixWorld), z0 = front - 0.13, z1 = z0 + (bb.min.z + 0.06 - z0) * 0.7, hits = [];
       for (let i = 0; i < 7; i++) { const z = z1 < z0 ? z0 + (z1 - z0) * i / 6 : bb.min.z * 0.6; const h = new THREE.Raycaster(this.vgun.localToWorld(V(cx, bb.min.y - 0.2, z)), up, 0, 1).intersectObject(g, true)[0]; if (h) hits.push([z, this.vgun.worldToLocal(h.point.clone()).y]); }
       if (hits.length) { const top = Math.max(...hits.map((h) => h[1])); const h = hits.find((h) => h[1] > top - 0.02); support = V(cx, h[1], h[0]); } } // le premier appui haut en partant de la poignée : le garde-main, pas le chargeur
     const chain = [B.ShoulderR, B.UpperArmR, B.LowerArmR, B.WristR, B.ShoulderL, B.UpperArmL, B.LowerArmL, B.WristL].filter(Boolean);
@@ -1749,6 +1750,7 @@ export class Game {
     // main gauche : paume sous le garde-main, doigts qui remontent de l'autre côté (fusils) ; plaquée à gauche de la poignée, doigts par-dessus ceux de la main droite (pistolets)
     const [lp, lq] = A.pistol ? place(A.hands.L, dir(0.15, -0.35, -0.9), dir(1, 0, 0.15), V(-0.032, A.gb + 0.025, A.front - 0.022), 1, 0) : A.fore ? place(A.hands.L, dir(0.2, -0.25, -0.95), dir(1, 0, 0.1), A.support.clone().add(V(-0.03, 0, -0.02)), 1, 0) /* poignée avant verticale : main refermée autour */
       : place(A.hands.L, dir(0.5, -0.5, -0.7), dir(0.72, 0.68, 0.1), A.support.clone().add(V(-0.012, 0.004, 0)), 0.62, 0.014); /* paume contre l'arête basse gauche du garde-main : on voit le dos de la main et le pouce, les doigts passent dessous */
+    { const O = this.vhand; if (O) { /* maniement : pompe (la main suit le fût), chargeur, verrou */ if (O.Ls.lengthSq() > 0) lp.add(O.Ls.clone().applyQuaternion(vq)); if (O.Lw > 0) lp.lerp(this.vgun.localToWorld(O.L.clone()), O.Lw); if (O.Rw > 0) rp.lerp(this.vgun.localToWorld(O.R.clone()), O.Rw); } }
     const down = V(0, -1, 0).applyQuaternion(vq), right = V(1, 0, 0).applyQuaternion(vq);
     for (const [S, tp, tq, pole, td] of [['R', rp, rq, down.clone().addScaledVector(right, 0.5), dir(-0.22, -0.05, -0.97)], ['L', lp, lq, down.clone().addScaledVector(right, -0.6), A.pistol ? dir(0.1, 0.15, -1) : dir(0.12, 0.12, -0.98)]]) {
       // bras allongé au besoin (la main garde sa taille) : l'arme est tenue loin devant, l'épaule reste hors champ
@@ -2021,5 +2023,6 @@ installThrows(Game);
 installSeries(Game);
 installConvois(Game);
 installBarricades(Game);
+installManiement(Game);
 installLanceurs(Game); // après les barricades : complète this.blast (vitrines)
 installTurrets(Game); // après les barricades : enrobe blast, wallPrompt, placeWall, updateWalls

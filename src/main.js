@@ -159,6 +159,7 @@ function renderMenu() {
   $('clsInfo').innerHTML = `<div class="kitrow"><label>Arme principale</label>${prim.map((id) => chip('p', id)).join('')}</div><div class="kitrow"><label>Arme de poing</label>${sec.map((id) => chip('s', id)).join('')}</div>`
     + `<p><span>${svg('vest')} ${K.armor ? 'Gilet ' + K.armor : 'Sans gilet'}</span><span>${svg('target')} <b>${K.perkName}</b> : ${K.perkDesc}</span></p>`;
   $('nightBtn').classList.toggle('night', !!save.settings.night);
+  { const W = WEAPONS[kit.p] || WEAPONS[K.primary]; $('ldIco').innerHTML = svg(K.ico); $('ldTeam').textContent = TEAMS[save.team].short + ' · ' + String(SKIN_NAMES[save.skin] || 'Tenue perso').split(' · ')[0]; $('ldClass').textContent = K.name; $('ldGun').textContent = `${W.name}${kit.s && WEAPONS[kit.s] ? ' + ' + WEAPONS[kit.s].name : ''}`; }
   $('mapName').textContent = MAP.nom.toUpperCase(); document.querySelectorAll('#mapBtn [data-map]').forEach((b) => b.classList.toggle('on', b.dataset.map === MAP_ID));
   $('bank').textContent = fmt(save.bank); $('lvl').textContent = save.lvl || 1;
   { const l = save.lvl || 1, a = 100 * (l - 1) ** 2, b = 100 * l ** 2; $('xpbar').style.width = Math.max(4, Math.min(100, ((save.xp || 0) - a) / (b - a) * 100)).toFixed(0) + '%'; }
@@ -180,6 +181,11 @@ $('skins').addEventListener('click', (e) => { const s = e.target.dataset?.skin; 
 $('play').disabled = true;
 $('play').addEventListener('click', () => start());
 $('openShop').addEventListener('click', () => openShop());
+// deux vues : Salon (l'équipe) et Casier (camp, classe, armes, tenue)
+function setView(v) { const m = $('menu'); m.classList.toggle('v-salon', v === 'salon'); m.classList.toggle('v-casier', v === 'casier'); $('tabSalon').classList.toggle('on', v === 'salon'); $('tabCasier').classList.toggle('on', v === 'casier'); lobby?.setView(v); audio.init(); audio.play('uiTick'); }
+window.__view = setView;
+$('tabSalon').addEventListener('click', () => setView('salon')); $('tabCasier').addEventListener('click', () => setView('casier'));
+$('loadoutBtn').addEventListener('click', () => setView('casier')); $('backSalon').addEventListener('click', () => setView('salon'));
 $('mapBtn').addEventListener('click', (e) => { const b = e.target.closest('[data-map]'); if (!b || b.dataset.map === MAP_ID) return; if (net.guest) { $('inviteNote').textContent = 'En ligne, c\'est le chef qui choisit la carte.'; return; } audio.init(); audio.play('uiSelect'); switchMap(b.dataset.map, net.online ? net.room : null); });
 $('nightBtn').addEventListener('click', () => { save.settings.night = !save.settings.night; persist(); night?.set(save.settings.night); renderMenu(); audio.init(); audio.play('uiTick'); });
 $('closeShop').addEventListener('click', () => closeShop());
@@ -368,7 +374,8 @@ $('shopList').addEventListener('click', (e) => {
 // croix / stick : déplacer le focus vers le contrôle le plus proche dans la direction ; ✕ valider ; ○ retour ; ← → régler curseurs et listes
 let padFocus = null, navRep = 0;
 function activeScreen() { for (const id of ['pause', 'shop', 'invite', 'end', 'menu']) { const el = $(id); if (el && !el.classList.contains('hidden')) return el; } return null; }
-function focusables(scr) { return [...scr.querySelectorAll('button, input, select')].filter((e) => !e.disabled && e.offsetParent !== null); }
+const offView = (e) => { const m = e.closest('.lobby'); if (!m) return false; return m.classList.contains('v-salon') ? !!e.closest('.lb-left') : !!e.closest('.lb-right, .lb-dock, #plates'); }; // vue cachée du salon
+function focusables(scr) { return [...scr.querySelectorAll('button, input, select')].filter((e) => !e.disabled && e.offsetParent !== null && !offView(e)); }
 function setPadFocus(el) { padFocus?.classList.remove('padfocus'); padFocus = el; if (el) { el.classList.add('padfocus'); el.scrollIntoView?.({ block: 'nearest' }); if (el.closest?.('#shopList')) pvFrom(el); } }
 function padMenu(dt) {
   if (!input.st.pad) { setPadFocus(null); return; }
@@ -391,7 +398,7 @@ function padMenu(dt) {
     if (best) { setPadFocus(best); audio.play('uiTick'); } return;
   }
   if (H(0)) { if (f.tagName === 'SELECT') { if (f.dataset.dirty) { delete f.dataset.dirty; f.dispatchEvent(new Event('change')); } } else if (f.type !== 'range') { f.click(); audio.play('uiSelect'); } return; }
-  if (H(1)) { if (scr.id === 'pause') closePause(); else if (scr.id === 'shop') closeShop(); else if (scr.id === 'invite') closeInvite(); }
+  if (H(1)) { if (scr.id === 'pause') closePause(); else if (scr.id === 'shop') closeShop(); else if (scr.id === 'invite') closeInvite(); else if (scr.id === 'menu' && scr.classList.contains('v-casier')) setView('salon'); }
 }
 
 // ---------- pause et réglages ----------
