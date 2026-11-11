@@ -180,7 +180,7 @@ function renderMenu() {
   const cur = classOf(save.team, save.cls[save.team]).id;
   $('classes').innerHTML = Object.values(CLASSES[save.team]).map((K) => `<button data-cls="${K.id}" class="${K.id === cur ? 'on' : ''}"><em>${svg(K.ico)}</em><b>${K.name}</b><small>${K.role}</small></button>`).join('');
   const K = classOf(save.team, cur), kit = kitOf(save, save.team, K), { prim, sec } = classWeapons(K, save.unlocked);
-  const chip = (slot, id) => { const W = WEAPONS[id]; return `<button data-slot="${slot}" data-wid="${id}" class="${kit[slot] === id ? 'on' : ''}" title="${W.name}">${svg(W.ico)}<span>${W.name}</span>${K.primaries.includes(id) || slot === 's' && id !== 'revolver' ? '' : '<i>planque</i>'}</button>`; };
+  const chip = (slot, id) => { const W = WEAPONS[id]; return `<button data-slot="${slot}" data-wid="${id}" class="${kit[slot] === id ? 'on' : ''}" title="${W.name}">${svg(W.ico)}<span>${W.name}</span>${K.primaries.includes(id) || slot === 's' && !WEAPONS[id].paid ? '' : '<i>planque</i>'}</button>`; };
   $('clsInfo').innerHTML = `<div class="kitrow"><label>Arme principale</label>${prim.map((id) => chip('p', id)).join('')}</div><div class="kitrow"><label>Arme de poing</label>${sec.map((id) => chip('s', id)).join('')}</div>`
     + `<p><span>${svg('vest')} ${K.armor ? 'Gilet ' + K.armor : 'Sans gilet'}</span><span>${svg('target')} <b>${K.perkName}</b> : ${K.perkDesc}</span></p>`;
   $('nightBtn').classList.toggle('night', !!save.settings.night);
@@ -335,7 +335,7 @@ function stat(label, v, txt) { return `<div class="st"><span>${label}</span><i><
 function showPv(k, id) {
   if (!pv) return; pvSel = [k, id];
   if (k === 'w') {
-    const W = WEAPONS[id], K = classOf(save.team, save.cls[save.team]), kit = kitOf(save, save.team, K), free = K.primaries.includes(id) || (W.cat === 'pistolet' && id !== 'revolver'), owned = free || save.unlocked.includes(id);
+    const W = WEAPONS[id], K = classOf(save.team, save.cls[save.team]), kit = kitOf(save, save.team, K), free = K.primaries.includes(id) || (W.cat === 'pistolet' && !WEAPONS[id].paid), owned = free || save.unlocked.includes(id);
     pv.show('w', id);
     $('pvinfo').innerHTML = `<h3>${svg(W.ico)} ${W.name}</h3><p class="pvtag">${kit.p === id || kit.s === id ? 'Équipée' : free ? 'Arme de la classe ' + K.name : owned ? 'Dans ta planque' : fmt(W.price) + ' €'}${W.scope ? ' · lunette ×4 / ×8' : ''}${W.auto ? ' · automatique' : W.burst ? ' · rafale de ' + W.burst : ''}${W.proj ? ' · explosif, rayon ' + W.proj.R + ' m, casse le décor' : W.veh > 1 ? ' · perce-blindage' : ''}</p>`
       + stat('Dégâts', (W.dmg * W.pellets) / 120, W.dmg + (W.pellets > 1 ? '×' + W.pellets : ''))
@@ -370,7 +370,7 @@ function renderShop() {
     const list = Object.entries(WEAPONS).filter(([id, W]) => W.cat === cat); if (!list.length) continue;
     w.push(head(label));
     for (const [id, W] of list) {
-      const free = CK.primaries.includes(id) || (cat === 'pistolet' && id !== 'revolver'), owned = free || save.unlocked.includes(id), eq = ckit.p === id || ckit.s === id;
+      const free = CK.primaries.includes(id) || (cat === 'pistolet' && !WEAPONS[id].paid), owned = free || save.unlocked.includes(id), eq = ckit.p === id || ckit.s === id;
       w.push(`<div class="card ${owned ? 'owned' : ''}" data-k="w" data-id="${id}" style="--c:${owned ? '#2f6' : '#777'}">${th('w', id, 0)}<b>${svg(W.ico)} ${W.name}</b><small>Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.burst ? 'rafale ×' + W.burst : W.rps + ' coups/s'} · ${W.proj ? 'zone ' + W.proj.R + ' m · ' + W.mag + ' × ' + W.ammo : 'chargeur ' + W.mag}</small><button data-w="${id}" ${!owned && save.bank < W.price ? 'disabled' : ''}>${owned ? (eq ? 'Équipée ' + svg('check') : 'Équiper') : fmt(W.price) + ' €'}</button>${free && cat !== 'pistolet' ? '<em class="free">' + CK.name + '</em>' : ''}</div>`);
     }
   }
@@ -389,7 +389,7 @@ $('shopList').addEventListener('focusin', (e) => pvFrom(e.target));
 $('shopList').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
   if (b.dataset.c) { pickClass(b.dataset.c); }
-  if (b.dataset.w) { const id = b.dataset.w; const K = classOf(save.team, save.cls[save.team]), free = K.primaries.includes(id) || (WEAPONS[id].cat === 'pistolet' && id !== 'revolver'); if (!free && !save.unlocked.includes(id)) { save.bank -= WEAPONS[id].price; save.unlocked.push(id); audio.cash(true); } setKit(WEAPONS[id].cat === 'pistolet' ? 's' : 'p', id); }
+  if (b.dataset.w) { const id = b.dataset.w; const K = classOf(save.team, save.cls[save.team]), free = K.primaries.includes(id) || (WEAPONS[id].cat === 'pistolet' && !WEAPONS[id].paid); if (!free && !save.unlocked.includes(id)) { save.bank -= WEAPONS[id].price; save.unlocked.push(id); audio.cash(true); } setKit(WEAPONS[id].cat === 'pistolet' ? 's' : 'p', id); }
   if (b.dataset.u) { const id = b.dataset.u; const l = save.upgrades[id] || 0; save.bank -= UPGRADES[id].price(l); save.upgrades[id] = l + 1; audio.cash(true); if (game) { game.player.cap = 20 + (save.upgrades.sac || 0) * 8; } }
   persist(); renderShop(); renderMenu();
 });
