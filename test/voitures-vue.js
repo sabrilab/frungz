@@ -20,3 +20,13 @@ window.show = (i, yaw = 0.7, dist = 7.5, h = 1.5, lod = 1, hq = true) => {
 };
 window.N = CAR_LIST.length; window.ready = true;
 window.stats = (i, lod = 1) => { const c = buildCar(CAR_LIST[i], { lod, hq: lod >= 1 }); const o = {}; c.traverse((m) => { if (m.isMesh) { const n = (m.parent.name === 'body' ? m.name : 'roue_' + m.material.name); o[n] = (o[n] || 0) + Math.round(m.geometry.attributes.position.count / 3); } }); return o; };
+import { truckMesh } from '../src/camions.js';
+import { heliDefs } from '../src/helico.js';
+import { rideDefs } from '../src/deuxroues.js';
+// autres engins : ?obj=camion:eau | heli:brigade | moto:sportive
+window.showObj = (what, yaw = 0.7, dist = 11, h = 2.5, ty = 1.2) => {
+  if (cur) scene.remove(cur); const [k, v] = what.split(':');
+  cur = k === 'camion' ? truckMesh(v) : k === 'heli' ? heliDefs()[v].scene.clone(true) : rideDefs().motos[v].scene.clone(true);
+  cur.traverse((o) => { if (o.isMesh) { o.castShadow = o.material.name !== 'car_ombre_contact'; o.receiveShadow = true; } }); scene.add(cur);
+  cam.position.set(Math.sin(yaw) * dist, h, Math.cos(yaw) * dist); cam.lookAt(0, ty, 0); renderer.render(scene, cam); const info = []; cur.traverse((o) => { if (o.isMesh && o.material.name.includes('bache')) { o.geometry.computeBoundingBox(); info.push(o.visible + JSON.stringify(o.geometry.boundingBox)); } }); return info.join(' ');
+};

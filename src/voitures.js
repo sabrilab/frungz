@@ -40,12 +40,12 @@ const R = {
   grilleA: [1024, 176, 512, 192], grilleB: [1536, 176, 512, 192], grilleC: [1536, 0, 512, 160],
   plaque: [1290, 0, 236, 52], plaqueAr: [1290, 60, 236, 52], prise: [0, 300, 512, 96],
   police: [0, 416, 2048, 128], policeCapot: [0, 560, 768, 128], taxi: [800, 560, 400, 96], rampe: [1216, 560, 512, 96],
-  carbone: [0, 704, 256, 256], nid: [272, 704, 256, 256],
+  carbone: [0, 704, 256, 256], nid: [272, 704, 256, 256], danger: [544, 704, 512, 128], grille2: [544, 848, 256, 128],
 };
 // cases de couleur unie (u, v au centre) : pièces pleines qui partagent le même matériau que les optiques
-const SOLID = { rouge: '#c8141b', jaune: '#e8b400', bleuLum: '#1f5bff', rougeLum: '#ff1a10', orange: '#ff8a00', blanc: '#f2f2f2', noir: '#0b0b0c', gris: '#6b6e72', miroir: '#9fb3c4', chrome: '#c9ccd0', ambre: '#ffb000' };
+const SOLID = { vert: '#2f8f4e', marine: '#1c3f8f', kaki: '#4f5a35', rouge: '#c8141b', jaune: '#e8b400', bleuLum: '#1f5bff', rougeLum: '#ff1a10', orange: '#ff8a00', blanc: '#f2f2f2', noir: '#0b0b0c', gris: '#6b6e72', miroir: '#9fb3c4', chrome: '#c9ccd0', ambre: '#ffb000' };
 const SOLID_LIT = new Set(['bleuLum', 'rougeLum', 'orange', 'ambre']);
-const solidCell = {}; Object.keys(SOLID).forEach((k, i) => { solidCell[k] = [1760 + (i % 8) * 36, 704 + Math.floor(i / 8) * 36, 32, 32]; });
+const solidCell = {}; Object.keys(SOLID).forEach((k, i) => { solidCell[k] = [1760 + (i % 7) * 36, 704 + Math.floor(i / 7) * 36, 32, 32]; });
 
 let _atlas = null;
 function atlas() {
@@ -122,17 +122,20 @@ function atlas() {
   // carbone et maille
   { const [x, y, w, h] = R.carbone; for (let j = 0; j < h; j += 8) for (let i = 0; i < w; i += 8) { g.fillStyle = (i + j) / 8 % 2 ? '#1a1b1d' : '#2a2c30'; g.fillRect(x + i, y + j, 8, 8); } }
   { const [x, y, w, h] = R.nid; g.fillStyle = '#060606'; g.fillRect(x, y, w, h); g.fillStyle = '#202225'; for (let j = 0; j < h; j += 10) for (let i = (j / 10 % 2) * 5; i < w; i += 10) g.fillRect(x + i, y + j, 5, 5); }
+  { const [x, y, w, h] = R.danger; g.fillStyle = '#f2c200'; g.fillRect(x, y, w, h); g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); g.fillStyle = '#111'; for (let i = -h; i < w; i += 64) { g.beginPath(); g.moveTo(x + i, y + h); g.lineTo(x + i + 32, y + h); g.lineTo(x + i + 32 + h, y); g.lineTo(x + i + h, y); g.fill(); } g.restore(); }
+  { const [x, y, w, h] = R.grille2; g.fillStyle = '#0b0c0d'; g.fillRect(x, y, w, h); g.strokeStyle = '#3a3e44'; g.lineWidth = 3; for (let i = 6; i < w; i += 12) { g.beginPath(); g.moveTo(x + i, y); g.lineTo(x + i, y + h); g.stroke(); } for (let j = 6; j < h; j += 12) { g.beginPath(); g.moveTo(x, y + j); g.lineTo(x + w, y + j); g.stroke(); } }
   for (const [k, col] of Object.entries(SOLID)) { const [x, y, w, h] = solidCell[k]; g.fillStyle = col; g.fillRect(x, y, w, h); if (SOLID_LIT.has(k)) { e.fillStyle = col; e.fillRect(x, y, w, h); } }
   const T = (c) => { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.flipY = false; return t; };
   _atlas = { map: T(C), emissive: T(E) };
   return _atlas;
 }
-const uvOf = (rect) => [rect[0] / AW, rect[1] / AH, (rect[0] + rect[2]) / AW, (rect[1] + rect[3]) / AH];
-const solidUV = (k) => { const [x, y, w, h] = solidCell[k]; return [(x + w / 2) / AW, (y + h / 2) / AH]; };
+export const ATLAS = R;
+export const uvOf = (rect) => [rect[0] / AW, rect[1] / AH, (rect[0] + rect[2]) / AW, (rect[1] + rect[3]) / AH];
+export const solidUV = (k) => { const [x, y, w, h] = solidCell[k]; return [(x + w / 2) / AW, (y + h / 2) / AH]; };
 
 // ---------------------------------------------------------------- matériaux partagés
 const _mats = new Map();
-function mats(hq) {
+export function mats(hq) {
   const key = hq ? 'hq' : 'lq'; if (_mats.has(key)) return _mats.get(key);
   const P = hq ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial, A = atlas();
   const tread = treadTexture();
@@ -151,7 +154,7 @@ function mats(hq) {
 }
 const _paints = new Map();
 // peintures : métallisée (paillettes = un peu de métal, vernis brillant) ou unie
-function paint(hex, hq, { metal = 0.55, rough = 0.32, mat = false } = {}) {
+export function paint(hex, hq, { metal = 0.55, rough = 0.32, mat = false } = {}) {
   const k = `${hex}|${hq}|${metal}|${rough}|${mat}`; if (_paints.has(k)) return _paints.get(k);
   const p = hq ? new THREE.MeshPhysicalMaterial({ name: 'car_peinture', color: hex, metalness: metal, roughness: mat ? 0.6 : rough, clearcoat: mat ? 0.15 : 1, clearcoatRoughness: mat ? 0.4 : 0.03, envMapIntensity: 1.15 })
     : new THREE.MeshStandardMaterial({ name: 'car_peinture', color: hex, metalness: metal * 0.8, roughness: mat ? 0.6 : 0.3, envMapIntensity: 1.1 });
@@ -323,13 +326,14 @@ function mirrorX(g) {
   if (m.index) { const a = m.index.array; for (let i = 0; i < a.length; i += 3) { const t = a[i + 1]; a[i + 1] = a[i + 2]; a[i + 2] = t; } } else { const pos = p.array; /* non indexé : inverser chaque triangle */ for (const A of [p, n, m.attributes.uv].filter(Boolean)) { const s = A.itemSize, arr = A.array; for (let i = 0; i < A.count; i += 3) for (let k = 0; k < s; k++) { const t = arr[(i + 1) * s + k]; arr[(i + 1) * s + k] = arr[(i + 2) * s + k]; arr[(i + 2) * s + k] = t; } } void pos; }
   return m;
 }
-const solidUVs = (g, k) => { const [u, v] = solidUV(k); const uv = g.attributes.uv; if (!uv) { g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2)); } const a = g.attributes.uv; for (let i = 0; i < a.count; i++) a.setXY(i, u, v); return g; };
+export const solidUVs = (g, k) => { const [u, v] = solidUV(k); const uv = g.attributes.uv; if (!uv) { g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2)); } const a = g.attributes.uv; for (let i = 0; i < a.count; i++) a.setXY(i, u, v); return g; };
 const rectUVs = (g, rect) => { const [u0, v0, u1, v1] = uvOf(rect); const a = g.attributes.uv; for (let i = 0; i < a.count; i++) a.setXY(i, lerp(u0, u1, a.getX(i)), lerp(v0, v1, 1 - a.getY(i))); return g; };
 const nonIdx = (g) => (g.index ? g.toNonIndexed() : g);
 
 // ---------------------------------------------------------------- construction
 export function buildCar(spec, { hq = true, lod = 1 } = {}) {
-  const [id, model, classe, nom, color, opt = {}] = spec; const M = MODELS[model];
+  if (!spec) return null;
+  const [id, model, classe, nom, color, opt = {}] = spec; const M = typeof model === 'string' ? MODELS[model] : model;
   const B = bodyFn(M), MT = mats(hq), PAINT = paint(color, hq, opt);
   const parts = { paint: [], glass: [], trim: [], plastic: [], metal: [], rubber: [], detail: [], interior: [], contact: [] };
   { const sh = new THREE.PlaneGeometry(M.W * 2 / 0.6, M.L / 0.8); sh.rotateX(-Math.PI / 2); sh.translate(0, 0.012, 0); parts.contact.push(nonIdx(sh)); }
@@ -420,6 +424,8 @@ export function buildCar(spec, { hq = true, lod = 1 } = {}) {
   if (opt.police) { const a = zU(M.ax[0] + 0.45), b = zU(M.ax[1] - 0.45); decal(a, b, 0.28, 0.43, R.police, { nu: 12, nt: 2, off: 0.002, both: false, flipU: true }); decal(a, b, 0.28, 0.43, R.police, { nu: 12, nt: 2, off: 0.002, both: false }); parts.detail.push(mirrorX(parts.detail.pop()));
   }
 
+  // bande de couleur sur les flancs (utilitaires de la bande, fourgons)
+  if (opt.stripe) decal(zU(M.ax[0] - 0.2), zU(M.ax[1] - 0.3), 0.3, 0.37, null, { solid: opt.stripe, nu: 8, nt: 1, off: 0.002 });
   // --- rétroviseurs : coque peinte, miroir
   { const zM = M.cowl - 0.06, yM = B.belt(zM) + 0.11, W = M.W * 0.95;
     const shell = new THREE.SphereGeometry(1, 12, 8); shell.scale(0.07, 0.065, 0.11); shell.translate(W + 0.15, yM, zM);
@@ -462,7 +468,7 @@ export function buildCar(spec, { hq = true, lod = 1 } = {}) {
   const root = new THREE.Group(); root.name = id;
   const wheelNames = { 'wheel-front-left': [1, 1], 'wheel-front-right': [-1, 1], 'wheel-back-left': [1, 0], 'wheel-back-right': [-1, 0] };
   const wheelInfo = {}; const WG = wheelGeos(M, MT, hq, lod);
-  for (const [n, [sx, front]] of Object.entries(wheelNames)) {
+  for (const [n, [sx, front]] of Object.entries(wheelNames)) { if (M.cabOnly && !front) continue;
     const z = M.ax[front], x = sx * (M.W - M.tw / 2 - 0.015);
     const w = new THREE.Group(); w.name = n; w.rotation.order = 'YXZ'; w.position.set(x, M.R, z);
     for (const [k, g] of Object.entries(sx > 0 ? WG.L : WG.Rt)) { const m = new THREE.Mesh(g, k === 'paint' ? PAINT : MT[k]); m.castShadow = true; m.receiveShadow = true; w.add(m); }
@@ -482,7 +488,7 @@ export function buildCar(spec, { hq = true, lod = 1 } = {}) {
 }
 function clean(g) { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k); if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2)); return g.index ? g.toNonIndexed() : g; }
 // boîte : toutes les faces prennent la même zone de l'atlas
-function rectUVsBox(g, rect) { const [u0, v0, u1, v1] = uvOf(rect); const a = g.attributes.uv; for (let i = 0; i < a.count; i++) a.setXY(i, lerp(u0, u1, a.getX(i)), lerp(v0, v1, 1 - a.getY(i))); }
+export function rectUVsBox(g, rect) { const [u0, v0, u1, v1] = uvOf(rect); const a = g.attributes.uv; for (let i = 0; i < a.count; i++) a.setXY(i, lerp(u0, u1, a.getX(i)), lerp(v0, v1, 1 - a.getY(i))); }
 // remet chaque triangle dans le sens de sa normale (la face visible est celle qui regarde vers l'extérieur)
 function fixWinding(list) {
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3();
@@ -494,7 +500,7 @@ function fixWinding(list) {
 
 // roue : pneu (profil tourné, flancs bombés, sculptures), jante en alliage (rayons extrudés), disque, étrier
 const _wheelCache = new Map();
-function wheelGeos(M, MT, hq, lod) {
+export function wheelGeos(M, MT, hq, lod) {
   const key = `${M.R}|${M.tw}|${M.rim}|${M.caliper}|${lod}`; if (_wheelCache.has(key)) return _wheelCache.get(key);
   const Rw = M.R, tw = M.tw, Ri = Rw * (M.rim === 'acier' ? 0.62 : M.rim === 'sport' ? 0.74 : 0.68), seg = Math.max(14, Math.round(28 * lod));
   // pneu : profil (r, x) autour de l'axe ; x vers l'extérieur
