@@ -15,6 +15,7 @@ import { svg, iconize } from './icons.js';
 import { installSeries } from './series.js';
 import { installNotoriete } from './notoriete.js';
 import { installRegie } from './regie.js';
+import { installElimination } from './elimination.js';
 import { installConvois } from './convois.js';
 import { installBarricades, TIERS, tierInfo, fmtG } from './barricades.js';
 import { installLanceurs } from './lanceurs.js';
@@ -497,7 +498,7 @@ export class Game {
       if (ha) {
         end = origin.clone().addScaledVector(d, ha.t);
         const falloff = ha.t > D.range * 0.5 ? lerp(1, 0.6, (ha.t - D.range * 0.5) / (D.range * 0.5)) : 1;
-        this.damage(ha.a, D.dmg * mult * falloff * (ha.head ? D.hs : 1), a, { head: ha.head, weapon: W.id });
+        this.damage(ha.a, D.dmg * mult * falloff * (ha.head ? D.hs : 1), a, { head: ha.head, weapon: W.id, dir: d });
         this.fx.impact(end, [-d.x, -d.y, -d.z], 'flesh');
       } else if (hw) {
         end = origin.clone().addScaledVector(d, hw.t);
@@ -626,7 +627,7 @@ export class Game {
       const seg = np.clone().sub(p0); const len = seg.length(); const d = seg.divideScalar(len);
       const hw = this.world.ray(p0, d, len); const ha = this.rayActors(p0, d, hw ? hw.t : len, b.a); let end = null;
       if (ha) { end = p0.clone().addScaledVector(d, ha.t); const dist = end.distanceTo(b.from);
-        this.damage(ha.a, b.D.dmg * b.mult * (ha.head ? 2.2 : 1) * (dist > 120 ? 1.1 : 1), b.a, { head: ha.head, weapon: b.W.id, dist, sniper: true });
+        this.damage(ha.a, b.D.dmg * b.mult * (ha.head ? 2.2 : 1) * (dist > 120 ? 1.1 : 1), b.a, { head: ha.head, weapon: b.W.id, dist, sniper: true, dir: d });
         this.fx.impact(end, [-d.x, -d.y, -d.z], 'flesh'); this.fx.burst(end, 10, { color: '#b3122a', speed: 4, size: 0.05, life: 0.5 }); }
       else if (hw) { end = p0.clone().addScaledVector(d, hw.t); this.hitWorld(b.a, hw, d, end, b.D, b.mult); }
       this.fx.tracer(p0, end || np); b.p.copy(end || np); b.dist += len; b.m.position.copy(b.p); b.m.lookAt(b.p.clone().add(d));
@@ -2044,4 +2045,5 @@ installManiement(Game);
 installLanceurs(Game); // après les barricades : complète this.blast (vitrines)
 installTurrets(Game); // après les barricades : enrobe blast, wallPrompt, placeWall, updateWalls
 installNotoriete(Game); // presque en dernier : enrobe addGalons, kill, multiKill, addStreak, captureZone, killFeed, drawRank, update, build
+installElimination(Game); // retour visuel des éliminations (src/elimination.js)
 installRegie(Game); // tout dernier : met en scène annonces, bandeau, gains, fil, flashs (src/regie.js)
