@@ -80,6 +80,8 @@ const BOT_NAMES = {
 // ===================================================================================================================
 // classe d'un bot : tirage pondéré (peu de tireurs embusqués, sinon la rue devient un stand de tir)
 function pickClass(team) { const L = Object.values(CLASSES[team]); let x = Math.random() * L.reduce((t, K) => t + (K.bots ?? 1), 0); for (const K of L) { x -= K.bots ?? 1; if (x <= 0) return K.id; } return L[0].id; }
+// ombre de contact des voitures (voitures.js) : ne projette pas d'ombre elle-même
+const CONTACT = (o) => o.material?.name === 'car_ombre_contact';
 export class Game {
   constructor(env) {
     Object.assign(this, env); // renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts, onEnd
@@ -691,10 +693,10 @@ export class Game {
     return [Math.min(def.size[0], q(xs, 0.985) - q(xs, 0.015)), def.size[1], Math.min(def.size[2], q(zs, 0.995) - q(zs, 0.005))];
   }
   // modèle de voiture fusionné une fois par modèle : toutes les pièces (caisse et roues) regroupées par matière
-  staticCar(def) {
-    if (def.stat !== undefined) return def.stat; def.stat = null;
+  staticCar(def, far = false) {
+    const key = far ? 'statFar' : 'stat'; if (def[key] !== undefined) return def[key]; def[key] = null; if (far && !def.far) return null;
     try {
-      const root = def.scene; root.updateMatrixWorld(true); const inv = root.matrixWorld.clone().invert(); const by = new Map();
+      const root = far ? def.far : def.scene; root.updateMatrixWorld(true); const inv = root.matrixWorld.clone().invert(); const by = new Map();
       root.traverse((o) => { if (!o.isMesh || Array.isArray(o.material) || o.isSkinnedMesh) return; const g = o.geometry.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)); (by.get(o.material) || by.set(o.material, []).get(o.material)).push(g); });
       const grp = new THREE.Group(); grp.name = 'voiture_fusionnee';
       for (const [mat, list] of by) {
@@ -707,17 +709,19 @@ export class Game {
         const idx = list.some((g) => g.index); const L = idx ? list.map((g) => g.index ? g : g.setIndex([...Array(g.attributes.position.count).keys()])) : list;
         const m = mergeGeometries(L, false); if (!m) return null; grp.add(new THREE.Mesh(m, mat));
       }
-      def.stat = grp;
+      def[key] = grp;
     } catch (e) { console.warn('fusion voiture', e); }
-    return def.stat;
+    return def[key];
   }
   // version garée (fusionnée) accrochée au véhicule ; la version détaillée reste là, cachée, pour rouler
   attachStatic(c) {
     const st = this.staticCar(c.def); c.detail = [...c.obj.children]; c.mv = false; if (!st) return;
-    c.stat = st.clone(); c.stat.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); c.obj.add(c.stat); for (const o of c.detail) o.visible = false;
+    c.stat = st.clone(); c.stat.traverse((o) => { if (o.isMesh) { o.castShadow = !CONTACT(o); o.receiveShadow = true; } }); c.obj.add(c.stat); for (const o of c.detail) o.visible = false;
+    // version légère (≈ 4 000 triangles) pour les voitures garées au loin
+    const sf = this.staticCar(c.def, true); if (sf) { c.statFar = sf.clone(); c.statFar.visible = false; c.obj.add(c.statFar); c.far = false; }
   }
   addCar(def, x, z, yaw) {
-    const obj = def.scene.clone(true); obj.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    const obj = def.scene.clone(true); obj.traverse((o) => { if (o.isMesh) { o.castShadow = !CONTACT(o); o.receiveShadow = true; } });
     this.root.add(obj);
     const size = def.body || (def.body = this.bodySize(def)); const wheels = ['wheel-front-left', 'wheel-front-right', 'wheel-back-left', 'wheel-back-right'].map((n) => obj.getObjectByName(n) || obj.getObjectByName(n.replace(/-/g, '_')));
     const car = { def, obj, wheels, pos: V(x, this.world.groundY(x, z), z), yaw, speed: 0, steer: 0, hp: def.classe === 'blinde' ? 600 : 320, maxHp: def.classe === 'blinde' ? 600 : 320, driver: null, spawn: [x, z, yaw], dead: 0, W: size[0], L: size[2], H: size[1], max: { sport: 34, blinde: 26, police: 30, civil: 24 }[def.classe] || 26, accel: { sport: 15, blinde: 10, police: 13, civil: 9 }[def.classe] || 11, police: def.classe === 'police' };
@@ -839,7 +843,7 @@ export class Game {
     // dans la Seine : la voiture coule
     const Wt = this.world.water; if (Wt && c.pos.y < Wt.y && this.world.inWater(c.pos.x, c.pos.z) && !c.sunk) { c.sunk = true; this.fx.burst(V(c.pos.x, Wt.y + 0.2, c.pos.z), 30, { color: '#cfe3ef', speed: 6, size: 0.12, life: 1 }); if (drv) this.exitCar(drv); c.dead = 40; c.obj.visible = false; const j = this.world.dynamic.indexOf(c.col); if (j >= 0) this.world.dynamic.splice(j, 1); this.audio.play('thud', c.pos, 1); return; }
     c.rollV = lerp(c.rollV || 0, -yawRate * c.speed * 0.006, 1 - Math.exp(-dt * 6)); c.pitchV = lerp(c.pitchV || 0, (thr - brk) * -0.02, 1 - Math.exp(-dt * 5));
-    for (let i = 0; i < 4; i++) { const w = c.wheels[i]; if (!w) continue; w.rotation.x += c.speed * dt / 0.3; if (i < 2) w.rotation.y = c.steer; }
+    for (let i = 0; i < 4; i++) { const w = c.wheels[i]; if (!w) continue; w.rotation.x += c.speed * dt / (c.def.R || 0.3); if (i < 2) w.rotation.y = c.steer; }
     this.syncCar(c);
     if (drv) { drv.pos.copy(c.pos); drv.yaw = c.yaw; }
     this.carFx(c, dt, thr, brk, hand);
@@ -891,7 +895,7 @@ export class Game {
       for (const s of this.shops) { const near = s.front.distanceToSquared(cp) < 55 * 55; if (near !== s.near) { s.near = near; for (const m of s.itemMeshes) m.visible = near; } }
       for (const c of this.cars) { if (c.dead) continue; const d2 = c.obj.position.distanceToSquared(cp); c.obj.visible = d2 < 130 * 130 || !!c.driver;
         // voiture garée : un seul maillage par matière (≈ 6 dessins) ; détaillée (roues qui tournent) dès qu'elle roule
-        if (c.stat) { const mv = !!c.driver || Math.abs(c.speed) > 0.05; if (c.mv !== mv) { c.mv = mv; c.stat.visible = !mv; for (const o of c.detail) o.visible = mv; } } const sh = d2 < 50 * 50; if (c.sh !== sh) { c.sh = sh; c.obj.traverse((o) => { if (o.isMesh) o.castShadow = sh; }); } } }
+        if (c.stat) { const mv = !!c.driver || Math.abs(c.speed) > 0.05, far = !mv && !!c.statFar && d2 > 38 * 38; if (c.mv !== mv || c.far !== far) { c.mv = mv; c.far = far; c.stat.visible = !mv && !far; if (c.statFar) c.statFar.visible = far; for (const o of c.detail) o.visible = mv; } } const sh = d2 < 50 * 50; if (c.sh !== sh) { c.sh = sh; c.obj.traverse((o) => { if (o.isMesh) o.castShadow = sh && !CONTACT(o); }); } } }
     this.updateBullets(dt); this.updateProjs(dt); this.updateScorch(dt); this.updatePip(dt); this.updateNades(dt); this.updateThrown(dt); this.updateStreaks(dt); this.cloudEffects(dt); this.updateZones(dt); this.updateShops(dt); this.updateDrops(dt); this.socleIncome(dt);
     this.updateWalls(dt);
     this.specialT -= dt; if (this.specialT <= 0) { this.specialT = 120; this.specialDelivery(); }

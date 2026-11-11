@@ -15,7 +15,8 @@ import { Game } from './game.js';
 import { createPreview } from './preview.js';
 import { createLobby } from './lobby.js';
 import { applyRealism, skyEnvironment, realismUniforms } from './realisme.js';
-import { skyReflections, enhanceMap, enhanceCar } from './photo.js';
+import { skyReflections, enhanceMap } from './photo.js';
+import { buildCar, CAR_LIST } from './voitures.js';
 import { TEAMS, WEAPONS, WEAPON_CATS, CLASSES, classOf, classWeapons, kitOf, UPGRADES, SKIN_NAMES } from './data.js';
 import { svg } from './icons.js';
 import { createNet, ONLINE_MAX_TEAM } from './net.js';
@@ -142,7 +143,8 @@ const fx = createFX(scene, camera);
 // skins : ceux du jeu + ceux créés dans le studio (/studio), fabriqués au chargement sur les deux mannequins
 const MY_SKINS = userSkins().filter((s) => TEAMS[s.team]); for (const s of MY_SKINS) SKIN_NAMES[s.id] = s.name;
 const ALL_SKINS = [...BUILTIN_SKINS, ...MY_SKINS];
-const CARS = [['sportscar', 'sport', 'Coupé sport orange'], ['sportscar2', 'sport', 'Coupé sport blanc'], ['sports', 'sport', 'Coupé sport rouge'], ['roadster', 'sport', 'Cabriolet bleu'], ['muscle', 'sport', 'Muscle car jaune'], ['sports-armored', 'blinde', 'Sportive blindée'], ['cop', 'police', 'Voiture de police'], ['police-sedan', 'police', 'Berline de police'], ['suv-luxury', 'civil', 'SUV de luxe']];
+// voitures : générées par le jeu (src/voitures.js), une version détaillée et une version légère pour le lointain
+const CARS = CAR_LIST;
 let world, mapRoot, carDefs = [], night = null, lobby = null;
 let progress = { map: 0, chars: 0, guns: 0, cars: 0 };
 const showProgress = () => { const p = progress.map * 0.6 + progress.chars / ALL_SKINS.length * 0.25 + progress.guns / Object.keys(WEAPONS).length * 0.05 + progress.cars / CARS.length * 0.1; $('loadbar').style.width = (p * 100).toFixed(0) + '%'; };
@@ -152,7 +154,7 @@ async function loadAll() {
     loadMap(MAP.glb, (p) => { progress.map = p; showProgress(); }),
     Promise.all([loadSkinBases(), loadMx()]).then(([, mx]) => { for (const d of ALL_SKINS) { try { registerSkin(chars, d, mx, 1.8, { tex: 512 }); } catch (e) { console.warn('skin', d.id, e); } progress.chars++; showProgress(); } }),
     loadGuns(() => { progress.guns++; showProgress(); }),
-    Promise.all(CARS.map(async ([f, classe, nom]) => { try { const g = await loadGLB(`assets/cars/${f}.glb`); const s = g.scene; if (QN !== 'bas' && QN !== 'mobile') enhanceCar(s); const box = new THREE.Box3().setFromObject(s); const sz = s.userData.size || [box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z]; carDefs.push({ scene: s, classe, nom, size: sz }); } catch (e) { console.warn('voiture', f, e); } progress.cars++; showProgress(); })),
+    (async () => { const hq = QN !== 'bas' && QN !== 'mobile'; for (const spec of CARS) { await new Promise((r) => setTimeout(r, 0)); try { const s = buildCar(spec, { hq, lod: hq ? 1 : 0.6 }), far = buildCar(spec, { hq: false, lod: 0.32 }); carDefs.push({ scene: s, far, classe: spec[2], nom: spec[3], size: s.userData.size, R: s.children[0].userData.wheels['wheel-front-left'].radius }); } catch (e) { console.warn('voiture', spec[0], e); } progress.cars++; showProgress(); } })(),
   ]);
   $('loadtxt').textContent = 'Préparation du quartier…'; await new Promise((r) => setTimeout(r, 30));
   mapRoot = root; scene.add(root);
