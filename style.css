@@ -585,3 +585,13 @@ body.scoped #cross, body.scoped #streakbar { visibility: hidden; }
 .lb-dock { width: 360px; }
 .loadout .txt b { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .loadout .txt small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* bouton « Mettre à jour » de la barre du haut */
+.chip.upd { cursor: pointer; padding: 6px 13px 6px 7px; font: 12px Bungee, Inter; color: var(--dim); transition: color .15s, transform .14s cubic-bezier(.3,1.8,.5,1); }
+.chip.upd .ic { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 900 16px Inter; background: rgba(255,255,255,.12); color: #fff; }
+.chip.upd:hover { color: #fff; transform: translateY(-2px); }
+.chip.upd.new { color: #2a1300; background: linear-gradient(180deg, #ffe17a, #ff9a2a); box-shadow: 0 4px 0 #b04f0c, inset 0 0 0 2px #fff0bf; animation: updpulse 1.2s ease-in-out infinite alternate; }
+.chip.upd.new .ic { background: rgba(80,30,0,.2); color: #2a1300; }
+.chip.upd.busy .ic { animation: updspin .8s linear infinite; }
+@keyframes updpulse { to { transform: scale(1.06) rotate(-2deg); } }
+@keyframes updspin { to { transform: rotate(360deg); } }
+@media (max-width: 1100px) { .chip.upd .t { display: none; } .chip.upd { padding: 6px; } }
