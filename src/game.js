@@ -14,6 +14,7 @@ import { installThrows, THROWS, solveThrow } from './throws.js';
 import { svg, iconize } from './icons.js';
 import { installSeries } from './series.js';
 import { installNotoriete } from './notoriete.js';
+import { installRegie } from './regie.js';
 import { installConvois } from './convois.js';
 import { installBarricades, TIERS, tierInfo, fmtG } from './barricades.js';
 import { installLanceurs } from './lanceurs.js';
@@ -2028,4 +2029,5 @@ installBarricades(Game);
 installManiement(Game);
 installLanceurs(Game); // après les barricades : complète this.blast (vitrines)
 installTurrets(Game); // après les barricades : enrobe blast, wallPrompt, placeWall, updateWalls
-installNotoriete(Game); // en dernier : enrobe addGalons, kill, multiKill, addStreak, captureZone, killFeed, drawRank, update, build
+installNotoriete(Game); // presque en dernier : enrobe addGalons, kill, multiKill, addStreak, captureZone, killFeed, drawRank, update, build
+installRegie(Game); // tout dernier : met en scène annonces, bandeau, gains, fil, flashs (src/regie.js)
