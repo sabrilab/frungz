@@ -7,16 +7,33 @@ export const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 
 export function setupScene(renderer) {
   const scene = new THREE.Scene();
+  // ciel (passe photoréaliste) : dégradé d'atmosphère (zénith profond, horizon voilé de brume claire), halo de diffusion
+  // autour du soleil, disque solaire très lumineux (il fait réagir le bloom) et cumulus procéduraux éclairés par le soleil,
+  // qui dérivent lentement. La nuit (uniforme night, piloté par src/night.js) garde lune, étoiles et lueur de la ville.
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { top: { value: new THREE.Color('#4f86c9') }, mid: { value: new THREE.Color('#a9c8e6') }, hor: { value: new THREE.Color('#f6d7b0') }, sunDir: { value: new THREE.Vector3() }, night: { value: 0 } },
+    uniforms: { top: { value: new THREE.Color('#2f62ad') }, mid: { value: new THREE.Color('#86acd8') }, hor: { value: new THREE.Color('#d3dde6') }, sunDir: { value: new THREE.Vector3() }, night: { value: 0 }, uTime: { value: 0 }, uCloud: { value: 1 } },
     vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); gl_Position.z = gl_Position.w; }',
-    fragmentShader: `uniform vec3 top, mid, hor, sunDir; uniform float night; varying vec3 vP;
+    fragmentShader: `uniform vec3 top, mid, hor, sunDir; uniform float night, uTime, uCloud; varying vec3 vP;
       float hash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
-      void main(){ vec3 d = normalize(vP); float h = max(d.y, 0.0); vec3 c = mix(hor, mid, smoothstep(0.0, 0.18, h)); c = mix(c, top, smoothstep(0.18, 0.8, h));
+      float h2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h2(i), h2(i + vec2(1.0, 0.0)), f.x), mix(h2(i + vec2(0.0, 1.0)), h2(i + vec2(1.0)), f.x), f.y); }
+      float fbm(vec2 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 5; i++) { s += a * vn(p); p = p * 2.03 + vec2(17.1, 9.3); a *= 0.5; } return s; }
+      void main(){ vec3 d = normalize(vP); float h = max(d.y, 0.0); vec3 c = mix(hor, mid, smoothstep(0.0, 0.16, h)); c = mix(c, top, smoothstep(0.12, 0.85, h));
         float s = max(dot(d, sunDir), 0.0);
-        if (night < 0.5) c += vec3(1.0,0.75,0.45) * (pow(s, 8.0) * 0.35 + pow(s, 600.0) * 4.0);
-        else {
+        if (night < 0.5) {
+          vec3 sunC = vec3(1.0, 0.93, 0.82);
+          c += sunC * (pow(s, 6.0) * 0.22 + pow(s, 48.0) * 0.35) + vec3(1.0, 0.95, 0.85) * smoothstep(0.99975, 0.99988, s) * 40.0;
+          if (uCloud > 0.0 && d.y > 0.0) { // cumulus : projection sur un plafond plat, densité fbm, ombre propre vers le soleil
+            vec2 uv = d.xz / (d.y + 0.06) * 0.55 + uTime * vec2(0.004, 0.0025);
+            float n = fbm(uv * 2.2), cov = smoothstep(0.48, 0.78, n) * smoothstep(0.0, 0.14, d.y) * uCloud;
+            float n2 = fbm(uv * 2.2 + sunDir.xz * 0.12), lit = clamp(0.55 + (n - n2) * 5.0, 0.0, 1.0);
+            vec3 cc = mix(vec3(0.56, 0.6, 0.68), vec3(1.15, 1.1, 1.02), lit) * mix(1.0, 0.85, smoothstep(0.62, 0.9, n));
+            cc += sunC * pow(s, 5.0) * 0.9 * (1.0 - smoothstep(0.5, 0.85, n)); // liseré argenté près du soleil
+            cc = mix(cc, hor * 1.05, smoothstep(0.25, 0.0, d.y) * 0.6); // les nuages lointains se perdent dans la brume
+            c = mix(c, cc, cov * 0.92);
+          }
+        } else {
           // nuit : lune nette avec halo froid, étoiles discrètes qui s'effacent dans la lueur de la ville
           c += vec3(0.55, 0.65, 0.9) * (pow(s, 40.0) * 0.18 + pow(s, 3.0) * 0.04) + vec3(0.95, 0.97, 1.0) * smoothstep(0.99955, 0.9997, s) * 1.6;
           vec3 g = floor(d * 260.0); float st = hash(g); float tw = 0.75 + 0.25 * sin(st * 90.0);
@@ -25,20 +42,26 @@ export function setupScene(renderer) {
         if (vP.y < 0.0) c = hor * 0.9; gl_FragColor = vec4(c, 1.0); }`,
   });
   const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 16), skyMat); sky.frustumCulled = false; scene.add(sky);
-  scene.fog = new THREE.Fog('#d9cfc0', 150, 620);
-  const hemi = new THREE.HemisphereLight('#bcd3f2', '#8c7a62', 1.1); scene.add(hemi);
-  const sun = new THREE.DirectionalLight('#ffe0b8', 3.6);
+  sky.onBeforeRender = () => { skyMat.uniforms.uTime.value = performance.now() / 1000; };
+  scene.fog = new THREE.Fog('#c4ced8', 150, 620);
+  const hemi = new THREE.HemisphereLight('#bcd3f2', '#8c7a62', 0.8); scene.add(hemi);
+  const sun = new THREE.DirectionalLight('#ffe6c4', 4.0);
   const SUN = new THREE.Vector3(-0.48, 0.78, 0.4).normalize();
   sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 5, far: 260 });
+  Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 5, far: 300 });
   sun.shadow.camera.updateProjectionMatrix(); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.05;
   scene.add(sun, sun.target); skyMat.uniforms.sunDir.value.copy(SUN);
-  // l'ombre suit le joueur (cadre de 90 m, calé sur les texels pour ne pas scintiller)
-  const followShadow = (p) => {
-    const step = 90 / 2048; const cx = Math.round(p.x / step) * step, cz = Math.round(p.z / step) * step;
-    sun.target.position.set(cx, 0, cz); sun.position.set(cx + SUN.x * 140, SUN.y * 140, cz + SUN.z * 140);
+  // l'ombre suit le joueur (cadre calé sur les texels pour ne pas scintiller). lead : décalage vers l'endroit où regarde la caméra,
+  // pour que le cadre d'ombre couvre surtout ce qu'on voit
+  const followShadow = (p, lead) => {
+    const half = sun.shadow.camera.right, step = (half * 2) / sun.shadow.mapSize.x;
+    const x = p.x + (lead?.x || 0), z = p.z + (lead?.z || 0);
+    const cx = Math.round(x / step) * step, cz = Math.round(z / step) * step;
+    sun.target.position.set(cx, 0, cz); sun.position.set(cx + SUN.x * 160, SUN.y * 160, cz + SUN.z * 160);
   };
-  return { scene, sun, hemi, followShadow };
+  // taille du cadre d'ombre (m, demi-côté) et définition de la carte
+  const setShadowFrame = (half, size) => { Object.assign(sun.shadow.camera, { left: -half, right: half, top: half, bottom: -half }); sun.shadow.camera.updateProjectionMatrix(); if (sun.shadow.mapSize.x !== size) { sun.shadow.mapSize.set(size, size); sun.shadow.map?.dispose(); sun.shadow.map = null; } };
+  return { scene, sun, hemi, sky, followShadow, setShadowFrame };
 }
 
 // charge un .glb en préférant sa version .gz (le CDN ne compresse pas les .glb : 3 à 4 fois moins à télécharger), décompressée dans le navigateur

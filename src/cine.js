@@ -84,7 +84,9 @@ export class CinePass extends Pass {
     const on = this.enabled2 && this.auto > 0;
     this.k += ((on ? 1 : 0) - this.k) * (1 - Math.exp(-dt * 4)); // fondu doux à l'allumage / à la coupure
     this.dof += (this.dofT - this.dof) * (1 - Math.exp(-dt * 7)); this.focus += (this.focusT - this.focus) * (1 - Math.exp(-dt * 6));
-    u.tDiffuse.value = readBuffer.texture; u.tDepth.value = readBuffer.depthTexture;
+    // image : celle recomposée par le passage photoréaliste s'il a tourné (src/photo.js), sinon celle de la scène
+    const depth = readBuffer.depthTexture;
+    u.tDiffuse.value = this.photo?.colorOut || readBuffer.texture; u.tDepth.value = depth;
     u.uNear.value = cam.near; u.uFar.value = cam.far; u.uAspect.value = cam.aspect;
     // reprojection : projection actuelle × vue précédente × inverse(projection × vue actuelles). Même projection des deux
     // côtés : un changement de champ de vision (zoom de visée) ne fait pas de flou radial parasite.
@@ -92,12 +94,12 @@ export class CinePass extends Pass {
     const cut = !this.has || cam.position.distanceToSquared(this.prevPos) > 16 || this._d.dot(this.prevDir) < 0.82;
     this._vp.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse).invert();
     this._pvp.multiplyMatrices(cam.projectionMatrix, this.prevView).multiply(this._vp);
-    let ok = !!readBuffer.depthTexture && !cut; for (const v of this._pvp.elements) if (!Number.isFinite(v)) { ok = false; break; }
+    let ok = !!depth && !cut; for (const v of this._pvp.elements) if (!Number.isFinite(v)) { ok = false; break; }
     if (ok) u.uReproj.value.copy(this._pvp);
     // obturateur à 180° ramené à 60 images/s : même traîne à 30 ou 144 images/s
     u.uMB.value = ok ? this.mb * this.k * Math.min(2, (1 / 60) / dt) : 0;
     u.uDof.value = this.dof * this.k; u.uFocus.value = this.focus; u.uMask.value.set(this.mask[0], this.mask[1]);
-    u.uOn.value = readBuffer.depthTexture && (u.uMB.value > 0.001 || u.uDof.value > 0.01) ? 1 : 0;
+    u.uOn.value = depth && (u.uMB.value > 0.001 || u.uDof.value > 0.01) ? 1 : 0;
     this.prevView.copy(cam.matrixWorldInverse); this.prevPos.copy(cam.position); this.prevDir.copy(this._d); this.has = Number.isFinite(this._d.x + cam.position.x);
     renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
     if (this.clear) renderer.clear();

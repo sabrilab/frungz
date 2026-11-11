@@ -129,6 +129,29 @@ export function createAudio() {
   }
   function tink(pos, big) { if (!ctx) return; const out = spatial(pos, big ? 0.25 : 0.35, 4); if (!out) return; const t = ctx.currentTime, f = big ? 900 : 3800 + Math.random() * 1500; tone(out, t, 0.08, f, f * 0.97, 0.5, 'triangle'); tone(out, t + 0.07 + Math.random() * 0.04, 0.05, f * 1.1, f, 0.25, 'triangle'); }
   function click() { if (!ctx) return; const out = spatial(null, 0.4); tone(out, ctx.currentTime, 0.03, 2400, 1800, 0.4, 'square'); }
+  // bruits mécaniques des armes du joueur : chaque geste du rechargement a son son (chargeur qui sort, qui claque, culasse, pompe, cartouche, barillet…)
+  // recette : [retard, 'n' bruit filtré | 't' note, durée, …]
+  const MECH = {
+    magout: [[0, 'n', 0.07, 'bandpass', 1800, 900, 2, 0.7], [0, 't', 0.05, 520, 380, 0.16, 'square'], [0.05, 'n', 0.02, 'highpass', 4500, 3500, 0.7, 0.3]],
+    magin: [[0, 'n', 0.06, 'bandpass', 1400, 1000, 2, 0.45], [0.07, 't', 0.07, 300, 170, 0.5, 'triangle'], [0.07, 'n', 0.07, 'lowpass', 900, 300, 0.8, 0.9], [0.075, 'n', 0.015, 'highpass', 5500, 4000, 0.7, 0.5]],
+    rack: [[0, 'n', 0.07, 'bandpass', 2600, 1500, 3, 0.8], [0, 't', 0.04, 1100, 800, 0.12, 'square'], [0.13, 'n', 0.05, 'bandpass', 3200, 2000, 3, 1.0], [0.13, 't', 0.07, 240, 150, 0.5, 'triangle'], [0.135, 'n', 0.02, 'highpass', 6000, 4500, 0.7, 0.5]],
+    slide: [[0, 'n', 0.045, 'bandpass', 3400, 2200, 3, 1.0], [0, 't', 0.05, 330, 200, 0.4, 'triangle'], [0.005, 'n', 0.015, 'highpass', 6000, 4500, 0.7, 0.5]],
+    pump: [[0, 'n', 0.09, 'bandpass', 1500, 800, 2, 1.0], [0, 't', 0.07, 200, 130, 0.5, 'triangle'], [0.17, 'n', 0.08, 'bandpass', 1900, 1100, 2, 1.0], [0.17, 't', 0.08, 260, 150, 0.6, 'triangle'], [0.18, 'n', 0.02, 'highpass', 5500, 4000, 0.7, 0.45]],
+    shell: [[0, 'n', 0.05, 'bandpass', 1200, 700, 2, 0.6], [0, 't', 0.04, 420, 300, 0.3, 'triangle'], [0.05, 'n', 0.015, 'highpass', 5000, 4000, 0.7, 0.35]],
+    cylopen: [[0, 't', 0.03, 900, 600, 0.18, 'square'], [0, 'n', 0.04, 'bandpass', 2500, 1800, 3, 0.5], [0.16, 't', 0.06, 4200, 4000, 0.22, 'triangle'], [0.2, 't', 0.05, 4900, 4700, 0.18, 'triangle'], [0.25, 't', 0.05, 3700, 3600, 0.14, 'triangle']],
+    cylclose: [[0, 'n', 0.04, 'bandpass', 2000, 1200, 3, 0.8], [0, 't', 0.05, 380, 220, 0.5, 'triangle'], [0.07, 'n', 0.012, 'highpass', 6000, 5000, 0.7, 0.3], [0.1, 'n', 0.012, 'highpass', 6000, 5000, 0.7, 0.3], [0.13, 'n', 0.012, 'highpass', 6000, 5000, 0.7, 0.3]],
+    coveropen: [[0, 't', 0.04, 700, 420, 0.2, 'square'], [0, 'n', 0.06, 'bandpass', 1500, 900, 2, 0.6]],
+    coverclose: [[0, 'n', 0.06, 'lowpass', 1200, 300, 0.8, 1.0], [0, 't', 0.07, 260, 140, 0.55, 'triangle'], [0.005, 'n', 0.02, 'highpass', 5000, 3500, 0.7, 0.4]],
+    brkopen: [[0, 't', 0.03, 800, 500, 0.2, 'square'], [0.02, 'n', 0.07, 'bandpass', 1300, 700, 2, 0.7], [0.03, 't', 0.06, 220, 150, 0.35, 'triangle']],
+    brkclose: [[0, 'n', 0.05, 'lowpass', 1500, 400, 0.8, 1.1], [0, 't', 0.08, 240, 120, 0.6, 'triangle'], [0.004, 'n', 0.02, 'highpass', 5500, 4000, 0.7, 0.5]],
+    boltup: [[0, 't', 0.03, 1000, 700, 0.16, 'square'], [0, 'n', 0.035, 'bandpass', 2800, 2000, 3, 0.6]],
+    boltback: [[0, 'n', 0.1, 'bandpass', 1800, 1000, 2.5, 0.8], [0.09, 't', 0.04, 500, 350, 0.25, 'triangle']],
+    boltfwd: [[0, 'n', 0.08, 'bandpass', 2200, 1400, 2.5, 0.8], [0.08, 't', 0.06, 300, 170, 0.45, 'triangle'], [0.085, 'n', 0.02, 'highpass', 5500, 4000, 0.7, 0.4]],
+    draw: [[0, 'n', 0.05, 'bandpass', 3000, 1800, 2, 0.22], [0.06, 'n', 0.03, 'bandpass', 2400, 1600, 2, 0.16]],
+    aim: [[0, 'n', 0.07, 'lowpass', 900, 400, 0.7, 0.14], [0.02, 'n', 0.02, 'bandpass', 2600, 2000, 3, 0.07]],
+  };
+  function mech(k, v = 1) { if (!ctx || !MECH[k]) return; const out = spatial(null, 0.6 * v), t = ctx.currentTime; if (!out) return;
+    for (const r of MECH[k]) { if (r[1] === 'n') noise(out, t + r[0], r[2], r[3], r[4] * (0.95 + Math.random() * 0.1), r[5], r[6], r[7]); else tone(out, t + r[0], r[2], r[3], r[4], r[5], r[6]); } }
   function reload() { if (!ctx) return; const out = spatial(null, 0.5), t = ctx.currentTime; noise(out, t, 0.05, 'bandpass', 3000, 2500, 3, 0.6); noise(out, t + 0.35, 0.06, 'bandpass', 2200, 1800, 3, 0.7); tone(out, t + 0.36, 0.05, 900, 700, 0.3, 'square'); }
   function glass(pos) {
     if (!ctx) return; const out = spatial(pos, 1.2, 12); if (!out) return; const t = ctx.currentTime;
@@ -240,7 +263,7 @@ export function createAudio() {
     tone(out, t, 0.9, 82, 46, 0.7, 'sine'); noise(out, t, 0.25, 'lowpass', 1600, 200, 0.8, 0.45);
     [[392, 0, 0.12], [392, 0.14, 0.12], [523, 0.28, 0.5]].forEach(([f, d, du]) => { tone(out, t + d, du, f * up, f * up, 0.16, 'sawtooth'); tone(out, t + d, du, f * up * 1.5, f * up * 1.5, 0.08, 'square'); });
     if (lv >= 2) tone(out, t + 0.28, 0.6, 659 * up, 659 * up, 0.1, 'sawtooth'); }
-  const api = { newsSting, material, sentry, hurt, armorBreak, ring, muffle, whistle, crack, firework, buzz, rotor, jet, cannon, water, init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state, journal: journal.slice() }), _ctx: () => ctx };
+  const api = { newsSting, material, sentry, hurt, armorBreak, ring, muffle, whistle, crack, firework, buzz, rotor, jet, cannon, water, init, play, gun, tink, click, mech, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state, journal: journal.slice() }), _ctx: () => ctx };
   // chaque bruitage : noté dans les derniers sons joués, et une erreur audio (valeur non finie refusée par le navigateur)
   // ne remonte plus dans le code du jeu, où elle interrompait l'action en cours
   for (const k of Object.keys(Object.getOwnPropertyDescriptors(api))) { const d = Object.getOwnPropertyDescriptor(api, k); if (typeof d.value !== 'function' || k === 'init' || k === 'debug' || k === '_ctx') continue; const f = d.value, quiet = k === 'engine' || k === 'roll' || k === 'muffle';

@@ -31,6 +31,18 @@ kbd { display: inline-block; padding: 0 6px; border-radius: 5px; background: rgb
 #cross .t { top: calc(-9px - var(--g, 6px)); } #cross .b { top: var(--g, 6px); }
 #cross .l { left: calc(-9px - var(--g, 6px)); } #cross .r { left: var(--g, 6px); }
 #cross.hit > i { background: #ff4a3a; }
+/* curseur selon l'arme : point central, croix fine qui s'ouvre avec la dispersion ; cercle pour les fusils à pompe et les lanceurs */
+#cross > i { border-radius: 1px; box-shadow: 0 0 0 1px rgba(0,0,0,.55), 0 0 3px rgba(0,0,0,.6); }
+#cross::before { content: ''; position: absolute; left: -1.5px; top: -1.5px; width: 3px; height: 3px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+#cross::after { content: ''; position: absolute; display: none; box-sizing: border-box; border: 2px solid rgba(255,255,255,.92); border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.45), inset 0 0 0 1px rgba(0,0,0,.45);
+  width: calc(2 * var(--g, 6px) + 16px); height: calc(2 * var(--g, 6px) + 16px); left: calc(-1 * var(--g, 6px) - 8px); top: calc(-1 * var(--g, 6px) - 8px); transition: width .06s, height .06s, left .06s, top .06s; }
+#cross[data-k="pompe"]::after, #cross[data-k="explosif"]::after { display: block; }
+#cross[data-k="pompe"] > i, #cross[data-k="explosif"] > i { display: none; }
+#cross[data-k="pm"] > i, #cross[data-k="pistolet"] > i { opacity: .92; }
+#cross[data-k="pistolet"] .t, #cross[data-k="pistolet"] .b { height: 6px; } #cross[data-k="pistolet"] .l, #cross[data-k="pistolet"] .r { width: 6px; }
+#cross[data-k="pistolet"] .t { top: calc(-6px - var(--g, 6px)); } #cross[data-k="pistolet"] .l { left: calc(-6px - var(--g, 6px)); }
+#cross[data-k="precision"]::before { width: 4px; height: 4px; left: -2px; top: -2px; }
+#cross.hit::before { background: #ff4a3a; } #cross.hit::after { border-color: #ff4a3a; }
 /* marqueur de touche : 4 traits en X séparés du centre, taille selon les dégâts (--s) */
 #hitmark { position: absolute; left: 0; top: 0; width: 0; height: 0; opacity: 0; --s: 1; --c: #fff; }
 #hitmark i { position: absolute; left: -1.5px; top: -18px; width: 3px; height: 10px; background: var(--c); box-shadow: 0 0 2px rgba(0,0,0,.9); transform-origin: 1.5px 18px; }
