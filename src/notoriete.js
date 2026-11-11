@@ -97,15 +97,15 @@ const CSS = `
 #news .live{position:absolute;top:7px;right:8px;font:900 9.5px Inter;letter-spacing:.1em;color:#fff;background:#c8102e;padding:2px 6px;border-radius:3px;z-index:2;display:none}#news.l .live{display:block}
 #news .loc{position:absolute;top:27px;left:8px;font:800 9px Inter;letter-spacing:.1em;color:#fff;text-shadow:0 1px 2px #000;z-index:2;display:none}#news.l .loc{display:block}#news.v .say{display:none}#news.v.l .say{display:block}
 #news .low{position:absolute;left:0;right:0;bottom:16px;z-index:2;display:flex;flex-direction:column;align-items:flex-start}
-#news .tag{background:#c8102e;color:#fff;font:900 9.5px Inter;letter-spacing:.1em;padding:2px 7px}
+#news .who{background:rgba(11,30,77,.92);color:#fff;font:800 9.5px Inter;letter-spacing:.04em;padding:2px 7px}#news .who:empty{display:none}#news.dx::after{content:'';position:absolute;top:0;bottom:0;left:50%;width:2px;background:#fff;z-index:2}#news .tag{background:#c8102e;color:#fff;font:900 9.5px Inter;letter-spacing:.1em;padding:2px 7px}
 #news .head{background:rgba(255,255,255,.96);color:#0b1e4d;font:900 13px/1.15 Inter;padding:4px 8px;max-width:100%;box-sizing:border-box;text-transform:uppercase;letter-spacing:.01em}
-#news .say{position:absolute;left:8px;right:8px;bottom:64px;z-index:2;font:700 11.5px/1.3 Inter;color:#fff;text-align:center;text-shadow:0 1px 2px #000,0 0 6px #000}
+#news .say{position:absolute;left:8px;right:8px;top:44px;z-index:2;font:700 11.5px/1.3 Inter;color:#fff;text-align:center;text-shadow:0 1px 2px #000,0 0 6px #000}
 #news .tick{position:absolute;left:0;right:0;bottom:0;height:16px;background:#0b1e4d;color:#fff;font:700 10px/16px Inter;white-space:nowrap;overflow:hidden;z-index:2}#news .tick span{display:inline-block;padding-left:100%;animation:ntick 22s linear infinite}
 body.touch #news{left:auto;right:var(--sr,10px);top:calc(var(--st,8px) + 2px);width:168px;height:96px}body.touch #news .loc,body.touch #news .bug{font-size:8px}body.touch #news .live{font-size:7.5px}body.touch #news .say{display:none!important}body.touch #news .tick{display:none}body.touch #news .low{bottom:4px}body.touch #news .head{font-size:10px;padding:3px 6px}body.touch.newson #feed{opacity:0}body.touch #chaos{top:calc(var(--st,8px) + 44px);font-size:8.5px;padding:2px 7px}body.touch #chaos .seg i{width:9px}body.touch #notopop{top:calc(var(--st,8px) + 66px)}body.touch #notopop b{font-size:20px}body.touch #notopop .st{font-size:24px}
 @keyframes ntick{to{transform:translateX(-100%)}}
 #news.u .tag{background:#ff2f6d;animation:chaosblink .6s steps(1) infinite}
 #news .rec{position:absolute;inset:0;z-index:1;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.35))}
-@media (max-width:760px),(max-height:520px){#news{width:204px;height:122px;top:90px;left:10px}#news .say,#news.v.l .say{display:none}#news .head{font-size:10.5px;padding:3px 6px}#news .say{font-size:9.5px;bottom:48px}#news .tick{display:none}#news .low{bottom:4px}#chaos{top:112px}#notopop{top:140px}#notopop b{font-size:22px}#notopop .st{font-size:26px}}
+@media (max-width:760px),(max-height:520px){#news{width:204px;height:122px;top:90px;left:10px}#news .say,#news.v.l .say{display:none}#news .head{font-size:10.5px;padding:3px 6px}#news .tick{display:none}#news .low{bottom:4px}#chaos{top:112px}#notopop{top:140px}#notopop b{font-size:22px}#notopop .st{font-size:26px}}
 `;
 
 export function installNotoriete(Game) {
@@ -243,7 +243,7 @@ export function installNotoriete(Game) {
   P.newsInit = function () {
     if (!document.getElementById('notoCss')) { const s = document.createElement('style'); s.id = 'notoCss'; s.textContent = CSS; document.head.appendChild(s); }
     const hud = $('hud'); if (!hud) return;
-    for (const [id, html] of [['chaos', ''], ['notopop', ''], ['news', '<div class="rec"></div><div class="bug">FRUNGZ<b>INFO</b></div><div class="live">● EN DIRECT</div><div class="loc"></div><div class="say"></div><div class="low"><span class="tag"></span><span class="head"></span></div><div class="tick"><span></span></div><div class="wipe"></div>']]) {
+    for (const [id, html] of [['chaos', ''], ['notopop', ''], ['news', '<div class="rec"></div><div class="bug">FRUNGZ<b>INFO</b></div><div class="live">● EN DIRECT</div><div class="loc"></div><div class="say"></div><div class="low"><span class="who"></span><span class="tag"></span><span class="head"></span></div><div class="tick"><span></span></div><div class="wipe"></div>']]) {
       let el = $(id); if (!el) { el = document.createElement('div'); el.id = id; hud.appendChild(el); } el.innerHTML = html; el.className = '';
     }
     document.body.classList.remove('newson');
@@ -254,8 +254,8 @@ export function installNotoriete(Game) {
     const L = LIEU();
     this.newsPush({ pri: 1, at: V(0, 0, 0), key: 'open', delay: 14, gfx: { kind: 'open' }, head: `Domination ${L.a}`,
       say: pick([`Bonsoir. Situation tendue ce soir ${L.a} : la Brigade et les Frungz se disputent le quartier, zone par zone.`, `Bonsoir à tous. ${L.a.charAt(0).toUpperCase() + L.a.slice(1)}, les premiers attroupements sont signalés. Nous suivons la situation en direct.`]) });
-    this.newsStudioInit();
     voiceInit();
+    this.newsStudioInit();
   };
   P.newsPush = function (st) {
     const N = this.news; if (!N || this.save.settings?.news === false) return;
@@ -298,21 +298,57 @@ export function installNotoriete(Game) {
     this.newsPush({ pri: lv >= 4 ? 2 : 1, key: 'chaos', gfx: { kind: 'chaos', n: lv }, head: [null, null, 'Les affrontements s\'intensifient', 'Émeute en cours', 'Le quartier plongé dans le chaos'][lv], say, hot: true });
   };
 
-  // ---------------------------------------------------------------- une cinématique : plateau, puis hélico en direct
+  // ---------------------------------------------------------------- une cinématique : un montage de plans
+  // Plans possibles : plateau (gros plan sur la personne qui parle), plateau large à deux, duplex (écran partagé
+  // plateau / envoyé spécial), envoyé spécial seul sur place, hélico de la chaîne. Chaque sujet tire un montage au sort.
   P.newsStart = function (st) {
     const N = this.news, el = $('news'); if (!el) return;
-    N.K = { st, t: 0, phase: 'studio', studioT: Math.min(4.2, Math.max(2.6, st.say.length * 0.052)), dur: 0, seed: Math.random() * 6.28 };
-    N.K.dur = N.K.studioT + 4.4;
-    this.newsText(); this.newsGfx(st.gfx);
-    const voiced = this.save.settings?.newsVoice !== false && !!window.speechSynthesis && voices.length > 0;
-    el.className = 'on sting' + (N.chaos >= 3 ? ' u' : '') + (voiced ? ' v' : ''); document.body.classList.add('newson');
+    const S = N.pres, ready = !!S?.ready, L = LIEU();
+    if (S && !S.voices?.A && voices.length) S.voices = pickVoices(S.sex).voices; // voix chargées après coup (Chrome)
+    const len = (t) => Math.max(2.3, Math.min(7.5, t.length * 0.066 + 0.7));
+    const line = (who, text) => ({ who, text, dur: len(text) });
+    const A = S?.lead || 'A', B = A === 'A' ? 'B' : 'A';
+    const intro = pick([`Tout de suite, direction ${L.a} : notre envoyé spécial est sur place.`, `On rejoint notre équipe sur le terrain, ${L.a}.`, `Retrouvons notre reporter, au cœur des affrontements.`]);
+    const outro = pick([`On reste évidemment sur cette affaire.`, `Nous suivons la situation minute par minute.`, `Restez avec nous, on y revient très vite.`]);
+    let shots;
+    if (!ready) shots = [{ kind: 'heli', ...line(null, st.say), dur: Math.max(4.5, len(st.say)) }];
+    else {
+      const v = st.variant || pick(st.pri >= 3 ? ['solo', 'duo', 'duplex', 'terrain', 'terrain', 'helifirst'] : ['solo', 'duo', 'duo', 'duplex', 'terrain', 'helifirst']);
+      if (v === 'solo') shots = [{ kind: 'studio', ...line(A, st.say) }, { kind: 'heli', dur: 3.6 }];
+      else if (v === 'duo') shots = Math.random() < 0.5
+        ? [{ kind: 'wide', dur: 1.4 }, { kind: 'studio', ...line(pick([A, B]), st.say) }, { kind: 'heli', dur: 3.4 }]
+        : [{ kind: 'wide', ...line(A, pick(['Une information qui vient de tomber.', 'On apprend à l\'instant de nouveaux éléments.', 'La situation évolue très vite.'])) }, { kind: 'studio', ...line(B, st.say) }, { kind: 'heli', dur: 3.2 }];
+      else if (v === 'duplex') shots = [{ kind: 'studio', ...line(A, intro) }, { kind: 'duplex', ...line('R', st.say) }, { kind: 'heli', dur: 3 }];
+      else if (v === 'terrain') shots = [{ kind: 'studio', ...line(A, intro) }, { kind: 'reporter', ...line('R', st.say) }, { kind: 'heli', dur: 3 }];
+      else shots = [{ kind: 'heli', ...line(A, st.say), dur: Math.max(4, len(st.say)) }, { kind: 'studio', ...line(A, outro) }];
+    }
+    N.K = { st, t: 0, i: -1, t0: 0, shots, dur: shots.reduce((a, x) => a + x.dur, 0), seed: Math.random() * 6.28 };
+    if (this.save.settings?.newsVoice !== false) cloudPrepare(N.K, S?.sex);
+    this.newsText(); this.newsGfx(st.gfx); this.newsAim();
+    el.className = 'on sting' + (N.chaos >= 3 ? ' u' : ''); document.body.classList.add('newson');
     this.audio.newsSting?.(N.chaos);
-    if (this.save.settings?.newsVoice !== false) setTimeout(() => speak(st.say, this.news?.pres?.voice), 450);
+    this.newsShot(0, 0.45);
+  };
+  // passe au plan i (voix, cadrage, animations des présentateurs)
+  P.newsShot = function (i, delay = 0) {
+    const N = this.news, K = N.K, el = $('news'), sh = K.shots[i]; K.i = i; K.t0 = K.t; const S = N.pres;
+    if (i > 0) { el.classList.remove('sting', 'cut'); void el.offsetWidth; el.classList.add('cut'); }
+    el.classList.toggle('l', sh.kind === 'heli' || sh.kind === 'reporter' || sh.kind === 'duplex'); el.classList.toggle('dx', sh.kind === 'duplex');
+    if ((sh.kind === 'reporter' || sh.kind === 'duplex') && !this.newsRepSetup()) sh.kind = sh.kind === 'duplex' ? 'studio' : 'heli';
+    if (sh.kind === 'heli') this.newsLiveSetup();
+    if (S?.ready) { // la personne qui parle parle, les autres écoutent
+      for (const [id, P2] of Object.entries(S.people)) talk(P2, sh.who === id);
+      if (S.rep) S.rep.root.visible = sh.kind === 'reporter' || sh.kind === 'duplex';
+    }
+    const who = sh.who && S?.names ? S.names[sh.who] : null;
+    el.querySelector('.say').textContent = sh.text || ''; el.querySelector('.who').textContent = who ? (sh.who === 'R' ? `${who} · envoyé${S.sex.R === 'F' ? 'e' : ''} spécial${S.sex.R === 'F' ? 'e' : ''}` : who) : '';
+    cloudStop();
+    if (sh.text && this.save.settings?.newsVoice !== false) { const v = S?.voices?.[sh.who] || S?.voices?.A; const go = () => { if (this.news?.K === K && K.i === i && !cloudPlay(sh)) speak(sh.text, v, sh.who === 'R' ? 1.08 : 1.12); }; if (delay) setTimeout(go, delay * 1000); else go(); }
+    el.classList.toggle('v', !!(sh.text && this.save.settings?.newsVoice !== false && (voices.length || CLOUD.ok)));
   };
   P.newsText = function () {
     const N = this.news, K = N.K, el = $('news'); if (!K || !el) return; const C = CHAOS[N.chaos];
     el.querySelector('.tag').textContent = C.tag; el.querySelector('.head').textContent = K.st.head;
-    el.querySelector('.say').textContent = K.st.say;
     const mw = this.mostWanted(), tc = this.topCop(), zs = (this.zoneState || []).map((z) => `${z.id} ${z.owner ? (z.owner === 'ordre' ? 'Brigade' : 'Frungz') : 'libre'}`).join(' · ');
     el.querySelector('.tick span').textContent = [`BRIGADE ${this.score.ordre} — FRUNGZ ${this.score.civils}`, `ZONES : ${zs}`, mw ? `ENNEMI PUBLIC N°1 : ${onAir(mw)} ${'★'.repeat(mw.stars)}` : '', tc ? `PLUS HAUT GRADÉ : ${GRADES[tc.grade].nom} ${onAir(tc)}` : '', `${N.total} éliminations depuis le début des affrontements`, `TEMPÉRATURE : ${C.nom}`].filter(Boolean).join('     ▪     ');
     el.querySelector('.loc').textContent = `${LIEU().nom} · ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
@@ -320,41 +356,62 @@ export function installNotoriete(Game) {
   P.newsStep = function (dt) {
     const N = this.news, K = N.K, el = $('news');
     K.t += dt;
-    if (K.phase === 'studio' && K.t >= K.studioT) {
-      K.phase = 'live'; this.newsLiveSetup(); el.classList.remove('sting'); void el.offsetWidth; el.classList.add('cut', 'l');
+    // un plan dure sa durée prévue, ou jusqu'à la fin de la réplique si la voix du serveur est plus longue (4 s de plus au maximum)
+    const cur = K.shots[K.i], a = cur.audio, talking = a && cur.asked && !a.ended && !a.error && (!cur.started || !a.paused) && K.t - K.t0 < cur.dur + 4;
+    const done = K.t - K.t0 >= cur.dur && !talking;
+    if ((done && K.i === K.shots.length - 1) || this.over) {
+      cloudStop(); N.K = null; N.lastEnd = this.time; el.className = ''; document.body.classList.remove('newson'); if (N.pres?.rep) N.pres.rep.root.visible = false; return;
     }
-    if (K.t >= K.dur || this.over) {
-      N.K = null; N.lastEnd = this.time; el.className = ''; document.body.classList.remove('newson'); return;
-    }
-    // présentateur
-    const S = N.pres; if (S?.ch && K.phase === 'studio') { S.ch.mixer.update(dt); S.talk += dt; }
-    if (K.phase === 'live') this.newsLiveTrack(dt);
+    if (done) this.newsShot(K.i + 1);
+    const sh = K.shots[K.i], S = N.pres;
+    if (S?.ready) { for (const p of Object.values(S.people)) p.ch.mixer.update(dt); if (S.rep?.root.visible) S.rep.ch.mixer.update(dt); }
+    if (sh.kind === 'heli' || sh.kind === 'reporter' || sh.kind === 'duplex') this.newsLiveTrack(dt);
   };
-  // hélico de la chaîne : on choisit un angle qui voit la scène, puis orbite lente au téléobjectif
-  P.newsLiveSetup = function () {
+  // cible des images de terrain : le sujet, sinon le point chaud
+  P.newsAim = function () {
     const K = this.news.K, st = K.st; const subj = st.subject && !st.subject.gone ? st.subject : null;
     let tgt = subj ? subj.pos.clone() : st.hot ? this.newsHot() : st.at ? st.at.clone() : null; if (!tgt) tgt = this.newsHot() || this.player.pos.clone();
     if (st.at && !subj) tgt.y = this.world.groundY(tgt.x, tgt.z, (tgt.y || 0) + 2);
     K.subj = subj; K.tgt = tgt.clone().add(V(0, 1, 0)); K.look = K.tgt.clone();
-    let best = null; const R = rnd(17, 22), H = rnd(9, 13);
-    for (let i = 0; i < 10; i++) { const ang = K.seed + i * 0.63; const e = V(K.tgt.x + Math.sin(ang) * R, K.tgt.y + H + (i > 5 ? 10 : 0), K.tgt.z + Math.cos(ang) * R); if (this.world.los(e, K.tgt)) { best = ang; K.H = e.y - K.tgt.y; break; } }
+  };
+  // hélico de la chaîne : un angle qui voit la scène, puis orbite lente au téléobjectif
+  P.newsLiveSetup = function () {
+    const K = this.news.K; let best = null; const R = rnd(17, 22), H = rnd(9, 13);
+    for (let i = 0; i < 10; i++) { const ang = K.seed + i * 0.63; const e = V(K.tgt.x + Math.sin(ang) * R, K.tgt.y + H + (i > 5 ? 10 : 0), K.tgt.z + Math.cos(ang) * R); if (this.world.groundY(e.x, e.z, e.y + 60) < e.y - 2 && this.world.los(e, K.tgt)) { best = ang; K.H = e.y - K.tgt.y; break; } }
     K.ang = best ?? K.seed; K.R = best == null ? 10 : R; K.H = best == null ? 42 : K.H; K.fov = best == null ? 30 : 21;
+  };
+  // envoyé spécial : posé à 9-13 m de la scène, face caméra, l'action derrière lui
+  P.newsRepSetup = function () {
+    const N = this.news, K = N.K, S = N.pres; if (!S?.rep) return false; if (K.rp) return true;
+    const W = this.world, T = K.tgt;
+    for (let i = 0; i < 14; i++) {
+      const ang = K.seed + 1.1 + i * 0.45, d = V(Math.sin(ang), 0, Math.cos(ang)), side = V(d.z, 0, -d.x);
+      const [x, z] = W.randomFree(T.x + d.x * rnd(9, 13), T.z + d.z * rnd(9, 13), 1.5); const pos = V(x, 0, z); pos.y = W.groundY(x, z, T.y + 1);
+      if (Math.abs(pos.y - (T.y - 1)) > 3) continue;
+      const head = pos.clone().add(V(0, 1.55, 0)), cam = pos.clone().addScaledVector(d, 1.9).addScaledVector(side, 0.55).add(V(0, 1.6, 0));
+      if (!W.los(cam, head) || !W.los(head, T)) continue;
+      K.rp = { pos, cam, look: head.clone().addScaledVector(side, 0.45).add(V(0, -0.22, 0)), look2: head.clone().addScaledVector(side, 0.06).add(V(0, -0.25, 0)), yaw: Math.atan2(d.x, d.z) };
+      const R = S.rep.root; R.position.copy(pos); R.rotation.y = K.rp.yaw; R.updateMatrixWorld(true); return true;
+    }
+    return false;
   };
   P.newsLiveTrack = function (dt) {
     const K = this.news.K; if (K.subj && !K.subj.gone) K.tgt.lerp(K.subj.pos.clone().add(V(0, 1, 0)), 1 - Math.exp(-dt * 2.2));
     K.look.lerp(K.tgt, 1 - Math.exp(-dt * 3)); K.ang += dt * 0.07;
   };
 
-  // ---------------------------------------------------------------- plateau du journal (petite scène à part)
+  // ---------------------------------------------------------------- plateau du journal (petite scène à part) et envoyé spécial
   P.newsStudioInit = function () {
-    const N = this.news; if (N.pres || !Object.keys(chars).length) { N.pres = N.pres || this._presKeep; return; }
-    if (this._presKeep) { N.pres = this._presKeep; return; }
-    const S = { scene: new THREE.Scene(), cam: new THREE.PerspectiveCamera(30, 1.6, 0.05, 50), talk: 0 };
+    const N = this.news;
+    if (this._presKeep) { N.pres = this._presKeep; if (N.pres.rep && !N.pres.rep.root.parent) this.root.add(N.pres.rep.root); else if (N.pres.rep && N.pres.rep.root.parent !== this.root) this.root.add(N.pres.rep.root); return; }
+    const S = { scene: new THREE.Scene(), cam: new THREE.PerspectiveCamera(30, 1.6, 0.05, 50), people: {}, ready: false };
+    N.pres = this._presKeep = S;
     S.scene.background = new THREE.Color('#0a1430');
     S.scene.add(new THREE.HemisphereLight('#cfe0ff', '#1a1420', 1.3));
     const key = new THREE.DirectionalLight('#fff4e6', 2.6); key.position.set(1.5, 2.5, 3); S.scene.add(key);
+    const fill = new THREE.DirectionalLight('#ffe9d6', 1.2); fill.position.set(-2.5, 1.8, 2.5); S.scene.add(fill);
     const rim = new THREE.DirectionalLight('#6aa0ff', 2.2); rim.position.set(-2, 2.2, -2); S.scene.add(rim);
-    // fond : écrans, skyline floue, logo
+    // fond : skyline de nuit, écrans, logo
     const bg = document.createElement('canvas'); bg.width = 1024; bg.height = 512; const g = bg.getContext('2d');
     const gr = g.createLinearGradient(0, 0, 0, 512); gr.addColorStop(0, '#0b1e4d'); gr.addColorStop(1, '#050b1f'); g.fillStyle = gr; g.fillRect(0, 0, 1024, 512);
     for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(${pick(['255,200,120', '160,200,255', '255,255,255'])},${rnd(0.05, 0.22)})`; g.beginPath(); g.arc(rnd(0, 1024), rnd(250, 420), rnd(4, 18), 0, 7); g.fill(); }
@@ -362,27 +419,34 @@ export function installNotoriete(Game) {
     g.strokeStyle = 'rgba(120,170,255,.18)'; g.lineWidth = 2; for (let x = 0; x <= 1024; x += 128) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 512); g.stroke(); }
     g.fillStyle = '#c8102e'; g.fillRect(0, 446, 1024, 10); g.font = '900 64px Inter, Arial'; g.fillStyle = 'rgba(255,255,255,.9)'; g.fillText('FRUNGZ', 60, 120); g.fillStyle = '#ff3b4a'; g.fillText('INFO', 330, 120);
     const bgt = new THREE.CanvasTexture(bg); bgt.colorSpace = THREE.SRGBColorSpace;
-    const back = new THREE.Mesh(new THREE.PlaneGeometry(7, 3.5), new THREE.MeshBasicMaterial({ map: bgt })); back.position.set(0.4, 1.6, -2.6); S.scene.add(back);
-    // écran d'incrustation par-dessus l'épaule (mis à jour à chaque sujet)
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(9, 4.5), new THREE.MeshBasicMaterial({ map: bgt })); back.position.set(0, 1.8, -2.8); S.scene.add(back);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(12, 8), new THREE.MeshStandardMaterial({ color: '#10182e', roughness: 0.35, metalness: 0.4 })); floor.rotation.x = -Math.PI / 2; S.scene.add(floor);
+    // grand écran au mur, entre les deux présentateurs (mis à jour à chaque sujet)
     S.gfx = document.createElement('canvas'); S.gfx.width = 512; S.gfx.height = 300; S.gfxT = new THREE.CanvasTexture(S.gfx); S.gfxT.colorSpace = THREE.SRGBColorSpace;
-    const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.586), new THREE.MeshBasicMaterial({ map: S.gfxT })); scr.position.set(0.62, 1.62, -0.7); scr.rotation.y = -0.18; S.scene.add(scr);
-    const frame = new THREE.Mesh(new THREE.PlaneGeometry(1.04, 0.626), new THREE.MeshBasicMaterial({ color: '#d8e3ff' })); frame.position.copy(scr.position).add(V(0.004, 0, -0.01)); frame.rotation.y = scr.rotation.y; S.scene.add(frame);
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 0.73), new THREE.MeshBasicMaterial({ map: S.gfxT })); scr.position.set(0, 1.95, -1.5); S.scene.add(scr);
+    const frame = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.78), new THREE.MeshBasicMaterial({ color: '#d8e3ff' })); frame.position.set(0, 1.95, -1.51); S.scene.add(frame);
     // bureau
-    const desk = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.08, 0.8), new THREE.MeshStandardMaterial({ color: '#e9edf5', roughness: 0.25, metalness: 0.1 })); desk.position.set(-0.15, 1.02, 0.35); S.scene.add(desk);
-    const front = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.0, 0.06), new THREE.MeshStandardMaterial({ color: '#0b1e4d', roughness: 0.4, metalness: 0.3, emissive: '#0b1e4d', emissiveIntensity: 0.3 })); front.position.set(-0.15, 0.5, 0.74); S.scene.add(front);
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 0.065), new THREE.MeshBasicMaterial({ color: '#c8102e' })); strip.position.set(-0.15, 0.93, 0.745); S.scene.add(strip);
-    // présentateur(rice) : la voix choisie décide
-    const v = pickVoice(); S.voice = v; const sex = v && MALE_VOICES.test(v.name) ? 'M' : v ? 'F' : pick(['F', 'M']);
-    try {
-      const def = PRES[sex]; const clips = Object.values(chars).find((c) => c.clips?.length)?.clips || [];
-      if (!chars[def.id]) registerSkin(chars, def, clips, sex === 'F' ? 1.7 : 1.78, { tex: 256 });
-      const ch = makeCharacter(def.id); ch.root.position.set(-0.3, 0, 0); ch.root.rotation.y = 0.12; ch.model.traverse((o) => { if (o.isMesh) { o.castShadow = o.receiveShadow = false; o.frustumCulled = false; } }); S.scene.add(ch.root);
-      const idle = ch.actions.MX_Idle || ch.actions.Idle || Object.values(ch.actions)[0]; idle?.play();
-      S.ch = ch; S.head = ch.bones.Head || Object.values(ch.bones).find((b) => /head/i.test(b.name)); S.chest = ch.bones.Chest || Object.values(ch.bones).find((b) => /chest|spine2/i.test(b.name));
-      const hb = new THREE.Box3().setFromObject(ch.model); S.eyeY = hb.max.y - 0.12;
-    } catch (e) { console.warn('présentateur', e); S.eyeY = 1.6; }
-    S.cam.position.set(-0.05, (S.eyeY || 1.6) - 0.05, 2.05); S.cam.lookAt(0.1, (S.eyeY || 1.6) - 0.22, 0);
-    N.pres = this._presKeep = S;
+    const deskM = new THREE.MeshStandardMaterial({ color: '#e9edf5', roughness: 0.25, metalness: 0.1 });
+    const desk = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.08, 0.8), deskM); desk.position.set(0, 1.02, 0.4); S.scene.add(desk);
+    const front = new THREE.Mesh(new THREE.BoxGeometry(2.9, 1.0, 0.06), new THREE.MeshStandardMaterial({ color: '#0b1e4d', roughness: 0.4, metalness: 0.3, emissive: '#0b1e4d', emissiveIntensity: 0.3 })); front.position.set(0, 0.5, 0.79); S.scene.add(front);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.05, 0.065), new THREE.MeshBasicMaterial({ color: '#c8102e' })); strip.position.set(0, 0.93, 0.795); S.scene.add(strip);
+    for (const x of [-0.62, 0.62]) { const lap = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.015, 0.24), new THREE.MeshStandardMaterial({ color: '#2a2f38', metalness: 0.6, roughness: 0.3 })); lap.position.set(x * 0.9, 1.07, 0.48); S.scene.add(lap); }
+    // voix et personnes : présentatrice / présentateur selon les voix du navigateur, envoyé(e) spécial(e) avec une autre voix
+    const vs = pickVoices(); S.voices = vs.voices; S.sex = vs.sex; S.lead = 'A';
+    S.names = { A: S.sex.A === 'F' ? 'Claire Morand' : 'Julien Vasseur', B: S.sex.B === 'F' ? 'Inès Lacroix' : 'Marc Delorme', R: S.sex.R === 'F' ? 'Sofia Benali' : 'Hugo Ferrand' };
+    loadNewsClips().then((clips) => {
+      if (!clips.length) return;
+      const mk = (def, h) => { if (!chars[def.id]) registerSkin(chars, def, clips, h, { tex: 256 }); const ch = makeCharacter(def.id); ch.model.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; o.frustumCulled = false; } }); return { ch, cur: null }; };
+      for (const [id, x, ry] of [['A', -0.62, 0.16], ['B', 0.62, -0.16]]) {
+        const sex = S.sex[id], P2 = mk(sex === 'F' ? PRES.F : PRES.M, sex === 'F' ? 1.7 : 1.78); P2.ch.root.position.set(x, 0, 0); P2.ch.root.rotation.y = ry; S.scene.add(P2.ch.root);
+        P2.head = P2.ch.bones.Head || Object.values(P2.ch.bones).find((b) => /head/i.test(b.name)); P2.x = x; S.people[id] = P2; talk(P2, false);
+      }
+      // envoyé spécial : dans la ville, caché hors des reportages ; micro en main
+      const R = mk(S.sex.R === 'F' ? REP.F : REP.M, S.sex.R === 'F' ? 1.68 : 1.78); R.root = R.ch.root; R.root.visible = false; this.root.add(R.root); talk(R, true);
+      const hand = R.ch.bones.WristR || Object.values(R.ch.bones).find((b) => /^(wrist|hand)[._]?r$/i.test(b.name));
+      if (hand) { const k = 1 / (R.ch.model.scale.x || 1), mic = new THREE.Group(); const m1 = new THREE.Mesh(new THREE.CylinderGeometry(0.014 * k, 0.012 * k, 0.2 * k, 8), new THREE.MeshStandardMaterial({ color: '#1a1a1c', roughness: 0.5 })); const m2 = new THREE.Mesh(new THREE.SphereGeometry(0.026 * k, 10, 8), new THREE.MeshStandardMaterial({ color: '#333', roughness: 0.8 })); m2.position.y = 0.11 * k; const m3 = new THREE.Mesh(new THREE.BoxGeometry(0.05 * k, 0.04 * k, 0.05 * k), new THREE.MeshStandardMaterial({ color: '#c8102e' })); m3.position.y = 0.06 * k; mic.add(m1, m2, m3); mic.position.y = 0.06 * k; hand.add(mic); }
+      S.rep = R; S.ready = true;
+    }).catch((e) => console.warn('journal', e));
   };
   P.newsGfx = function (G = {}) {
     const S = this.news.pres; if (!S?.gfx) return; const g = S.gfx.getContext('2d'), W = 512, H = 300;
@@ -402,48 +466,103 @@ export function installNotoriete(Game) {
   };
   // rendu de l'incrustation (après l'image principale, comme la kill-cam)
   P.renderNews = function (renderer, scene) {
-    const N = this.news, K = N?.K; if (!K) return; const el = $('news'); if (!el) return;
+    const N = this.news, K = N?.K; if (!K || K.i < 0) return; const el = $('news'); if (!el) return;
     const r = el.getBoundingClientRect(), cr = renderer.domElement.getBoundingClientRect(); if (r.width < 10) return;
-    let sc, cam;
-    if (K.phase === 'studio') {
-      const S = N.pres; if (!S) return; sc = S.scene; cam = S.cam; cam.aspect = r.width / r.height;
-      // le présentateur parle : petits hochements de tête, buste qui accompagne
-      if (S.head) { const t = S.talk; S.head.rotation.x += Math.sin(t * 7.3) * 0.035 + Math.sin(t * 2.1) * 0.02; S.head.rotation.y += Math.sin(t * 1.3) * 0.05; }
-      if (S.chest) S.chest.rotation.y += Math.sin(S.talk * 0.9) * 0.03;
-      // léger travelling avant pendant la prise
-      const k = Math.min(1, K.t / K.studioT); cam.fov = 30 - k * 3;
-    } else {
-      sc = scene; cam = this.newsCam || (this.newsCam = new THREE.PerspectiveCamera(24, 1.6, 0.5, 900)); cam.aspect = r.width / r.height;
-      const t = this.time; cam.fov = K.fov + Math.sin(t * 0.6) * 0.6;
+    const sh = K.shots[K.i], S = N.pres, t = this.time, kt = K.t - K.t0;
+    const x0 = r.left - cr.left, y0 = cr.bottom - r.bottom;
+    const studioCam = (who, w, h) => {
+      const cam = S.cam; cam.aspect = w / h; const P2 = who && S.people[who];
+      if (P2) { const side = Math.sign(P2.x), hp = P2.head ? P2.head.getWorldPosition(new THREE.Vector3()) : V(P2.x, 1.6, 0); hp.y += 0.08; cam.fov = 27 - Math.min(1, kt / sh.dur) * 2.5; cam.position.set(hp.x - side * 0.3, hp.y + 0.02, hp.z + 1.9); cam.lookAt(hp.x + side * 0.1, hp.y - 0.2, hp.z); }
+      else { cam.fov = 34; cam.position.set(Math.sin(kt * 0.25) * 0.3, 1.6, 4.1 - kt * 0.08); cam.lookAt(0, 1.35, 0); }
+      cam.updateProjectionMatrix(); return cam;
+    };
+    const worldCam = () => { const cam = this.newsCam || (this.newsCam = new THREE.PerspectiveCamera(24, 1.6, 0.3, 900)); return cam; };
+    const repCam = (w, h) => { const cam = worldCam(), R = K.rp; cam.aspect = w / h; cam.fov = 40; cam.position.copy(R.cam); cam.position.x += Math.sin(t * 1.9) * 0.03; cam.position.y += Math.sin(t * 2.3) * 0.025; cam.lookAt(w < h * 1.1 ? R.look2 : R.look); cam.updateProjectionMatrix(); return cam; }; // en duplex (demi-écran), le reporter est recentré
+    const heliCam = (w, h) => {
+      const cam = worldCam(); cam.aspect = w / h; cam.fov = K.fov + Math.sin(t * 0.6) * 0.6;
       cam.position.set(K.tgt.x + Math.sin(K.ang) * K.R, K.tgt.y + K.H, K.tgt.z + Math.cos(K.ang) * K.R);
       cam.position.x += Math.sin(t * 1.7) * 0.25; cam.position.y += Math.sin(t * 1.3) * 0.2; // caméra portée par l'hélico
-      cam.lookAt(K.look); if (K.subj) K.subj.ch.model.visible = true;
-    }
-    cam.updateProjectionMatrix();
-    const x = r.left - cr.left, y = cr.bottom - r.bottom, sz = renderer.getSize(new THREE.Vector2());
-    const au = renderer.shadowMap.autoUpdate; renderer.shadowMap.autoUpdate = false;
-    renderer.setScissorTest(true); renderer.setScissor(x, y, r.width, r.height); renderer.setViewport(x, y, r.width, r.height);
-    const vg = this.vgun?.visible; if (this.vgun && sc === scene) this.vgun.visible = false;
-    renderer.render(sc, cam);
+      cam.lookAt(K.look); if (K.subj) K.subj.ch.model.visible = true; cam.updateProjectionMatrix(); return cam;
+    };
+    const sz = renderer.getSize(new THREE.Vector2()), au = renderer.shadowMap.autoUpdate; renderer.shadowMap.autoUpdate = false;
+    const vg = this.vgun?.visible; if (this.vgun) this.vgun.visible = false;
+    const view = (sc, cam, x, y, w, h) => { renderer.setScissorTest(true); renderer.setScissor(x, y, w, h); renderer.setViewport(x, y, w, h); renderer.render(sc, cam); };
+    if (sh.kind === 'heli' || !S?.ready) view(scene, heliCam(r.width, r.height), x0, y0, r.width, r.height);
+    else if (sh.kind === 'reporter') view(scene, repCam(r.width, r.height), x0, y0, r.width, r.height);
+    else if (sh.kind === 'duplex') { const w = Math.floor(r.width / 2); view(S.scene, studioCam(S.lead, w, r.height), x0, y0, w, r.height); view(scene, repCam(r.width - w, r.height), x0 + w, y0, r.width - w, r.height); }
+    else view(S.scene, studioCam(sh.kind === 'wide' ? null : sh.who, r.width, r.height), x0, y0, r.width, r.height);
     if (this.vgun) this.vgun.visible = vg;
     renderer.setScissorTest(false); renderer.setViewport(0, 0, sz.x, sz.y); renderer.shadowMap.autoUpdate = au;
   };
 }
 
-// ---------------------------------------------------------------- voix du présentateur (synthèse vocale du navigateur)
+// ---------------------------------------------------------------- animations du journal (Mixamo recuites sur les persos de base)
+let newsClips = null;
+function loadNewsClips() { return (newsClips ||= fetch('assets/anims/news.json').then((r) => r.json()).then((j) => j.map((c) => THREE.AnimationClip.parse(c))).catch((e) => { console.warn('anims journal', e); newsClips = null; return []; })); }
+const TALKS = ['N_Talk1', 'N_Talk2', 'N_Talk3', 'N_Talk5'];
+// parle (gestes de parole tirés au sort) ou écoute (repos, hochement de tête de temps en temps)
+function talk(P2, on) {
+  const A = P2.ch.actions; const name = on ? pick(TALKS.filter((n) => A[n] && n !== P2.cur)) || TALKS.find((n) => A[n]) : A.N_Idle ? 'N_Idle' : null; if (!name) return;
+  const next = A[name]; if (P2.cur === name) return; const prev = P2.cur && A[P2.cur];
+  next.reset().setLoop(THREE.LoopRepeat).play(); next.time = Math.random() * next.getClip().duration; if (prev) { next.crossFadeFrom(prev, 0.35, false); } P2.cur = name;
+  if (!on && A.N_Nod && Math.random() < 0.6) { const nod = A.N_Nod; nod.reset().setLoop(THREE.LoopOnce).setEffectiveWeight(0.7); nod.clampWhenFinished = false; setTimeout(() => { if (P2.cur === 'N_Idle') nod.play(); }, 600 + Math.random() * 900); }
+}
+const REP = {
+  F: { id: '__rep_F', name: 'Envoyée spéciale', team: 'civils', body: 'F', peau: '#c99474', hair: 'Hair_Buns', hairColor: '#1d1410',
+    bas: { id: 'jean', c: '#2f3f58' }, pieds: { id: 'montantes', c: '#2a2a2c', c2: '#d8d8d4' }, haut: { id: 'doudoune', c: '#2b3a4f', c3: '#3a3d44' }, gilet: { id: 'aucun' }, mains: { id: 'aucun' }, tete: { id: 'aucun' }, visage: { id: 'aucun' }, extras: [] },
+  M: { id: '__rep_M', name: 'Envoyé spécial', team: 'civils', body: 'M', peau: '#e2b597', hair: 'Hair_SimpleParted', hairColor: '#4a3020', barbe: true,
+    bas: { id: 'cargo', c: '#3b3f35' }, pieds: { id: 'montantes', c: '#2a2a2c', c2: '#d8d8d4' }, haut: { id: 'kway', c: '#34465e', c2: '#1a2230', c3: '#2a2b30' }, gilet: { id: 'aucun' }, mains: { id: 'aucun' }, tete: { id: 'aucun' }, visage: { id: 'aucun' }, extras: ['sac'] },
+};
+
+// ---------------------------------------------------------------- voix (synthèse vocale du navigateur)
 let voices = [];
 function voiceInit() {
+  cloudProbe();
   const ss = window.speechSynthesis; if (!ss) return; const load = () => { voices = ss.getVoices().filter((v) => /^fr/i.test(v.lang)); }; load(); ss.onvoiceschanged = load;
   // iOS : la première phrase doit partir d'un geste de l'utilisateur
   if (!voiceInit.armed) { voiceInit.armed = true; const unlock = () => { try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; ss.speak(u); } catch {} removeEventListener('pointerdown', unlock); removeEventListener('keydown', unlock); }; addEventListener('pointerdown', unlock); addEventListener('keydown', unlock); }
 }
-function pickVoice() {
-  const ok = voices.filter((v) => !NOVELTY.test(v.name)); if (!ok.length) return null;
-  const pref = ['Amélie', 'Audrey', 'Aurélie', 'Marie', 'Thomas', 'Google français', 'Denise', 'Julie', 'Henri', 'Daniel', 'Paul'];
-  for (const p of pref) { const v = ok.find((x) => x.name.includes(p) && /fr[-_]FR/i.test(x.lang)) || ok.find((x) => x.name.includes(p)); if (v) return v; }
-  return ok.find((x) => /fr[-_]FR/i.test(x.lang)) || ok[0];
+// trois rôles (présentateur A, co-présentateur B, envoyé spécial R) : une voix féminine et une masculine si possible
+function pickVoices(fixed) {
+  const ok = voices.filter((v) => !NOVELTY.test(v.name)); const fr = (l) => l.filter((x) => /fr[-_]FR/i.test(x.lang)).concat(l.filter((x) => !/fr[-_]FR/i.test(x.lang)));
+  const pref = ['Amélie', 'Audrey', 'Aurélie', 'Marie', 'Thomas', 'Google', 'Denise', 'Julie', 'Henri', 'Daniel', 'Paul', 'Natural', 'Online'];
+  const rank = (v) => { const i = pref.findIndex((p) => v.name.includes(p)); return (i < 0 ? 50 : i) - (/natural|online|premium|enhanced|neural/i.test(v.name) ? 40 : 0); };
+  const F = fr(ok.filter((v) => !MALE_VOICES.test(v.name))).sort((p, q) => rank(p) - rank(q)), M = fr(ok.filter((v) => MALE_VOICES.test(v.name))).sort((p, q) => rank(p) - rank(q));
+  const lead = Math.random() < 0.5 ? 'F' : 'M';
+  const get = (sex, n = 0) => (sex === 'F' ? F[n] || F[0] : M[n] || M[0]) || null;
+  const sexA = fixed?.A || ((lead === 'F' ? F : M).length ? lead : F.length ? 'F' : M.length ? 'M' : lead), sexB = fixed?.B || (sexA === 'F' ? 'M' : 'F'), sexR = fixed?.R || (Math.random() < 0.5 ? 'F' : 'M');
+  return { sex: { A: sexA, B: sexB, R: sexR }, voices: { A: get(sexA), B: get(sexB) || get(sexA, 1), R: get(sexR, 1) || get(sexR) } };
 }
-function speak(text, voice) {
+// Voix neuronales (Azure, via la fonction /api/tts du site : la clé reste côté serveur). Si la fonction
+// n'est pas configurée ou ne répond pas, on garde la synthèse du navigateur.
+const CLOUD = { ok: null, cur: null, base: /^https?:$/.test(location.protocol) ? '' : 'https://frungz.vercel.app' };
+const CLOUD_VOICES = { F: ['fr-FR-DeniseNeural', 'fr-FR-EloiseNeural', 'fr-FR-VivienneMultilingualNeural'], M: ['fr-FR-HenriNeural', 'fr-FR-RemyMultilingualNeural', 'fr-FR-AlainNeural'] };
+function cloudProbe() {
+  if (CLOUD.ok !== null || CLOUD.probing) return; CLOUD.probing = true;
+  fetch(`${CLOUD.base}/api/tts?probe=1`).then((r) => (r.ok ? r.json() : null)).then((j) => { CLOUD.ok = !!j?.ok; }).catch(() => { CLOUD.ok = false; });
+}
+// chaque rôle a sa voix : présentateur A, co-présentateur B (l'autre sexe), envoyé spécial R (une troisième voix)
+function cloudVoice(who, sex) {
+  const s = sex?.[who] || (who === 'B' ? 'M' : 'F'), L = CLOUD_VOICES[s];
+  if (who === 'R') return L[2]; if (who === 'B' && sex?.A === s) return L[1]; return L[0];
+}
+// prépare les répliques dès le début du flash ; un plan s'allonge si la voix est plus longue que prévu
+function cloudPrepare(K, sex) {
+  if (!CLOUD.ok) return;
+  for (const sh of K.shots) {
+    if (!sh.text) continue;
+    const q = new URLSearchParams({ v: cloudVoice(sh.who || 'A', sex), r: sh.who === 'R' ? '6' : '10', t: sh.text });
+    const a = new Audio(`${CLOUD.base}/api/tts?${q}`); a.preload = 'auto'; a.volume = 0.9; sh.audio = a;
+    a.addEventListener('playing', () => { sh.started = true; }, { once: true });
+    a.addEventListener('error', () => { sh.audio = null; }, { once: true });
+  }
+}
+function cloudPlay(sh) {
+  const a = sh.audio; if (!a || document.visibilityState !== 'visible') return false;
+  try { window.speechSynthesis?.cancel(); a.currentTime = 0; sh.asked = true; CLOUD.cur = a; const p = a.play(); p?.catch?.(() => { if (CLOUD.cur === a) speak(sh.text, null); }); return true; } catch { return false; }
+}
+function cloudStop() { const a = CLOUD.cur; CLOUD.cur = null; if (a) try { a.pause(); } catch {} }
+function speak(text, voice, rate = 1.12) {
   const ss = window.speechSynthesis; if (!ss || !text || document.visibilityState !== 'visible') return;
-  try { ss.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = voice?.lang || 'fr-FR'; if (voice) u.voice = voice; u.rate = 1.12; u.pitch = 1; u.volume = 0.85; ss.speak(u); } catch {}
+  try { ss.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = voice?.lang || 'fr-FR'; if (voice) u.voice = voice; u.rate = rate; u.pitch = 1; u.volume = 0.85; ss.speak(u); } catch {}
 }

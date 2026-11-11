@@ -1,0 +1,40 @@
+[
+ {
+  "name": "N_Talk1",
+  "src": "talking",
+  "loop": true
+ },
+ {
+  "name": "N_Talk2",
+  "src": "talking (v2)",
+  "loop": true
+ },
+ {
+  "name": "N_Talk3",
+  "src": "talking (v3)",
+  "loop": true
+ },
+ {
+  "name": "N_Talk5",
+  "src": "talking (v5)",
+  "loop": true
+ },
+ {
+  "name": "N_Nod",
+  "src": "head_nod_yes"
+ },
+ {
+  "name": "N_Idle",
+  "src": "idle (v4)",
+  "loop": true,
+  "trim": [
+   0,
+   6
+  ]
+ },
+ {
+  "name": "N_Look",
+  "src": "look_around",
+  "loop": true
+ }
+]
