@@ -28,7 +28,6 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 /// fond noir, sans rebond ni loupe, et un balayage depuis un bord ne quitte pas l'app au premier geste.
 class FrungzViewController: CAPBridgeViewController {
     override var preferredScreenEdgesDeferringSystemGestures: UIRectEdge { .all }
-    override var prefersHomeIndicatorAutoHidden: Bool { true }
     override var prefersStatusBarHidden: Bool { true }
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .landscape }
 
