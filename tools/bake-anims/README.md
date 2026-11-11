@@ -4,7 +4,7 @@ Recible des clips de la bibliothèque privée `sabrilab/mixamo-library` (1 808 a
 
 1. Cloner `frungz` et `mixamo-library` côte à côte, puis servir leur dossier parent : `npx http-server .. -p 8140`.
 2. Copier ce dossier en `../bake/` (les chemins des pages sont relatifs à la racine servie).
-3. `node run.cjs Punk ../frungz/public/assets/anims/mx.json` (lit `plan.json`, ou un plan passé en 4e argument).
+3. `node run.cjs /frungz/public/assets/chars/Base_M.glb ../frungz/public/assets/anims/mx.json` (nom d'un perso de `public/assets/chars` ou chemin servi d'un GLB au même squelette) (lit `plan.json`, ou un plan passé en 4e argument).
 4. Contrôle visuel : `node planche.cjs out.png /frungz/public/assets/anims/mx.json "MX_Run,MX_Roll" 6 0` (une ligne par clip, 6 instants ; dernier argument 1 = vue de côté).
 5. En situation dans le jeu : `node test/moves.cjs http://localhost:8124/ out.png 0.5 1` (planche 1 : pistolet, couches haut du corps ; planche 2 : morts, roulade, glissade, casse, danse).
 
@@ -36,3 +36,7 @@ Une entrée par clip du jeu : `name` (nom dans le jeu) et `src` (nom Mixamo, voi
 ## Couches écrites à la main (`src/anim.js`)
 
 Posées après le mixer, par-dessus les clips : pieds attachés aux chevilles (les pieds du rig sont des os libres), IK des jambes, adaptation au sol, pieds plantés à l'arrêt avec petits pas quand on pivote, corps qui penche dans l'accélération et les virages, bassin qui s'écrase à la réception, buste et tête qui mènent le virage, souffle selon l'effort, recul et impacts en ressorts. Complètes à moins de 40 m de la caméra, pieds seuls au-delà. Contrôle image par image : `node test/strip.cjs URL out.png run|walk|idle|startstop|turn|strafe|jump|fire|hit|aimup|spin [n] [pas s] [side|front|back|34]`.
+
+## Colonne et cou
+
+Les membres sont recalés sur la direction des os Mixamo (poses de repos différentes : T contre A). La colonne et le cou (`Hips`, `Abdomen`, `Torso`, `Chest`, `Neck`, liste `KEEP_CURVE`) ne le sont pas : ils reçoivent l'écart à la pose de repos Mixamo et gardent la courbure naturelle du perso. Sinon la cambrure du squelette Mixamo s'impose au corps (bassin basculé en arrière, haut du dos enroulé) et les persos paraissent bossus.

@@ -8,7 +8,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 const V = '/mixamo-library/viewer/';
 const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 const CHAR = new URLSearchParams(location.search).get('char') || 'Paysan';
-const [index, gltf, srcGltf] = await Promise.all([fetch(V + 'index.json').then(r => r.json()), loader.loadAsync(`/frungz/public/assets/chars/${CHAR}.glb`), loader.loadAsync(V + 'rig-mixamo.glb')]);
+const [index, gltf, srcGltf] = await Promise.all([fetch(V + 'index.json').then(r => r.json()), loader.loadAsync(CHAR.includes("/") ? CHAR : `/frungz/public/assets/chars/${CHAR}.glb`), loader.loadAsync(V + 'rig-mixamo.glb')]);
 const findHips = r => { let h; r.traverse(o => { if (!h && o.name === 'Hips') h = o; }); return h; };
 const SRC = srcGltf.scene; const HK = findHips(SRC).position.y / index.restHips;
 const base = gltf.scene;
@@ -20,6 +20,7 @@ for (const [s, m] of [['L', 'Left'], ['R', 'Right']]) {
   for (let k = 1; k <= 3; k++) MAP[`${m}HandThumb${k}`] = `Thumb${k}${s}`;
 }
 let RT;
+const KEEP_CURVE = /^(Hips|Abdomen|Torso|Chest|Neck)$/;
 function setup() {
   const src = SRC.clone(true), dst = SkeletonUtils.clone(base);
   const bones = (r, any) => { const m = {}; r.traverse(o => { if ((o.isBone || any) && o.name && !m[o.name]) m[o.name] = o; }); return m; };
@@ -31,7 +32,9 @@ function setup() {
   const lead = b => { const kids = b.children.filter(k => k.isBone && toD[k.name]); return kids.find(k => /^(Spine|Neck|Head)|HandMiddle1$/.test(k.name)) || (/Hand$/.test(b.name) ? null : kids[0]) || null; };
   const offset = {};
   for (const [s, d] of pairs) { const sRest = wq(S[s]); let dRest = wq(D[d]); const k = lead(S[s]);
-    if (k) { const ds = wp(k).sub(wp(S[s])).normalize(), dd = wp(D[toD[k.name]]).sub(wp(D[d])).normalize(); dRest = new THREE.Quaternion().setFromUnitVectors(dd, ds).multiply(dRest); }
+    // colonne et cou : on garde la courbure naturelle du perso (écart à la pose de repos), sinon la cambrure du squelette Mixamo
+    // s'impose au corps (bassin basculé en arrière, haut du dos enroulé : persos « bossus »)
+    if (k && !KEEP_CURVE.test(d)) { const ds = wp(k).sub(wp(S[s])).normalize(), dd = wp(D[toD[k.name]]).sub(wp(D[d])).normalize(); dRest = new THREE.Quaternion().setFromUnitVectors(dd, ds).multiply(dRest); }
     offset[d] = sRest.invert().multiply(dRest); }
   const order = []; dst.traverse(o => { if (o.isBone) order.push(o); });
   const restLocal = new Map(order.map(b => [b, b.quaternion.clone()]));

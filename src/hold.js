@@ -69,4 +69,5 @@ export function supportHand(ch, id) {
   return true;
 }
 // passe complète pour un perso montré hors du jeu (salon, studio) : à appeler après mixer.update
-export function holdPose(ch, id) { if (!id || !ch.gun || globalThis.__nohold) return; if (shoulderGun(ch, id)) ch.root.updateMatrixWorld(true); supportHand(ch, id); }
+// shoulder: false pour une pose arme basse (repos du salon) : la crosse n'est pas à l'épaule, seule la main gauche est replacée
+export function holdPose(ch, id, shoulder = true) { if (!id || !ch.gun || globalThis.__nohold) return; if (shoulder && shoulderGun(ch, id)) ch.root.updateMatrixWorld(true); supportHand(ch, id); }

@@ -16,7 +16,7 @@ export * from './skins-data.js';
 // ---------------------------------------------------------------- mannequins
 const bases = {};
 export async function loadSkinBases(onEach) {
-  await Promise.all(['M', 'F'].map(async (b) => { if (!bases[b]) bases[b] = prepBase(await loadGLB(`assets/chars/Base_${b}.glb`)); onEach?.(); }));
+  await Promise.all(['M', 'F'].map(async (b) => { if (!bases[b]) bases[b] = prepBase(await loadGLB(`assets/chars/Base_${b}.glb`), b); onEach?.(); }));
   globalThis.__skinBases = bases; // inspection (tests)
   return bases;
 }
@@ -46,7 +46,12 @@ function subdivide(geo, keep) {
     if (k === 1) idx.push(a, ab, c, ab, b, c); else idx.push(ab, b, bc, a, ab, bc, a, bc, c); }
   const g = new THREE.BufferGeometry(); for (const [key, arr] of Object.entries(out)) g.setAttribute(key, new THREE.BufferAttribute(arr, key.startsWith('skin') ? 4 : key === 'uv' ? 2 : 3)); g.setIndex(idx); return g;
 }
-function prepBase(g) {
+// normales par sommet (moyenne des faces) d'un tableau de positions
+function faceNormals(pos, index, out) { out.fill(0); const I = index.array; for (let t = 0; t < I.length; t += 3) { const a = I[t] * 3, b = I[t + 1] * 3, c = I[t + 2] * 3;
+  const ux = pos[b] - pos[a], uy = pos[b + 1] - pos[a + 1], uz = pos[b + 2] - pos[a + 2], vx = pos[c] - pos[a], vy = pos[c + 1] - pos[a + 1], vz = pos[c + 2] - pos[a + 2];
+  const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; for (const o of [a, b, c]) { out[o] += nx; out[o + 1] += ny; out[o + 2] += nz; } }
+  for (let i = 0; i < out.length; i += 3) { const l = Math.hypot(out[i], out[i + 1], out[i + 2]) || 1; out[i] /= l; out[i + 1] /= l; out[i + 2] /= l; } }
+function prepBase(g, sex = 'M') {
   const scene = g.scene; scene.updateMatrixWorld(true);
   const meshes = {}; scene.traverse((o) => { if (o.isSkinnedMesh) meshes[o.name] = o; });
   const skin = meshes.Skin, skel = skin.skeleton, W = skin.matrixWorld.clone(), Wi = W.clone().invert(), NW = new THREE.Matrix3().getNormalMatrix(W);
@@ -57,6 +62,29 @@ function prepBase(g) {
   // sommets du corps en pose de repos, dans le repère du monde (y vers le haut, devant vers +z, mètres)
   const geo = skin.geometry, n = geo.attributes.position.count, pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), v = V();
   for (let i = 0; i < n; i++) { v.fromBufferAttribute(geo.attributes.position, i).applyMatrix4(W); pos.set([v.x, v.y, v.z], i * 3); v.fromBufferAttribute(geo.attributes.normal, i).applyMatrix3(NW).normalize(); nor.set([v.x, v.y, v.z], i * 3); }
+  // morphologie : les corps de base sont des super-héros (deltoïdes énormes, trapèzes en bosse, dorsaux en V). On ramène
+  // vers une carrure d'homme ou de femme ordinaire, sportive : bras et épaules affinés, trapèzes abaissés, buste moins en V,
+  // pectoraux moins saillants. Les facteurs ne dépendent que de la position (pas de la partie du corps) : aucune fente.
+  { const k = sex === 'F' ? 0.55 : 1, sh = bw('UpperArmL'), wr = bw('WristL'), ch = bw('Chest'), nk = bw('Neck'), ab = bw('Abdomen'), hp = bw('Hips');
+    for (let i = 0; i < n; i++) { let x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2]; const ax = Math.abs(x);
+      if (y < hp.y - 0.1 || y > nk.y + 0.06) continue; // jambes, tête : inchangées
+      const armW = sstep(sh.x - 0.08, sh.x + 0.03, ax) * sstep(nk.y + 0.06, nk.y - 0.02, y);
+      if (armW > 0) { // bras (en T) : rayon autour de l'axe épaule → poignet
+        const a = (ax - sh.x) / (wr.x - sh.x), f = 1 - k * (a < 0.95 ? 0.16 * sstep(1.0, 0.5, a) + 0.08 * sstep(0.95, 0.6, a) * sstep(0.2, 0.6, a) : 0) * (a < 0 ? sstep(-0.45, 0, a) : 1);
+        const cz = sh.z + (wr.z - sh.z) * Math.min(1, Math.max(0, a)), dy = y - sh.y, dz = z - cz, fw = 1 + (f - 1) * armW;
+        y = sh.y + dy * fw; z = cz + dz * fw; }
+      const tw = 1 - armW;
+      if (tw > 0) {
+        // largeur du buste : dorsaux et pectoraux en moins, taille un peu plus pleine
+        const fx = 1 - k * (0.11 * gauss((y - (ch.y + 0.03)) / 0.13) - 0.035 * gauss((y - ab.y) / 0.09));
+        x = x * (1 + (fx - 1) * tw * sstep(0.03, 0.09, ax));
+        // pectoraux et dos moins bombés
+        const cz = ch.z - 0.01, fz = 1 - k * 0.14 * gauss((y - (ch.y + 0.05)) / 0.09); z = cz + (z - cz) * (1 + (fz - 1) * tw);
+        // trapèzes : la pente du cou vers l'épaule est abaissée (la bosse derrière la nuque disparaît)
+        const top = sh.y + 0.02 + (nk.y - 0.02 - sh.y) * sstep(sh.x, 0.06, ax); if (y > top - 0.05 && ax > 0.045) y -= k * 0.4 * (y - (top - 0.05)) * sstep(0.045, 0.08, ax) * tw * sstep(nk.y + 0.06, nk.y, y);
+      }
+      pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z; }
+    faceNormals(pos, geo.index, nor); }
   // normales soudées (les coutures d'UV doublent des sommets : sans ça le tissu se fendrait le long des coutures)
   const key = (i) => `${Math.round(pos[i * 3] * 2e3)},${Math.round(pos[i * 3 + 1] * 2e3)},${Math.round(pos[i * 3 + 2] * 2e3)}`, acc = new Map();
   for (let i = 0; i < n; i++) { const k = key(i); const a = acc.get(k) || [0, 0, 0]; a[0] += nor[i * 3]; a[1] += nor[i * 3 + 1]; a[2] += nor[i * 3 + 2]; acc.set(k, a); }
@@ -83,6 +111,10 @@ function prepBase(g) {
   let S = gp.slice(); const T = new Float32Array(ng * 3);
   for (let it = 0; it < 40; it++) { const f = it % 2 ? -0.53 : 0.5; for (let g = 0; g < ng; g++) { if (!free[g] || !nbl[g].length) { T.set(S.subarray(g * 3, g * 3 + 3), g * 3); continue; } let x = 0, y = 0, z = 0; for (const h of nbl[g]) { x += S[h * 3]; y += S[h * 3 + 1]; z += S[h * 3 + 2]; } const m = nbl[g].length; T[g * 3] = S[g * 3] + f * (x / m - S[g * 3]); T[g * 3 + 1] = S[g * 3 + 1] + f * (y / m - S[g * 3 + 1]); T[g * 3 + 2] = S[g * 3 + 2] + f * (z / m - S[g * 3 + 2]); } S.set(T); }
   const smooth = new Float32Array(n * 3); for (let i = 0; i < n; i++) smooth.set(S.subarray(wid[i] * 3, wid[i] * 3 + 3), i * 3);
+  // peau nue : relief musculaire adouci (abdominaux, veines, biceps de culturiste), en gardant le volume (corps lissé de Taubin)
+  { const kd = sex === 'F' ? 0.3 : 0.5; for (let i = 0; i < n; i++) { const q = part[i]; if (q !== 'torso' && q !== 'arm' && q !== 'leg' && q !== 'neck') continue; for (let j = 0; j < 3; j++) pos[i * 3 + j] += (smooth[i * 3 + j] - pos[i * 3 + j]) * kd; }
+    faceNormals(pos, geo.index, nor); acc.clear(); for (let i = 0; i < n; i++) { const k = key(i); const a = acc.get(k) || [0, 0, 0]; a[0] += nor[i * 3]; a[1] += nor[i * 3 + 1]; a[2] += nor[i * 3 + 2]; acc.set(k, a); }
+    for (let i = 0; i < n; i++) { const a = acc.get(key(i)); const l = Math.hypot(...a) || 1; wn.set([a[0] / l, a[1] / l, a[2] / l], i * 3); } }
   // enveloppe : par tranches (bras le long de x, jambes et buste le long de y), chaque sommet est poussé jusqu'à l'enveloppe convexe de sa tranche ;
   // le tissu ponte les creux (entre les pectoraux, la colonne, les muscles des cuisses et des bras) comme un vrai vêtement
   const hull = smooth.slice(), crotch = L.hips.y - 0.07;
@@ -291,7 +323,8 @@ export function buildSkinScene(def, opts = {}) {
       let cover = false;
       if (torso) cover = y > bottom - (under && !tucked ? 0.02 : 0);
       else if (arm) cover = long ? a < 0.985 : a < 0.38;
-      else if (p === 'neck') cover = y < L.neck.y + collar - 0.012 || (q.nz < -0.2 && y < L.neck.y + 0.025 + collar);
+      else if (p === 'head') cover = collar >= 0.045 && y < L.eyeY - 0.1 && q.nz < 0.3; // col montant : jusque sous la mâchoire et la nuque (pas de frange de peau étirée)
+      else if (p === 'neck') cover = collar >= 0.045 || y < L.neck.y + collar - 0.012 || (q.nz < -0.2 && y < L.neck.y + 0.025 + collar); // col montant : tout le cou (pas de bord en escalier sur la peau)
       if (!cover) return null;
       let o = bulk, s = 1, h = id === 'kway' || id === 'doudoune' ? 0.08 * noise3(q.x * 200, y * 200, q.z * 200) : knit(q), col = base;
       const ta = torsoAng(q), aa = arm ? armAng(q) : 0;
@@ -302,7 +335,7 @@ export function buildSkinScene(def, opts = {}) {
       if (torso && y < bottom + 0.055 && (sweat || id === 'kway')) { o = bulk * 0.7; s *= 0.92; h = id === 'kway' ? 0.4 * Math.sin(y * 900) : 0.75 * Math.sin(ta * 160); if (Math.abs(y - (bottom + 0.055)) < 0.0022) { o += 0.002; s *= 0.65; h = -1; } }
       if (arm && long && a > cuffA) { o = Math.max(0.004, bulk * 0.6); s *= 0.9; h = id === 'kway' ? 0.5 * Math.sin(a * 600) : 0.75 * Math.sin(aa * 30); if (Math.abs(a - cuffA) < 0.006) { o += 0.002; s *= 0.62; h = -1; } }
       if (arm && !long && a > 0.33) { o += 0.0015; s *= 0.93; if (Math.abs(a - 0.33) < 0.005) { s *= 0.62; h = -1; } else if (Math.abs(a - 0.355) < 0.003 && dash(aa * armR(q), 0.006)) col = thr; }
-      if (p === 'neck') { o = bulk * 0.8 + 0.002; s *= 0.9; h = 0.7 * Math.sin(ta * 120); }
+      if (p === 'neck' || p === 'head') { o = p === 'head' ? Math.min(0.005, bulk * 0.5) : bulk * 0.8 + 0.002; s *= 0.9; h = 0.7 * Math.sin(ta * 120); }
       if (torso && Math.abs(y - (L.neck.y - 0.005)) < 0.006 && Math.abs(ta) < 1.6 && !vOpen(q) && collar < 0.02) { s *= 0.88; h = 0.7 * Math.sin(ta * 120); } // encolure côtelée
       // coutures : flancs, emmanchures, dessous des manches
       if (torso && angD(Math.abs(ta), Math.PI / 2) * 0.14 < 0.0022 && y < L.chest.y + 0.06) { s *= 0.62; h = -1; }
@@ -404,7 +437,7 @@ export function buildSkinScene(def, opts = {}) {
     if (!casque) layer(0, 0.001, (q) => (q.p === 'neck' || (q.p === 'head' && q.y < L.eyeY - 0.1 && q.nz < 0.3)) ? set(0.012, base, 'Tete', 0.92, knit(q)) : null);
     extra.push({ geo: casque ? helmetShell(L) : hoodShell(L), bone: 'Head', color: base });
     hairClip.all = true;
-    if (casque) { extra.push({ geo: visorShell(L), bone: 'Head', color: C(tete.c2 || '#8a9bb0') }); extra.push({ geo: chinStrap(L), bone: 'Head', color: C('#101114') }); }
+    if (casque) { extra.push({ geo: visorShell(L), bone: 'Head', color: C(tete.c2 || '#8a9bb0') }); extra.push({ geo: chinStrap(L), bone: 'Head', color: C('#101114') }); extra.push({ geo: neckGuard(L), bone: 'Head', color: C('#14161b') }); }
   }
   if (visage.id === 'cagoule') {
     const base = C(visage.c);
@@ -591,27 +624,41 @@ function brim(L) { // visière de casquette : demi-disque aplati, légèrement i
 }
 // coque de tête paramétrée : ellipsoïde autour du crâne, bord bas qui dépend de l'angle autour de la tête (edge(φ) → y local entre -1 et 1),
 // bande éventuelle [e0, e1] en angle depuis le sommet ; double face (la matière du perso est en DoubleSide)
-function headShell(L, { pad = [0.03, 0.03, 0.03, 0.03], edge, phi = [-Math.PI, Math.PI], e0 = 0, seg = [36, 14], peak = 0 }) {
+function headShell(L, { pad = [0.03, 0.03, 0.03, 0.03], edge, phi = [-Math.PI, Math.PI], e0 = 0, seg = [36, 14], peak = 0, tuck = 0, cinch = 0, flare = 0, thick = 0 }) {
   const cx = 0, cy = (L.eyeY + L.top) / 2 - 0.005, cz = (L.front + L.back) / 2 - 0.005, rx = L.headR + pad[0], ry = L.top - cy + pad[1], rzf = L.front - cz + pad[2], rzb = cz - L.back + pad[3];
   const pos = [], idx = [], [nu, nv] = seg;
-  // sous l'équateur (ey < 0), la coque descend tout droit (en se resserrant un peu) au lieu de se refermer : capuche jusqu'aux épaules, couvre-nuque
-  for (let u = 0; u <= nu; u++) { const f = phi[0] + (phi[1] - phi[0]) * u / nu, ey = Math.min(0.999, edge(f)), t1 = ey >= 0 ? Math.acos(ey) : Math.PI / 2 + (-ey);
-    for (let v = 0; v <= nv; v++) { const t = e0 + (t1 - e0) * v / nv, tt = Math.min(t, Math.PI / 2), drop = Math.max(0, t - Math.PI / 2), sx = Math.sin(tt) * Math.sin(f), sy = Math.cos(tt) - drop, sz = Math.sin(tt) * Math.cos(f);
-      const back = sz < 0, k = (1 + peak * Math.max(0, -sz) * Math.max(0, sy)) * (1 - 0.12 * Math.min(1, drop)); pos.push(cx + sx * rx * k, cy + sy * ry, cz + sz * (back ? rzb : rzf) * k); } }
+  // au-dessus de l'équateur : ellipsoïde autour du crâne. En dessous (ey < 0), la coque descend jusqu'au bord en suivant une
+  // forme entre « tout droit » (tuck 0 : capuche qui tombe) et « l'ellipsoïde qui se referme » (tuck 1 : casque arrondi) ;
+  // cinch resserre les côtés vers le cou (capuche qui encadre le visage), flare évase le bas derrière (tissu posé sur les épaules)
+  const P = (f, sy, r) => { const sx = r * Math.sin(f), sz = r * Math.cos(f), back = sz < 0, k = 1 + peak * Math.max(0, -sz) * Math.max(0, sy); return [cx + sx * rx * k, cy + sy * ry, cz + sz * (back ? rzb : rzf) * k]; };
+  for (let u = 0; u <= nu; u++) { const f = phi[0] + (phi[1] - phi[0]) * u / nu, ey = Math.max(-1.6, Math.min(0.999, edge(f)));
+    const tTop = ey >= 0 ? Math.acos(ey) : Math.PI / 2, la = tTop - e0, lb = ey < 0 ? -ey : 0;
+    for (let v = 0; v <= nv; v++) { const d = (la + lb) * v / nv;
+      if (d <= la || lb === 0) { const t = e0 + Math.min(d, la); pos.push(...P(f, Math.cos(t), Math.sin(t))); continue; }
+      const y = -(d - la), st = 1 - 0.12 * Math.min(1, -y), el = Math.sqrt(Math.max(0.04, 1 - y * y)); let r = st + (el - st) * tuck;
+      const side = Math.max(0, Math.cos(f)) ** 0.5; r *= 1 - cinch * sstep(0, 0.9, -y) * side; r *= 1 + flare * sstep(0.5, 1.4, -y) * Math.max(0, -Math.cos(f));
+      pos.push(...P(f, y, r)); } }
   for (let u = 0; u < nu; u++) for (let v = 0; v < nv; v++) { const a = u * (nv + 1) + v, b = a + nv + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  if (thick > 0) { // épaisseur : une coque intérieure, reliée à l'extérieure par le bord (on voit l'épaisseur du tissu ou de la coque)
+    const n0 = pos.length / 3; for (let i = 0; i < n0; i++) { const x = pos[i * 3] - cx, y = pos[i * 3 + 1] - cy, z = pos[i * 3 + 2] - cz, l = Math.hypot(x, y, z) || 1, k = Math.max(0.5, 1 - thick / l); pos.push(cx + x * k, cy + y * k, cz + z * k); }
+    for (let u = 0; u < nu; u++) for (let v = 0; v < nv; v++) { const a = n0 + u * (nv + 1) + v, b = a + nv + 1; idx.push(a, a + 1, b, b, a + 1, b + 1); }
+    for (let u = 0; u < nu; u++) { const a = u * (nv + 1) + nv, b = a + nv + 1; idx.push(a, b, n0 + a, b, n0 + b, n0 + a); } }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
 }
 const yl = (L, y) => (y - ((L.eyeY + L.top) / 2 - 0.005)) / (L.top - ((L.eyeY + L.top) / 2 - 0.005) + 0.03);
-function helmetShell(L) { // casque : couvre le crâne jusqu'aux sourcils devant, sous les oreilles sur les côtés, la nuque derrière
-  const brow = yl(L, L.eyeY + 0.035), ear = yl(L, L.eyeY - 0.045), nape = yl(L, L.eyeY - 0.09);
-  return headShell(L, { pad: [0.03, 0.035, 0.025, 0.035], edge: (f) => { const a = Math.abs(f); return a < 0.9 ? brow + (ear - brow) * sstep(0.45, 0.9, a) : ear + (nape - ear) * sstep(1.6, 2.6, a); } });
+function helmetShell(L) { // casque de maintien de l'ordre : grosse coque arrondie, jusqu'aux sourcils devant, sous les oreilles sur les côtés
+  const brow = yl(L, L.eyeY + 0.03), ear = yl(L, L.eyeY - 0.05), nape = yl(L, L.eyeY - 0.075);
+  return headShell(L, { pad: [0.042, 0.048, 0.036, 0.046], tuck: 0.8, thick: 0.012, seg: [48, 18], edge: (f) => { const a = Math.abs(f); return a < 0.9 ? brow + (ear - brow) * sstep(0.45, 0.9, a) : ear + (nape - ear) * sstep(1.6, 2.6, a); } });
+}
+function neckGuard(L) { // couvre-nuque : rabat de tissu épais qui tombe de l'arrière du casque sur la nuque
+  return headShell(L, { pad: [0.05, 0.05, 0.04, 0.05], phi: [Math.PI - 0.62, Math.PI + 0.62], e0: 1.5, tuck: 0, flare: 0.3, thick: 0.007, seg: [18, 8], edge: (f) => yl(L, L.eyeY - 0.14) + 0.25 * Math.abs(Math.sin(f)) });
 }
 function visorShell(L) { // visière relevée : posée sur le haut du casque, devant
-  return headShell(L, { pad: [0.045, 0.05, 0.04, 0.045], phi: [-1.25, 1.25], e0: 0.3, edge: () => Math.cos(1.2), seg: [22, 6] });
+  return headShell(L, { pad: [0.056, 0.062, 0.05, 0.05], phi: [-1.2, 1.2], e0: 0.3, edge: () => Math.cos(1.15), seg: [26, 6], thick: 0.005 });
 }
-function hoodShell(L) { // capuche relevée : ouverte sur le visage (front → menton), descend sur la nuque et les épaules derrière
-  const fore = yl(L, L.eyeY + 0.055), chin = yl(L, L.eyeY - 0.17), back = yl(L, L.eyeY - 0.3);
-  return headShell(L, { pad: [0.04, 0.035, 0.03, 0.06], peak: 0.16, seg: [40, 16], edge: (f) => { const a = Math.abs(f); return a < 0.75 ? fore + (chin - fore) * sstep(0.2, 0.75, a) : chin + (back - chin) * sstep(1.2, 2.4, a); } });
+function hoodShell(L) { // capuche relevée : ouverte sur le visage (front → menton), encadre le visage, tombe sur la nuque et les épaules derrière
+  const fore = yl(L, L.eyeY + 0.06), chin = yl(L, L.eyeY - 0.16), back = yl(L, L.eyeY - 0.3);
+  return headShell(L, { pad: [0.034, 0.04, 0.028, 0.055], peak: 0.14, tuck: 0.35, cinch: 0.16, flare: 0.22, thick: 0.011, seg: [48, 18], edge: (f) => { const a = Math.abs(f); return a < 0.75 ? fore + (chin - fore) * sstep(0.2, 0.75, a) : chin + (back - chin) * sstep(1.2, 2.4, a); } });
 }
 function chinStrap(L) { const g = new THREE.TorusGeometry(L.headR * 0.92, 0.006, 4, 20, Math.PI); g.rotateZ(Math.PI); g.rotateY(Math.PI / 2); g.rotateX(0.35); g.translate(0, L.eyeY - 0.035, L.headC.z - 0.01); return g; }
 function goggles(L, which) {
