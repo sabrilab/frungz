@@ -422,6 +422,8 @@ pause.innerHTML = `<h2>PAUSE</h2>
 <label><input type="checkbox" id="s-inv"> Inverser l'axe vertical</label>
 <label><input type="checkbox" id="s-fps"> Vue première personne (V / R3)</label>
 <label><input type="checkbox" id="s-killcam"> Kill-cam en incrustation (bulle)</label>
+<label><input type="checkbox" id="s-news"> Flash info FRUNGZ INFO (journal en incrustation)</label>
+<label><input type="checkbox" id="s-newsvoice"> Voix du présentateur</label>
 <label>Qualité graphique <select id="s-quality"><option value="auto">Auto</option><option value="bas">Basse (PC modestes)</option><option value="moyen">Moyenne</option><option value="mobile">Téléphone</option><option value="haut">Haute</option></select></label>
 <label><input type="checkbox" id="s-dynres"> Résolution adaptée aux images/s</label>
 <label><input type="checkbox" id="s-cine"> Rendu cinéma : flou de mouvement, mise au point en visée, grain (qualité haute)</label>
@@ -451,7 +453,7 @@ document.body.appendChild(pause);
 const st = document.createElement('style'); st.textContent = `.padfocus{outline:3px solid #ffcc3d!important;outline-offset:3px;box-shadow:0 0 0 7px rgba(255,204,61,.22)!important}.settings{display:grid;gap:10px;text-align:left;background:rgba(255,255,255,.06);padding:16px;border-radius:12px;min-width:min(420px,100%)}.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left;margin-top:10px;font-size:13px}.controls h3{margin:0 0 6px;font:800 14px Inter}.controls p{margin:3px 0}@media(max-width:760px){.controls{grid-template-columns:1fr}}.settings label{display:flex;justify-content:space-between;gap:12px;align-items:center;font-weight:700}#minimap.big{width:min(700px,90vw);height:min(350px,45vw);left:50%;top:50%;transform:translate(-50%,-50%)}body.scoped #app canvas{}body.scoped::after{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 30vh,#000 30.5vh);z-index:1}body.scoped::before{content:'';position:fixed;left:50%;top:0;bottom:0;width:1px;background:#000;z-index:2;box-shadow:0 0 0 0 #000}`;
 document.head.appendChild(st);
 const bindSet = (id, key, prop = 'value', conv = Number) => { const el = $(id); el[prop] = save.settings[key]; el.addEventListener('input', () => { save.settings[key] = conv(el[prop]); input.settings[key] = save.settings[key]; persist(); if (key === 'fps' && game) { game.cam.fps = save.settings.fps; game.viewGun(); } }); };
-if (save.settings.killcam === undefined) save.settings.killcam = true; bindSet('s-killcam', 'killcam', 'checked', Boolean); bindSet('s-sens', 'sens'); bindSet('s-touch', 'touchSens'); bindSet('s-fireads', 'fireAds', 'checked', Boolean); bindSet('s-autosprint', 'autoSprint', 'checked', Boolean);
+if (save.settings.killcam === undefined) save.settings.killcam = true; bindSet('s-killcam', 'killcam', 'checked', Boolean); if (save.settings.news === undefined) save.settings.news = true; if (save.settings.newsVoice === undefined) save.settings.newsVoice = true; bindSet('s-news', 'news', 'checked', Boolean); bindSet('s-newsvoice', 'newsVoice', 'checked', Boolean); bindSet('s-sens', 'sens'); bindSet('s-touch', 'touchSens'); bindSet('s-fireads', 'fireAds', 'checked', Boolean); bindSet('s-autosprint', 'autoSprint', 'checked', Boolean);
 $('s-touchedit')?.addEventListener('click', () => { if (!touch) return; const back = !pause.classList.contains('hidden'); pause.classList.add('hidden'); touch.openEditor(() => { if (back) pause.classList.remove('hidden'); }); }); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); if (save.settings.cine === undefined) save.settings.cine = true; bindSet('s-cine', 'cine', 'checked', Boolean); $('s-cine').addEventListener('input', () => { if (cine) cine.enabled2 = save.settings.cine; }); bindSet('s-team', 'teamSize');
 { const el = $('s-quality'); el.value = save.settings.quality || 'auto'; el.addEventListener('change', () => { save.settings.quality = el.value; persist(); location.reload(); }); }
 function openSettings() { pause.querySelector('h2').textContent = 'RÉGLAGES'; $('resume').style.display = 'none'; $('quit').textContent = 'Retour au salon'; pause.classList.remove('hidden'); audio.init(); audio.play('uiSelect'); }
@@ -564,7 +566,7 @@ function frame() {
   touch?.sync(game);
   if (cine) cineState(raw);
   if (Q.has('norender')) { window.__frames = (window.__frames || 0) + 1; return; } // tests : simulation seule (plusieurs joueurs dans un même navigateur)
-  if (composer) composer.render(); else renderer.render(scene, camera); if (game && !game.paused) game.renderPip(renderer, scene); window.__frames = (window.__frames || 0) + 1;
+  if (composer) composer.render(); else renderer.render(scene, camera); if (game && !game.paused) { game.renderPip(renderer, scene); game.renderNews?.(renderer, scene); } window.__frames = (window.__frames || 0) + 1;
 }
 window.__cineState = (dt) => cine && cineState(dt);
 renderMenu(); frame();

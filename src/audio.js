@@ -235,7 +235,12 @@ export function createAudio() {
     if (kind === 'on') { tone(out, t, 0.12, 880, 880, 0.3, 'triangle'); tone(out, t + 0.13, 0.18, 1318, 1318, 0.3, 'triangle'); return; }
     if (kind === 'up') { [523, 659, 784, 1046].forEach((f, i) => tone(out, t + i * 0.07, 0.14, f, f * 1.01, 0.28, 'square')); noise(out, t, 0.3, 'bandpass', 3000, 1200, 1, 0.4); return; }
     noise(out, t, 0.5, 'bandpass', 1400, 500, 2, 0.5); for (let i = 0; i < 5; i++) noise(out, t + 0.12 + i * 0.13, 0.05, 'highpass', 3500, 2500, 1, 0.5); tone(out, t + 0.1, 0.9, 90, 260, 0.25, 'sawtooth'); }
-  const api = { material, sentry, hurt, armorBreak, ring, muffle, whistle, crack, firework, buzz, rotor, jet, cannon, water, init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state, journal: journal.slice() }), _ctx: () => ctx };
+  // générique du flash info : coup de timbale et accord de cuivres, plus appuyé quand la partie s'emballe
+  function newsSting(lv = 0) { if (!ctx) return; const out = spatial(null, 0.42 + lv * 0.04), t = ctx.currentTime; const up = lv >= 3 ? 1.122 : 1;
+    tone(out, t, 0.9, 82, 46, 0.7, 'sine'); noise(out, t, 0.25, 'lowpass', 1600, 200, 0.8, 0.45);
+    [[392, 0, 0.12], [392, 0.14, 0.12], [523, 0.28, 0.5]].forEach(([f, d, du]) => { tone(out, t + d, du, f * up, f * up, 0.16, 'sawtooth'); tone(out, t + d, du, f * up * 1.5, f * up * 1.5, 0.08, 'square'); });
+    if (lv >= 2) tone(out, t + 0.28, 0.6, 659 * up, 659 * up, 0.1, 'sawtooth'); }
+  const api = { newsSting, material, sentry, hurt, armorBreak, ring, muffle, whistle, crack, firework, buzz, rotor, jet, cannon, water, init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state, journal: journal.slice() }), _ctx: () => ctx };
   // chaque bruitage : noté dans les derniers sons joués, et une erreur audio (valeur non finie refusée par le navigateur)
   // ne remonte plus dans le code du jeu, où elle interrompait l'action en cours
   for (const k of Object.keys(Object.getOwnPropertyDescriptors(api))) { const d = Object.getOwnPropertyDescriptor(api, k); if (typeof d.value !== 'function' || k === 'init' || k === 'debug' || k === '_ctx') continue; const f = d.value, quiet = k === 'engine' || k === 'roll' || k === 'muffle';

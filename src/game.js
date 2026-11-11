@@ -13,6 +13,7 @@ import { heliMethods } from './helico.js';
 import { installThrows, THROWS, solveThrow } from './throws.js';
 import { svg, iconize } from './icons.js';
 import { installSeries } from './series.js';
+import { installNotoriete } from './notoriete.js';
 import { installConvois } from './convois.js';
 import { installBarricades, TIERS, tierInfo, fmtG } from './barricades.js';
 import { installLanceurs } from './lanceurs.js';
@@ -1959,7 +1960,7 @@ export class Game {
     const ready = a.rewards.length ? `<span class="rdy">${svg(this.streakDef(a, a.rewards[a.rewards.length - 1]).ico)} ${this.streakDef(a, a.rewards[a.rewards.length - 1]).nom} · ${this.input.label('streak')}</span>` : '';
     el.innerHTML = `<div class="top"><div class="kills">${svg('skull')} ${a.stats.k}<small>ÉLIM.</small></div><div class="pos">#${i + 1}<small>SUR ${all.length}</small></div></div>`
       + `<div class="sub"><span>Assist. <b>${a.stats.a}</b></span><span>Captures <b>${a.stats.cap}</b></span><span>Saccage <b>${a.stats.sac}</b></span></div>`
-      + `<table>${rows.map((x, j) => `<tr class="${x.team === 'ordre' ? 'o' : 'c'}${x === a ? ' me' : ''}"><td class="n">${from + j + 1}</td><td class="nm">${esc(x.name)}</td><td class="k">${x.stats.k}</td><td class="p">${fmt(contrib(x))}</td></tr>`).join('')}</table>`
+      + `<table>${rows.map((x, j) => `<tr class="${x.team === 'ordre' ? 'o' : 'c'}${x === a ? ' me' : ''}"><td class="n">${from + j + 1}</td><td class="nm">${esc(x.name)}${this.notoTag?.(x) || ''}</td><td class="k">${x.stats.k}</td><td class="p">${fmt(contrib(x))}</td></tr>`).join('')}</table>`
       + `<div class="streak">Série <b>${a.streak}</b>${next ? ` · ${svg(next.ico)} ${next.nom} à ${next.n}` : ''} ${ready}</div>`;
   }
   minimapInit() {
@@ -2026,3 +2027,4 @@ installBarricades(Game);
 installManiement(Game);
 installLanceurs(Game); // après les barricades : complète this.blast (vitrines)
 installTurrets(Game); // après les barricades : enrobe blast, wallPrompt, placeWall, updateWalls
+installNotoriete(Game); // en dernier : enrobe addGalons, kill, multiKill, addStreak, captureZone, killFeed, drawRank, update, build
