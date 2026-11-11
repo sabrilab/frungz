@@ -70,10 +70,13 @@ export function createNight({ scene, sun, hemi, renderer, world, mapRoot, fx, qu
     on = v; group.visible = v;
     if (v) {
       // clair de lune lisible : on doit voir les silhouettes et le décor, la chaleur vient des lampadaires et des vitrines
-      scene.fog.color.set('#1a2136'); scene.fog.near = 35; scene.fog.far = Math.max(320, day.far * 0.6); sun.intensity = 0.5; sun.color.set('#7390ff');
-      if (hemi) { hemi.intensity = 0.34; hemi.color.set('#5068b0'); hemi.groundColor.set('#2a2630'); } renderer.toneMappingExposure = 1.08;
-      scene.environment = getNightEnv(); scene.environmentIntensity = 0.35; realismUniforms.uWet.value = 0.8;
-      if (sky) { sky.material.uniforms.top.value.set('#050a1a'); sky.material.uniforms.mid.value.set('#16203c'); sky.material.uniforms.hor.value.set('#5c3e33'); if (sky.material.uniforms.night) sky.material.uniforms.night.value = 1; }
+      // (passe photoréaliste) nuit « jouable » : clair de lune franc et ciel nocturne qui éclaire, façon nuit américaine de cinéma.
+      // On comprend tout de suite qu'il fait nuit (ciel noir bleuté, lampadaires et vitrines qui dominent, ombres bleues),
+      // mais on distingue les silhouettes, le décor et les ennemis jusqu'à ~60 m. Exposition relative au jour (tonalité AgX).
+      scene.fog.color.set('#232c44'); scene.fog.near = 45; scene.fog.far = Math.max(360, day.far * 0.7); sun.intensity = 0.95; sun.color.set('#8ba4ff');
+      if (hemi) { hemi.intensity = 0.75; hemi.color.set('#6a80c4'); hemi.groundColor.set('#3a3442'); } renderer.toneMappingExposure = day.exp * 1.2;
+      scene.environment = getNightEnv(); scene.environmentIntensity = 0.55; realismUniforms.uWet.value = 0.8;
+      if (sky) { sky.material.uniforms.top.value.set('#070d22'); sky.material.uniforms.mid.value.set('#1c2846'); sky.material.uniforms.hor.value.set('#6a4a3c'); if (sky.material.uniforms.night) sky.material.uniforms.night.value = 1; }
       for (const [m] of lit) { m.emissive?.set(/glassLit/.test(m.name) ? '#ffc27a' : '#ffb070'); m.emissiveIntensity = /glassLit/.test(m.name) ? 1.05 : 1.6; }
       for (const [m] of glowMats) { m.emissive?.set(m.name === 'lamp' ? '#ffd29a' : '#ffcf96'); m.emissiveIntensity = m.name === 'lamp' ? 3 : 0.85; }
       const b = bloomPass(); if (b) { b.__day ??= [b.strength, b.threshold, b.radius]; b.strength = 0.5; b.threshold = 0.8; b.radius = 0.55; }
