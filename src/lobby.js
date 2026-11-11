@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { makeCharacter, attachGun, tintTeam, chars } from './assets.js';
 import { holdPose } from './hold.js';
-import { TEAMS, classOf } from './data.js';
+import { TEAMS, WEAPONS, classOf } from './data.js';
 import { createDecor } from './salon-decor.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -56,8 +56,10 @@ export function createLobby({ scene, camera, world, Q, sun, hemi, renderer, nigh
     const ch = makeCharacter(m.skin); tintTeam(ch.model, m.skin, m.team);
     ch.model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
     try { if (m.gun) { attachGun(ch, m.gun); ch.gunId = m.gun; } } catch (e) { console.warn('arme du salon', e); }
-    const idle = ch.actions[m.pistol ? 'MXP_Idle' : 'MX_Idle'] || ch.actions.MX_IdleLow || Object.values(ch.actions)[0];
-    idle?.play(); ch.idle = idle; ch.mixer.update(Math.random() * 2);
+    // repos arme basse (pas en joue : au salon, l'arme pointée au visage cachait les mains et la tête)
+    const pistol = WEAPONS[m.gun]?.hand === 'pistol';
+    const idle = ch.actions[pistol ? 'MXP_IdleLow' : 'MX_IdleLow'] || ch.actions.MX_IdleLow || ch.actions.MX_Idle || Object.values(ch.actions)[0];
+    idle?.play(); ch.idle = idle; ch.low = /IdleLow$/.test(idle?.getClip().name || ''); ch.mixer.update(Math.random() * 2);
     ch.root.rotation.y = p.turn; p.g.add(ch.root); p.ch = ch;
   }
 
@@ -94,7 +96,7 @@ export function createLobby({ scene, camera, world, Q, sun, hemi, renderer, nigh
       dragV *= Math.pow(0.02, dt); drag += dragV * dt * 60 * 0.06; drag *= Math.pow(0.35, dt);
       pads.forEach((p, i) => {
         p.beam.material.uniforms.t.value = t + i;
-        if (!p.ch) return; p.ch.mixer.update(dt); if (p.ch.gun && p.ch.gunId && !p.ch.busy) holdPose(p.ch, p.ch.gunId);
+        if (!p.ch) return; p.ch.mixer.update(dt); if (p.ch.gun && p.ch.gunId && !p.ch.busy) holdPose(p.ch, p.ch.gunId, !p.ch.low);
         p.ch.root.rotation.y = p.turn + (i === 0 ? drag : 0) + Math.sin(t * 0.4 + i) * 0.03;
         if (i > 0 && !p.ch.busy && (p.idleT -= dt) < 0) { p.idleT = 9 + Math.random() * 12; gesture(p, Math.random() < 0.5 ? 'MX_FistPump' : 'MX_Cheer'); }
       });
