@@ -24,3 +24,11 @@ Assets : personnages et armes Quaternius (CC0), sons CC0 (voir `public/assets/sf
 - Transport : Supabase Realtime (broadcast + présence), projet Supabase de Sabri, clé publique anon. Quota gratuit : 100 messages/s et 2 millions de messages par mois (environ 10 h de jeu à trois). Pour plus de joueurs, prévoir un transport Cloudflare Durable Objects (même interface join/send/track/leave).
 - En ligne, l'équipe est limitée à 20 contre 20 (messages plus légers). Pas encore synchronisés : voitures, vitrines, butin, barricades, lancers et atouts de série (chacun les voit chez soi ; leurs dégâts, eux, passent bien).
 - Tests sans Supabase : `node test/relay.cjs 8125 &` puis `node test/online.cjs http://localhost:8124/` (3 navigateurs : salon, lancement, positions, tirs, morts, départ) et `node test/online-shots.cjs http://localhost:8124/ dossier` (captures). Dans le navigateur : `?net=ws://localhost:8125&profil=a` (relais) ou `?net=local&profil=a` (onglets), `profil` sépare les sauvegardes.
+
+## App Mac (`mac/`)
+
+Frungz en application Mac (Electron : Chromium + Metal). L'app ouvre le jeu publié sur frungz.vercel.app, donc chaque mise en ligne du jeu y arrive toute seule ; sans internet, elle joue la copie embarquée au moment de la construction. Plein écran, carte graphique dédiée forcée, pas de ralentissement en arrière-plan, souris capturée, manette.
+
+- Construire, installer dans `~/Applications` et lancer : `cd mac && npm run app`
+- Menu Jeu : recharger la dernière version, jouer hors ligne, images/s sans plafond.
+- Banc d'essai app contre navigateurs (même build, même partie) : `cd mac && npm run bench` → `mac/bench/*.json`. Dans le jeu : `?bench=40` lance une partie seule et mesure les images/s.
