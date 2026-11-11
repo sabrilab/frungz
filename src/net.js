@@ -82,37 +82,77 @@ export function createNet({ local = false } = {}) { // local : false (Supabase),
     id, room: null, host: false, status: 'off', members: [], game: null, acc: 0, stats: { sent: 0, recv: 0 },
     me: { id, host: false, pseudo: '', skin: '', team: '', cls: '', gun: '', at: Date.now(), ingame: false },
     on: {}, // rappels du menu : presence(list), start(msg), status(s), hostLeft(), notice(txt)
-    get online() { return this.status === 'on'; },
+    // en ligne : connecté, ou en train de se reconnecter après une coupure (la partie continue pendant ce temps)
+    get online() { return !!this.room && (this.status === 'on' || (this.tries > 0 && this.pres.length > 0)); },
     get guest() { return this.online && !this.host; },
     hostMember() { return this.members.find((m) => m.host && m.id !== id && m.room === this.room) || null; },
     friends() { return this.members.filter((m) => m.id !== id).sort((a, b) => (b.host - a.host) || (a.at - b.at)); },
 
+    // Présence Supabase : on n'y met que l'identité (id, chef, salon, arrivée), envoyée UNE fois à l'entrée.
+    // Supabase ferme le canal d'un client qui met sa présence à jour trop souvent (ClientPresenceRateLimitReached) :
+    // c'était la panne du 11 nov. (changer de tenue ou taper son pseudo coupait le salon). Le reste (pseudo, tenue, camp,
+    // en partie ou non) passe par de simples messages « meta », renvoyés quand ça change et quand quelqu'un arrive.
+    pres: [], metas: {}, gen: 0, tries: 0,
     async join(room, { host, meta }) {
-      if (this.room === room && this.status !== 'off') { this.update(meta); return; }
+      if (this.room === room && this.status !== 'off' && this.status !== 'error') { this.update(meta); return; }
       this.leave();
-      this.room = room; this.host = !!host; this.status = 'joining'; Object.assign(this.me, meta, { host: !!host, room, at: Date.now() });
-      this.t = local ? busTransport(typeof local === 'string' ? local : null) : supabaseTransport();
-      this.on.status?.('joining');
+      this.room = room; this.host = !!host; Object.assign(this.me, meta, { host: !!host, room, at: Date.now() }); this.tries = 0;
+      return this.connect();
+    },
+    async connect() {
+      const gen = ++this.gen, room = this.room; this.t?.leave(); this.status = 'joining'; this.on.status?.('joining');
+      const t = this.t = local ? busTransport(typeof local === 'string' ? local : null) : supabaseTransport();
+      const seen = new Set();
       try {
-        await this.t.join(room, { ...this.me }, {
-          onMsg: (m) => this.recv(m),
+        await t.join(room, { id, host: this.host, room, at: this.me.at }, {
+          onMsg: (m) => { if (gen === this.gen) this.recv(m); },
           onPresence: (list) => {
-            const hadHost = !!this.hostMember();
-            this.members = list.filter((m) => m && m.id && m.room === room);
-            if (this.guest && hadHost && !this.hostMember()) this.on.hostLeft?.();
-            // un ami parti en pleine partie : son perso disparaît
-            if (this.game) for (const a of this.game.actors) if (a.owner && a.owner !== id && !a.gone && a.puppet && (this.host || a.owner !== this.hostId)) { const m = this.members.find((x) => x.id === a.owner); if (!m || (!m.ingame && this.game.time > 15)) this.game.netGone(a); }
-            this.on.presence?.(this.members);
+            if (gen !== this.gen) return;
+            this.pres = list.filter((m) => m && m.id && m.room === room);
+            // quelqu'un vient d'arriver : il ne connaît pas encore notre pseudo ni notre tenue
+            let fresh = false; for (const m of this.pres) if (m.id !== id && !seen.has(m.id)) { seen.add(m.id); fresh = true; }
+            if (fresh) this.sendMeta(true);
+            this.rebuild();
           },
-          onStatus: (s) => { if (s === 'CLOSED' && this.status === 'on') { this.status = 'off'; this.on.status?.('off'); } },
+          onStatus: (st) => { if (gen === this.gen && this.status === 'on' && /CLOSED|CHANNEL_ERROR|TIMED_OUT/.test(st)) this.retry(); },
         });
-        this.status = 'on'; this.on.status?.('on');
+        if (gen !== this.gen) return;
+        this.status = 'on'; this.tries = 0; this.on.status?.('on'); this.sendMeta(true);
       } catch (e) {
-        console.warn('salon en ligne', e); this.status = 'off'; this.on.status?.('error', e);
+        if (gen !== this.gen) return; console.warn('salon en ligne', e); this.retry();
       }
     },
-    update(meta) { Object.assign(this.me, meta); if (this.t && this.status === 'on') { clearTimeout(this._tt); this._tt = setTimeout(() => this.t?.track({ ...this.me }), 150); } },
-    leave() { this.t?.leave(); this.t = null; this.status = 'off'; this.room = null; this.members = []; this.game = null; this.on.status?.('off'); },
+    // canal perdu (réseau, mise en veille de la tablette…) : on se reconnecte tout seul, la partie continue
+    retry() {
+      const gen = this.gen; this.tries++; this.status = this.tries > 4 ? 'error' : 'joining'; this.on.status?.(this.status);
+      clearTimeout(this._rt); this._rt = setTimeout(() => { if (gen === this.gen && this.room) this.connect(); }, Math.min(10000, 1000 * this.tries));
+    },
+    metaOf() { const { pseudo, skin, team, cls, gun, ingame, map } = this.me; return { pseudo, skin, team, cls, gun, ingame, map }; },
+    sendMeta(force) {
+      const m = this.metaOf(), s = JSON.stringify(m); if (!force && s === this._lastMeta) return;
+      clearTimeout(this._mt); this._mt = setTimeout(() => { if (this.status !== 'on') return; this._lastMeta = JSON.stringify(this.metaOf()); this.send('meta', { m: this.metaOf() }); }, force ? 50 : 400);
+    },
+    rebuild() {
+      const hadHost = !!this.hostMember();
+      this.members = this.pres.map((p) => ({ ...(this.metas[p.id] || {}), ...p }));
+      if (this.guest && hadHost && !this.hostMember()) this.on.hostLeft?.();
+      this.checkGone();
+      this.on.presence?.(this.members);
+    },
+    // un ami parti en pleine partie : son perso disparaît, mais seulement après 12 s d'absence
+    // (une reconnexion de quelques secondes ne doit pas le sortir de la partie)
+    checkGone() {
+      const g = this.game; if (!g) return; const now = performance.now(); this.away ||= {};
+      for (const a of g.actors) {
+        if (!a.owner || a.owner === id || a.gone || !a.puppet || (!this.host && a.owner === this.hostId)) continue;
+        const m = this.members.find((x) => x.id === a.owner);
+        if (m && m.ingame === false && g.time > 15) { g.netGone(a); continue; }
+        if (m || this.status !== 'on') { delete this.away[a.owner]; continue; }
+        this.away[a.owner] ??= now; if (now - this.away[a.owner] > 12000) g.netGone(a);
+      }
+    },
+    update(meta) { Object.assign(this.me, meta); this.sendMeta(false); },
+    leave() { this.gen++; clearTimeout(this._rt); this.t?.leave(); this.t = null; this.status = 'off'; this.room = null; this.pres = []; this.metas = {}; this.members = []; this.game = null; this.on.status?.('off'); },
     send(k, d = {}) { if (!this.t || this.status !== 'on') return; d.k = k; d.f = id; this.t.send(d); this.stats.sent++; },
 
     // ---------- début de partie
@@ -130,7 +170,7 @@ export function createNet({ local = false } = {}) { // local : false (Supabase),
     // ---------- chaque image
     tick(dt) {
       const g = this.game; if (!g || this.status !== 'on') return;
-      this.acc += dt; if (this.acc < 1 / RATE) return; this.acc = 0;
+      this.acc += dt; if (this.acc < 1 / RATE) return; this.acc = 0; this.checkGone();
       const rows = []; for (const a of g.actors) if (g.netOwns(a) && !a.gone) rows.push(row(g, a));
       const msg = { r: rows };
       if (this.host) { msg.tm = Math.round(g.time * 10) / 10; msg.sc = [g.score.ordre, g.score.civils]; msg.z = g.zoneState.map((z) => [z.owner === 'ordre' ? 1 : z.owner === 'civils' ? 2 : 0, z.cap === 'ordre' ? 1 : z.cap === 'civils' ? 2 : 0, Math.round(z.p * 100), z.contested ? 1 : 0]); if (g.over) msg.ov = 1; }
@@ -140,6 +180,7 @@ export function createNet({ local = false } = {}) { // local : false (Supabase),
     // ---------- réception
     recv(m) {
       this.stats.recv++;
+      if (m.k === 'meta') { if (m.m && typeof m.m === 'object') { this.metas[m.f] = m.m; this.rebuild(); } return; }
       if (m.k === 'start') { const hm = this.hostMember(); if (!this.host && m.host === m.f && (!hm || m.host === hm.id)) { this.startHost = m.host; this.on.start?.(m); } return; }
       if (m.k === 'back') { if (!this.host) this.on.back?.(); return; }
       const g = this.game; if (!g) return;

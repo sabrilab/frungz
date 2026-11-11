@@ -174,6 +174,8 @@ async function loadAll() {
   try { lobby = createLobby({ scene, camera, world, Q, sun, hemi, renderer, night }); lobby.show(!game); window.__lobby = lobby; $('menu').classList.add('ready'); } catch (e) { console.warn('salon 3D indisponible', e); }
   renderMenu();
   $('loading').classList.add('hidden'); $('play').disabled = false; renderNet(); if (pendingStart) startGuest();
+  // ton salon s'ouvre tout seul : un ami qui ouvre ton lien te rejoint même si tu n'as pas cliqué sur « Inviter »
+  if (!net.room && !Q.get('equipe')) goOnline(save.teamCode, true, true);
   window.__loaded = true;
 }
 
@@ -266,8 +268,9 @@ function renderParty() {
 function renderNet() {
   const note = $('inviteNote'), play = $('play'); if (!note || !play) return;
   const host = net.hostMember(), nf = net.online ? net.friends().length : 0;
-  if (net.status === 'joining') note.textContent = 'Connexion au salon…';
-  else if (net.status === 'error') note.textContent = 'Impossible de joindre le salon en ligne. Vérifie ta connexion puis réessaie.';
+  if (net.status === 'joining' && net.tries > 0) note.textContent = 'Connexion perdue, reconnexion au salon…';
+  else if (net.status === 'joining') note.textContent = 'Connexion au salon…';
+  else if (net.status === 'error') note.textContent = 'Le salon en ligne ne répond pas. Nouvel essai automatique toutes les 10 secondes (vérifie ta connexion).';
   else if (net.guest) note.textContent = host ? `Tu es dans l'équipe ${net.room} de ${host.pseudo}. ${host.ingame ? 'Une partie est en cours : tu entreras à la suivante.' : 'Le chef lance la partie quand tout le monde est là.'}` : `Salon ${net.room} : en attente du chef d'équipe (il doit ouvrir son salon)…`;
   else if (net.online) note.textContent = nf ? `Salon ouvert · ${nf} ami${nf > 1 ? 's' : ''} connecté${nf > 1 ? 's' : ''}. Lance la partie quand vous êtes prêts.` : 'Salon ouvert : envoie le lien à tes amis. Ils apparaîtront ici dès qu\'ils l\'ouvrent.';
   else note.textContent = 'Ouvre ton salon pour inviter des amis, ou complète ton équipe avec des équipiers IA.';
@@ -290,7 +293,7 @@ net.on.hostLeft = () => { clearTimeout(net._hl); net._hl = setTimeout(() => { if
 net.on.back = () => { if (game) { endGame(null); openInvite(); $('inviteNote').textContent = 'Le chef d\'équipe a quitté la partie : retour au salon.'; } };
 net.on.start = (m) => { pendingStart = m; if (world) startGuest(); };
 let pendingStart = null;
-function goOnline(code, host) { audio.init(); net.join(code, { host, meta: netMeta() }); renderNet(); }
+function goOnline(code, host, auto) { if (!auto) audio.init(); net.join(code, { host, meta: netMeta() }); renderNet(); }
 function placePlates() {
   if (!lobby?.visible || $('menu').classList.contains('hidden')) return;
   const A = lobby.anchors(innerWidth, innerHeight);
