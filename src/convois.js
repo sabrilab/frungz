@@ -29,6 +29,8 @@ const LOOK = {
   armee: { body: '#4f5a35', cab: '#5d6a3e', len: 7, bache: '#6b7148' },
   belier: { body: '#2a2a2a', cab: '#e0592a', len: 8 },
   bande: { body: '#e9e6df', cab: '#e9e6df', len: 5.2, stripe: '#2f8f4e' },
+  crs: { body: '#e9eef5', cab: '#e9eef5', len: 5.4, stripe: '#1c3f8f', gyro: 1 }, // fourgon CRS : blanc, bande bleue, gyrophares
+  emeute: { body: '#7a7d80', cab: '#7a7d80', len: 5, stripe: '#3a3c3e' }, // utilitaire gris cabossé
 };
 // camion orienté vers +z, roues au sol (y = 0)
 function truckMesh(kind) {
@@ -50,6 +52,7 @@ function truckMesh(kind) {
     g.add(part(box(3.2, 1.5, 0.35), mat('#8d949c'), 0, 1.25, len / 2 + 0.3), part(box(0.3, 0.3, 1), dark, -1, 1.2, len / 2), part(box(0.3, 0.3, 1), dark, 1, 1.2, len / 2));
   } else {
     g.add(part(box(2.3, 2.1, back), body, 0, 1.95, -cabL / 2), part(box(2.32, 0.35, back), mat(L.stripe), 0, 1.6, -cabL / 2));
+    if (L.gyro) { const l1 = part(box(0.4, 0.14, 0.22), mat('#2a6bff', 3), -0.5, 3.07, len / 2 - 0.5), l2 = part(box(0.4, 0.14, 0.22), mat('#2a6bff', 3), 0.5, 3.07, len / 2 - 0.5); g.add(l1, l2); Object.assign(ud, { l1, l2 }); }
   }
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; }); g.userData = ud; return g;
 }
@@ -67,12 +70,14 @@ export function installConvois(Game) {
 
   const landSpell = P.landSpell;
   P.landSpell = function (kind, p, owner) {
-    if (kind === 'eau' || kind === 'armee' || kind === 'bande') return this.startConvoy(kind, owner, p);
+    if (kind === 'eau' || kind === 'armee' || kind === 'bande' || kind === 'crs' || kind === 'emeute') return this.startConvoy(kind, owner, p);
     if (kind === 'belier') return this.startRam(owner, p);
     return landSpell.call(this, kind, p, owner);
   };
   const updateThrown = P.updateThrown;
   P.updateThrown = function (dt) { updateThrown.call(this, dt); this.updateConvoys(dt); };
+  const landSpell2 = P.landSpell;
+  P.landSpell = function (kind, p, owner) { this._spellCtx = { kind, team: owner.team, nom: this.streakDef?.(owner, kind)?.nom }; try { return landSpell2.call(this, kind, p, owner); } finally { this._spellCtx = null; } };
 
   P.addTruck = function (kind, owner, from, to, opts = {}) {
     const m = truckMesh(kind); m.position.copy(from); m.lookAt(to.x, from.y, to.z); this.root.add(m);
@@ -84,18 +89,21 @@ export function installConvois(Game) {
   P.startConvoy = function (kind, owner, p) {
     const TH = THROWS[kind], team = owner.team; this.mark(p, TH.r, TH.col, 4);
     const { dir, len } = this.convoyPath(p); const side = V(-dir.z, 0, dir.x);
-    const n = kind === 'eau' ? 1 : 2;
+    const n = kind === 'armee' || kind === 'bande' ? 2 : 1;
     for (let i = 0; i < n; i++) { const off = n > 1 ? (i ? 2.2 : -2.2) : 0; const stop = p.clone().addScaledVector(side, off).addScaledVector(dir, i * 1.5);
       const from = stop.clone().addScaledVector(dir, len); from.y = this.world.groundY(from.x, from.z, p.y + 2); stop.y = this.world.groundY(stop.x, stop.z, p.y + 2);
-      this.addTruck(kind, owner, from, stop, { delay: i * 0.6, life: kind === 'eau' ? 30 : 3 }); }
+      this.addTruck(kind, owner, from, stop, { delay: 0.8 + i * 0.6, life: kind === 'eau' ? 30 : 3 }); }
     this.audio.play('slam', p, 0.6);
-    if (this.player.team !== team && this.player.pos.distanceTo(p) < 70) this.bigText(kind === 'eau' ? `${svg('water')} CANON À EAU !` : kind === 'armee' ? `${svg('truck')} L'ARMÉE DÉBARQUE !` : `${svg('truck')} LA BANDE DÉBARQUE !`, kind === 'eau' ? 'il va te balayer : à couvert !' : '8 renforts adverses arrivent', '#ff4a4a', 't4');
+    if (this.player.team !== team && this.player.pos.distanceTo(p) < 70) this.bigText(kind === 'eau' ? `${svg('water')} CANON À EAU !` : kind === 'armee' ? `${svg('truck')} L'ARMÉE DÉBARQUE !` : kind === 'bande' ? `${svg('truck')} LA BANDE DÉBARQUE !` : kind === 'crs' ? `${svg('truck')} FOURGON DE CRS !` : `${svg('truck')} RENFORTS ÉMEUTIERS !`, kind === 'eau' ? 'il va te balayer : à couvert !' : kind === 'armee' || kind === 'bande' ? '8 renforts adverses arrivent' : '4 renforts adverses arrivent', '#ff4a4a', 't4');
   };
   P.deploySquad = function (T) {
+    if (T.kind === 'crs' || T.kind === 'emeute') { const back = T.m.position.clone().addScaledVector(V(Math.sin(T.m.rotation.y), 0, Math.cos(T.m.rotation.y)), -3.4);
+      this.reinforce(T.owner, 4, back, false); this.fx.wisp(back.clone().add(V(0, 0.4, 0)), { color: '#a8a296', s0: 0.5, s1: 2.5, a: 0.35, life: 1.4 });
+      if (T.owner === this.player) this.toast(T.kind === 'crs' ? 'Les CRS descendent du fourgon' : 'Les émeutiers descendent de l\'utilitaire', TEAMS[T.team].color); return; }
     const mil = T.kind === 'armee'; const back = T.m.position.clone().addScaledVector(V(Math.sin(T.m.rotation.y), 0, Math.cos(T.m.rotation.y)), -4);
     const list = this.reinforce(T.owner, 4, back, false) || [];
     for (const t of list) { const k = (this._squadN = (this._squadN || 0) + 1);
-      t.name = mil ? `Soldat ${pick(['Martin', 'Bernard', 'Petit', 'Durand', 'Leroy', 'Moreau', 'Garnier', 'Lambert'])}` : pick(['Le Fauve', 'Tonton', 'Mamadou', 'Le Rital', 'Bébert', 'La Pieuvre', 'Le Gitan', 'Zorro']) + (k > 8 ? ` ${k}` : '');
+      t.name = mil ? `Soldat ${['Martin', 'Bernard', 'Petit', 'Durand', 'Leroy', 'Moreau', 'Garnier', 'Lambert', 'Roussel', 'Fabre', 'Chevalier', 'Masson'][k % 12]}` : pick(['Le Fauve', 'Tonton', 'Mamadou', 'Le Rital', 'Bébert', 'La Pieuvre', 'Le Gitan', 'Zorro']) + (k > 8 ? ` ${k}` : '');
       t.armor = mil ? 150 : 90; t.expire = this.time + 55;
       const id = mil ? pick(['rifle', 'carabine', 'mitrailleuse']) : pick(['rifle', 'shotgun', 'rafale']); if (WEAPONS[id]) { t.slots[1] = { id, rarity: mil ? 'legendaire' : 'epique', mag: WEAPONS[id].mag }; this.equip(t, 1, true); }
       t.vel.addScaledVector(V(rnd(-1, 1), 0, rnd(-1, 1)), 3); }
@@ -154,11 +162,12 @@ export function installConvois(Game) {
         const rest = T.to.clone().sub(m.position); rest.y = 0; const d = rest.length(); const sp = T.ram ? T.speed : Math.min(T.speed, 1.5 + d * 1.6);
         const step = Math.min(d, sp * dt); if (d > 0.05) m.position.addScaledVector(rest.divideScalar(d), step);
         m.position.y = this.world.groundY(m.position.x, m.position.z, m.position.y + 1.5); for (const w of m.userData.wheels) w.rotation.x += step / 0.5;
-        if ((T.dust = (T.dust || 0) - dt) <= 0) { T.dust = 0.08; this.trailPuff(m.position.clone().add(V(rnd(-1, 1), 0.3, 0)), '#8a8378', 0.8, 0.4, 0.5); }
+        if ((T.dust = (T.dust || 0) - dt) <= 0) { T.dust = 0.08; this.fx.wisp(m.position.clone().add(V(rnd(-1, 1), 0.3, 0)), { color: '#9a9284', s0: 0.4, s1: 1.8, a: 0.28, life: 1.2, up: 0.3 }); }
         if (T.ram) { this.ramTick(T); if ((T.snd = (T.snd || 0) - dt) <= 0) { T.snd = 0.3; this.audio.play('slam', m.position, 0.5, [0.6, 0.8], 0.1); } }
         if (d < 0.1) { T.state = 'work'; T.t0 = T.t;
           if (T.ram) { this.boom(m.position.clone(), 7, 160, T.owner, '#ffb347', { foesOnly: true }); this.fx.burst(m.position.clone().add(V(0, 1.5, 0)), 20, { color: '#3a3a3a', speed: 5, size: 0.4, life: 1.5 }); keep = false; }
           else if (T.kind !== 'eau') this.deploySquad(T); }
+        if (m.userData.l1 && T.kind !== 'eau') { const bl = Math.sin(T.t * 10) > 0; m.userData.l1.visible = bl; m.userData.l2.visible = !bl; }
       } else if (T.state === 'work') {
         if (T.kind === 'eau') this.waterTick(T, dt);
         if (T.t - T.t0 > T.life) { T.state = 'leave'; T.t1 = T.t; }
