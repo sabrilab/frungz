@@ -15,6 +15,7 @@ import { Game } from './game.js';
 import { createPreview } from './preview.js';
 import { createLobby } from './lobby.js';
 import { applyRealism, skyEnvironment, realismUniforms } from './realisme.js';
+import { skyReflections, enhanceMap, enhanceCar } from './photo.js';
 import { TEAMS, WEAPONS, WEAPON_CATS, CLASSES, classOf, classWeapons, kitOf, UPGRADES, SKIN_NAMES } from './data.js';
 import { svg } from './icons.js';
 import { createNet, ONLINE_MAX_TEAM } from './net.js';
@@ -49,11 +50,11 @@ function switchMap(id, room) {
 // ---------- qualité graphique ----------
 // préréglages : bas (PC modestes), moyen, haut ; « auto » choisit selon la carte graphique, puis la résolution s'adapte aux images/s
 const QUALITY = {
-  bas: { pr: 0.75, prMin: 0.5, aa: false, shadows: false, shadowSize: 1024, soft: false, post: false, far: 480, fog: [90, 380], lod: 90, lodShadow: 0 },
-  moyen: { pr: 1, prMin: 0.6, aa: true, shadows: true, shadowSize: 1024, soft: false, post: false, far: 900, fog: [130, 520], lod: 150, lodShadow: 30 },
+  bas: { pr: 0.75, prMin: 0.5, aa: false, shadows: false, shadowSize: 1024, shadowHalf: 45, soft: false, post: false, far: 480, fog: [90, 380], lod: 90, lodShadow: 0 },
+  moyen: { pr: 1, prMin: 0.6, aa: true, shadows: true, shadowSize: 1024, shadowHalf: 45, soft: false, post: false, far: 900, fog: [130, 520], lod: 150, lodShadow: 30 },
   // téléphone (iPhone récent, puce Apple) : ombres simples, pas de post-traitement, résolution qui s'adapte, brouillard plus proche
-  mobile: { pr: 1.25, prMin: 0.6, aa: false, shadows: true, shadowSize: 1024, soft: false, post: false, far: 620, fog: [100, 440], lod: 110, lodShadow: 20 },
-  haut: { pr: 1.5, prMin: 0.7, aa: true, shadows: true, shadowSize: 2048, soft: true, post: true, far: 1700, fog: [150, 620], lod: 200, lodShadow: 45 },
+  mobile: { pr: 1.25, prMin: 0.6, aa: false, shadows: true, shadowSize: 1024, shadowHalf: 45, soft: false, post: false, far: 620, fog: [100, 440], lod: 110, lodShadow: 20 },
+  haut: { pr: 1.5, prMin: 0.7, aa: true, shadows: true, shadowSize: 3072, shadowHalf: 60, soft: true, post: true, far: 1700, fog: [150, 620], lod: 200, lodShadow: 45 },
 };
 function detectTier() {
   try {
@@ -76,16 +77,21 @@ const renderer = new THREE.WebGLRenderer({ antialias: QS.aa, powerPreference: 'h
 const prMax = Math.min(devicePixelRatio, QS.pr); let prCur = prMax;
 renderer.setPixelRatio(prCur); renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = QS.shadows; renderer.shadowMap.type = QS.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.outputColorSpace = THREE.SRGBColorSpace;
+// tonalité : ACES (contraste de pellicule) ; ?tm=agx ou ?tm=neutral pour comparer
+const TM = { aces: THREE.ACESFilmicToneMapping, agx: THREE.AgXToneMapping, neutral: THREE.NeutralToneMapping };
+renderer.toneMapping = TM[Q.get('tm')] ?? THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = renderer.toneMapping === THREE.AgXToneMapping ? 1.25 : 1.05; renderer.outputColorSpace = THREE.SRGBColorSpace;
 $('app').appendChild(renderer.domElement);
-const { scene, sun, hemi, followShadow } = setupScene(renderer);
-sun.shadow.mapSize.set(QS.shadowSize, QS.shadowSize); sun.castShadow = QS.shadows; scene.fog.near = QS.fog[0]; scene.fog.far = QS.fog[1];
+const { scene, sun, hemi, sky, followShadow: followShadow0, setShadowFrame } = setupScene(renderer);
+setShadowFrame(QS.shadowHalf, QS.shadowSize); sun.castShadow = QS.shadows; scene.fog.near = QS.fog[0]; scene.fog.far = QS.fog[1];
 const pm = new THREE.PMREMGenerator(renderer);
-// reflets : un vrai ciel (dégradé + soleil) plutôt qu'une pièce d'intérieur
-try { scene.environment = skyEnvironment(renderer, { sunDir: sun.position.clone().normalize().toArray() }); scene.environmentIntensity = 0.6; } catch (e) { console.warn('ciel de reflets indisponible', e); }
+// reflets : le ciel affiché lui-même (dégradé, soleil, nuages), fabriqué une fois
+try { scene.environment = skyReflections(renderer, sky); scene.environmentIntensity = 0.7; } catch (e) { console.warn('ciel de reflets indisponible', e); try { scene.environment = skyEnvironment(renderer, {}); scene.environmentIntensity = 0.6; } catch {} }
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, QS.far); scene.add(camera);
+// le cadre d'ombre est avancé vers ce que regarde la caméra : les ombres couvrent la rue devant soi, pas derrière
+const _fw = new THREE.Vector3();
+const followShadow = (p) => { camera.getWorldDirection(_fw); _fw.y = 0; const L = _fw.length(); if (L > 1e-3 && Number.isFinite(L)) _fw.multiplyScalar(QS.shadowHalf * 0.3 / L); else _fw.set(0, 0, 0); followShadow0(p, _fw); };
 // post-traitement : bloom léger (éclairs de bouche, néons, soleil), étalonnage et vignette dans un seul passage final
-let composer = null, cine = null, grade = null;
+let composer = null, cine = null, grade = null, photo = null;
 async function setupPost() {
   if (!QS.post) return;
   const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }, { ShaderPass }] = await Promise.all([
@@ -96,23 +102,32 @@ async function setupPost() {
   // et noircit un grand rectangle de l'écran pendant quelques images ; le passage cinéma les neutralise et borne la luminosité avant le bloom.
   // Il ajoute le flou de mouvement de caméra et la profondeur de champ en visée (src/cine.js), grâce à la profondeur de la scène.
   for (const rt of [composer.renderTarget1, composer.renderTarget2]) { rt.depthTexture = new THREE.DepthTexture(rt.width, rt.height); rt.depthTexture.type = THREE.UnsignedIntType; }
-  cine = new CinePass(camera); cine.enabled2 = save.settings.cine !== false && !Q.has('nocine'); composer.addPass(cine); window.__cine = cine;
+  // passe photoréaliste (src/photo.js) : occlusion ambiante et perspective atmosphérique, juste après le rendu de la scène
+  const { PhotoPass } = await import('./photo.js');
+  photo = new PhotoPass(camera, { sky, sun, scene }); photo.enabled2 = save.settings.photo !== false && !Q.has('nophoto'); composer.addPass(photo); window.__photo = photo;
+  cine = new CinePass(camera); cine.photo = photo; cine.enabled2 = save.settings.cine !== false && !Q.has('nocine'); composer.addPass(cine); window.__cine = cine;
   const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.35, 0.5, 0.92); composer.addPass(bloom);
   composer.addPass(new OutputPass());
   // étalonnage : légère courbe en S, ombres un peu froides, hautes lumières chaudes, vignette douce
   // étalonnage : légère courbe en S, ombres un peu froides, hautes lumières chaudes, vignette douce ; touche « pellicule » :
   // grain fin animé et légère aberration chromatique sur les bords de l'objectif (coupés avec le reste du rendu cinéma)
-  grade = new ShaderPass({ uniforms: { tDiffuse: { value: null }, uT: { value: 0 }, uFilm: { value: 1 } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform sampler2D tDiffuse; uniform float uT, uFilm; varying vec2 vUv;
+  grade = new ShaderPass({ uniforms: { tDiffuse: { value: null }, uT: { value: 0 }, uFilm: { value: 1 }, uNight: { value: 0 } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform sampler2D tDiffuse; uniform float uT, uFilm, uNight; varying vec2 vUv;
       void main(){ vec2 d = vUv - 0.5; vec3 c = texture2D(tDiffuse, vUv).rgb;
         if (uFilm > 0.01) { vec2 o = d * dot(d, d) * 0.012 * uFilm; c.r = texture2D(tDiffuse, vUv + o).r; c.b = texture2D(tDiffuse, vUv - o).b; }
         float l = dot(c, vec3(0.299, 0.587, 0.114));
         c = mix(c, c * c * (3.0 - 2.0 * c), 0.22); c += vec3(-0.012, 0.0, 0.018) * (1.0 - l) + vec3(0.02, 0.008, -0.012) * l;
-        c = mix(vec3(l), c, 1.08); c *= 1.0 - dot(d, d) * 0.55;
+        c = mix(vec3(l), c, 1.08);
+        // nuit lisible : les ombres profondes sont relevées vers un bleu nuit (on voit les silhouettes), vignette plus légère
+        if (uNight > 0.01) { vec3 lift = pow(max(c, vec3(0.0)), vec3(0.8)) + vec3(0.006, 0.012, 0.03) * (1.0 - l); c = mix(c, lift, uNight); }
+        c *= 1.0 - dot(d, d) * mix(0.55, 0.35, uNight);
         float g = fract(sin(dot(floor(gl_FragCoord.xy) + fract(uT) * 97.0, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
         c += g * 0.028 * uFilm * (1.0 - 0.6 * l);
         gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }` });
   composer.addPass(grade);
+  // anticrénelage (les cibles du post-traitement n'ont pas de multi-échantillonnage) : FXAA sur l'image finale
+  const { FXAAPass } = await import('three/examples/jsm/postprocessing/FXAAPass.js');
+  const fxaa = new FXAAPass(); composer.addPass(fxaa); window.__fxaa = fxaa;
   window.__post = composer;
 }
 setupPost();
@@ -137,12 +152,14 @@ async function loadAll() {
     loadMap(MAP.glb, (p) => { progress.map = p; showProgress(); }),
     Promise.all([loadSkinBases(), loadMx()]).then(([, mx]) => { for (const d of ALL_SKINS) { try { registerSkin(chars, d, mx, 1.8, { tex: 512 }); } catch (e) { console.warn('skin', d.id, e); } progress.chars++; showProgress(); } }),
     loadGuns(() => { progress.guns++; showProgress(); }),
-    Promise.all(CARS.map(async ([f, classe, nom]) => { try { const g = await loadGLB(`assets/cars/${f}.glb`); const s = g.scene; const box = new THREE.Box3().setFromObject(s); const sz = s.userData.size || [box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z]; carDefs.push({ scene: s, classe, nom, size: sz }); } catch (e) { console.warn('voiture', f, e); } progress.cars++; showProgress(); })),
+    Promise.all(CARS.map(async ([f, classe, nom]) => { try { const g = await loadGLB(`assets/cars/${f}.glb`); const s = g.scene; if (QN !== 'bas' && QN !== 'mobile') enhanceCar(s); const box = new THREE.Box3().setFromObject(s); const sz = s.userData.size || [box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z]; carDefs.push({ scene: s, classe, nom, size: sz }); } catch (e) { console.warn('voiture', f, e); } progress.cars++; showProgress(); })),
   ]);
   $('loadtxt').textContent = 'Préparation du quartier…'; await new Promise((r) => setTimeout(r, 30));
   mapRoot = root; scene.add(root);
   // matières réalistes (grain, salissures, coulures, chaussée mouillée par plaques) : sauf en qualité basse
   if (QN !== 'bas' && QN !== 'mobile' && !Q.has('noreal')) { try { applyRealism(root, { wet: 0.4, presets: gp.realisme }); window.__real = realismUniforms; } catch (e) { console.warn('réalisme indisponible', e); } }
+  // reflets réalistes des vitres, du zinc et de la ferronnerie ; textures nettes en vue rasante (filtrage anisotrope)
+  if (QN !== 'bas' && QN !== 'mobile') enhanceMap(root, renderer.capabilities.getMaxAnisotropy());
   // allègements selon la qualité : pas d'ombre des feuillages en moyenne, pas de décor lointain en basse (caché par le brouillard)
   root.traverse((o) => { if (!o.isMesh) return; const n = o.name || ''; if (QN !== 'haut' && /leaf/.test(n)) o.castShadow = false; if ((QN === 'bas' || QN === 'mobile') && /decor_lointain/.test(n)) o.visible = false; });
   const tw = performance.now(); world = new World(gp, ground); console.log('monde prêt en', (performance.now() - tw).toFixed(0), 'ms'); window.__world = world; window.__ground = ground;
@@ -426,6 +443,7 @@ pause.innerHTML = `<h2>PAUSE</h2>
 <label><input type="checkbox" id="s-newsvoice"> Voix du présentateur</label>
 <label>Qualité graphique <select id="s-quality"><option value="auto">Auto</option><option value="bas">Basse (PC modestes)</option><option value="moyen">Moyenne</option><option value="mobile">Téléphone</option><option value="haut">Haute</option></select></label>
 <label><input type="checkbox" id="s-dynres"> Résolution adaptée aux images/s</label>
+<label><input type="checkbox" id="s-photo"> Rendu photoréaliste : occlusion ambiante, brume lointaine (qualité haute)</label>
 <label><input type="checkbox" id="s-cine"> Rendu cinéma : flou de mouvement, mise au point en visée, grain (qualité haute)</label>
 <label>Images/s <b id="s-fpsn">–</b></label>
 <label>Joueurs par camp (prochaine partie) <select id="s-team"><option value="5">5 contre 5</option><option value="10">10 contre 10</option><option value="15">15 contre 15</option><option value="20">20 contre 20</option><option value="25">25 contre 25</option><option value="35">35 contre 35</option><option value="50">50 contre 50</option></select></label>
@@ -454,7 +472,7 @@ const st = document.createElement('style'); st.textContent = `.padfocus{outline:
 document.head.appendChild(st);
 const bindSet = (id, key, prop = 'value', conv = Number) => { const el = $(id); el[prop] = save.settings[key]; el.addEventListener('input', () => { save.settings[key] = conv(el[prop]); input.settings[key] = save.settings[key]; persist(); if (key === 'fps' && game) { game.cam.fps = save.settings.fps; game.viewGun(); } }); };
 if (save.settings.killcam === undefined) save.settings.killcam = true; bindSet('s-killcam', 'killcam', 'checked', Boolean); if (save.settings.news === undefined) save.settings.news = true; if (save.settings.newsVoice === undefined) save.settings.newsVoice = true; bindSet('s-news', 'news', 'checked', Boolean); bindSet('s-newsvoice', 'newsVoice', 'checked', Boolean); bindSet('s-sens', 'sens'); bindSet('s-touch', 'touchSens'); bindSet('s-fireads', 'fireAds', 'checked', Boolean); bindSet('s-autosprint', 'autoSprint', 'checked', Boolean);
-$('s-touchedit')?.addEventListener('click', () => { if (!touch) return; const back = !pause.classList.contains('hidden'); pause.classList.add('hidden'); touch.openEditor(() => { if (back) pause.classList.remove('hidden'); }); }); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); if (save.settings.cine === undefined) save.settings.cine = true; bindSet('s-cine', 'cine', 'checked', Boolean); $('s-cine').addEventListener('input', () => { if (cine) cine.enabled2 = save.settings.cine; }); bindSet('s-team', 'teamSize');
+$('s-touchedit')?.addEventListener('click', () => { if (!touch) return; const back = !pause.classList.contains('hidden'); pause.classList.add('hidden'); touch.openEditor(() => { if (back) pause.classList.remove('hidden'); }); }); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); if (save.settings.cine === undefined) save.settings.cine = true; bindSet('s-cine', 'cine', 'checked', Boolean); $('s-cine').addEventListener('input', () => { if (cine) cine.enabled2 = save.settings.cine; }); if (save.settings.photo === undefined) save.settings.photo = true; bindSet('s-photo', 'photo', 'checked', Boolean); $('s-photo').addEventListener('input', () => { if (photo) photo.enabled2 = save.settings.photo; }); bindSet('s-team', 'teamSize');
 { const el = $('s-quality'); el.value = save.settings.quality || 'auto'; el.addEventListener('change', () => { save.settings.quality = el.value; persist(); location.reload(); }); }
 function openSettings() { pause.querySelector('h2').textContent = 'RÉGLAGES'; $('resume').style.display = 'none'; $('quit').textContent = 'Retour au salon'; pause.classList.remove('hidden'); audio.init(); audio.play('uiSelect'); }
 function openPause() { if (!game || game.over) return; pause.querySelector('h2').textContent = 'PAUSE'; $('resume').style.display = ''; $('quit').textContent = 'Quitter la partie'; game.paused = true; pause.classList.remove('hidden'); document.exitPointerLock?.(); $('s-fps').checked = game.cam.fps; }
@@ -526,6 +544,8 @@ function dynRes(raw) {
   fpsShown = Math.round(1 / ftAvg); const el = $('s-fpsn'); if (el) el.textContent = fpsShown + ' (résolution ' + Math.round(prCur * 100) + ' %)';
   // rendu cinéma coupé quand on passe sous ~40 images/s, rallumé au-dessus de ~52
   if (cine) cine.auto = ftAvg > 1 / 40 ? 0 : ftAvg < 1 / 52 ? 1 : cine.auto;
+  // passe photoréaliste : coupée sous ~36 images/s, rallumée au-dessus de ~50
+  if (photo && !Q.has('forcephoto')) photo.auto = ftAvg > 1 / 36 ? 0 : ftAvg < 1 / 50 ? 1 : photo.auto;
   if (save.settings.dynres === false || Q.has('bench') || !game || game.paused) return; // banc d'essai : résolution figée, même charge partout
   // effets allégés quand ça rame (moins d'éclats, fumée moins dense), puis rétablis quand il y a de la marge
   const L = fx.stats().load; fx.setLoad(ftAvg > 1 / 40 ? L - 0.15 : ftAvg < 1 / 55 ? L + 0.1 : L);
@@ -546,7 +566,7 @@ function cineState(raw) {
     if (g.killcam) mb = 0.35;
   }
   cine.set({ dt: raw, mb, dof, focus, mask });
-  if (grade) { grade.uniforms.uT.value = (grade.uniforms.uT.value + raw * 24) % 1000; grade.uniforms.uFilm.value = cine.enabled2 ? cine.k : 0; }
+  if (grade) { grade.uniforms.uT.value = (grade.uniforms.uT.value + raw * 24) % 1000; grade.uniforms.uFilm.value = cine.enabled2 ? cine.k : 0; grade.uniforms.uNight.value = night?.on ? 1 : 0; }
 }
 function frame() {
   requestAnimationFrame(frame);

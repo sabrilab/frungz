@@ -5,7 +5,7 @@ const { chromium } = require('playwright'); const fs = require('fs');
 (async () => { const [,, url, out = 'captures-cine', only] = process.argv; fs.mkdirSync(out, { recursive: true });
   const b = await chromium.launch({ args: ['--use-gl=angle'] }); const p = await b.newPage({ viewport: { width: 960, height: 540 } });
   p.on('pageerror', (e) => console.log('[err]', e.message));
-  await p.goto(url + (url.includes('?') ? '&' : '?') + 'q=haut&n=10'); await p.waitForFunction('window.__loaded', null, { timeout: 600000 });
+  await p.goto(url + (url.includes('?') ? '&' : '?') + 'q=haut&n=10&forcephoto'); await p.waitForFunction('window.__loaded', null, { timeout: 600000 });
   await p.evaluate(() => window.__start()); await p.waitForFunction('window.__cine', null, { timeout: 60000 }); await p.waitForTimeout(1500);
   await p.evaluate(() => { const g = window.__game; g.save.settings.dynres = false; g.player.hp = g.player.maxHp = 1e9; window.requestAnimationFrame = () => 0; // boucle du jeu arrêtée
     // la boucle du jeu ne fait plus rien : c'est le test qui avance et rend chaque image
