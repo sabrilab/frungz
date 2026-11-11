@@ -187,6 +187,9 @@ export function createFX(scene, camera) {
     _o.position.set(pos.x + n[0] * 0.01, pos.y + n[1] * 0.01, pos.z + n[2] * 0.01); _o.lookAt(_o.position.x + n[0], _o.position.y + n[1], _o.position.z + n[2]); _o.updateMatrix();
     DEC.setMatrixAt(decI, _o.matrix); decI = (decI + 1) % DN; DEC.count = Math.min(DN, DEC.count + 1); DEC.instanceMatrix.needsUpdate = true;
   }
+  // efface les impacts autour d'un objet qui disparaît (barricade détruite ou remplacée) : sinon ils flottent dans le vide
+  const _dm = new THREE.Matrix4(), _dp = new THREE.Vector3(), _z0 = new THREE.Matrix4().makeScale(0, 0, 0);
+  function clearDecals(center, r) { let hit = 0; for (let i = 0; i < DEC.count; i++) { DEC.getMatrixAt(i, _dm); _dp.setFromMatrixPosition(_dm); if (_dp.distanceToSquared(center) < r * r) { DEC.setMatrixAt(i, _z0); hit++; } } if (hit) DEC.instanceMatrix.needsUpdate = true; }
   function impact(pos, n, kind = 'world') {
     if (!fin(pos)) return; if (n && !Number.isFinite(n[0] + n[1] + n[2])) n = null;
     const nv = new THREE.Vector3(...(n || [0, 1, 0]));
@@ -357,5 +360,5 @@ export function createFX(scene, camera) {
   }
   function setLoad(k) { load = Math.max(0.35, Math.min(1, k)); }
   function stats() { return { items: items.length, parts: parts.lit.length + parts.glow.length + parts.glass.length, puffs: puffCount, smoke: smoke.live.length, glow: glow.live.length, tracers: tracers.length, clouds: clouds.length, load }; }
-  return { _meshes: { glow: glow.mesh, smoke: smoke.mesh }, casing, dust, setGround, tracer, muzzle, burst, impact, shatter, number, cloud, clouds, density, wind, explosion, ring, update, glowT, setLoad, stats };
+  return { _meshes: { glow: glow.mesh, smoke: smoke.mesh }, casing, dust, clearDecals, setGround, tracer, muzzle, burst, impact, shatter, number, cloud, clouds, density, wind, explosion, ring, update, glowT, setLoad, stats };
 }

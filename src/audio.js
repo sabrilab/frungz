@@ -162,6 +162,18 @@ export function createAudio() {
   function rarity(r) { if (!ctx) return; const out = spatial(null, 0.5), t = ctx.currentTime; const n = { commun: 1, rare: 2, epique: 3, legendaire: 5 }[r] || 1; for (let i = 0; i < n; i++) tone(out, t + i * 0.07, 0.25, 660 * Math.pow(1.19, i), 660 * Math.pow(1.19, i), 0.25, 'triangle'); }
   function capture(good) { if (!ctx) return; const out = spatial(null, 0.6), t = ctx.currentTime; const s = good ? [523, 659, 784, 1046] : [392, 330, 262]; s.forEach((f, i) => tone(out, t + i * 0.11, 0.3, f, f, 0.3, 'sawtooth')); }
   function build(pos) { play('slam', pos, 0.8); play('thud', pos, 0.5); }
+  // barricades : chaque matière sonne juste (bois qui claque, tôle qui résonne, béton sourd qui gronde)
+  function material(kind, pos, vol = 1) {
+    if (!ctx) return; const out = spatial(pos, vol, 10); if (!out) return; const t = ctx.currentTime;
+    if (kind === 'metal') { // tôle frappée : partiels inharmoniques qui s'éteignent lentement + crissement
+      for (const [f, v, d] of [[310, 0.22, 0.9], [742, 0.14, 0.7], [1287, 0.09, 0.5], [2113, 0.05, 0.35]]) tone(out, t, d, f * (0.97 + Math.random() * 0.06), f * 0.985, v, 'triangle');
+      noise(out, t, 0.18, 'highpass', 3000, 1500, 0.7, 0.25); play('slam', pos, 0.45 * vol, [1.05, 1.2]);
+    } else if (kind === 'beton') { // bloc posé : choc grave, frottement de gravats
+      tone(out, t, 0.45, 75, 38, 0.6); noise(out, t, 0.6, 'lowpass', 900, 120, 0.8, 0.5); noise(out, t + 0.05, 0.9, 'bandpass', 1800, 600, 0.6, 0.12); play('thud', pos, 0.8 * vol, [0.7, 0.8]); play('debris', pos, 0.35 * vol);
+    } else { // bois / bouclier : claquement sec et creux
+      tone(out, t, 0.18, 190, 110, 0.35); noise(out, t, 0.12, 'bandpass', 1400, 700, 1.2, 0.35); play('thud', pos, 0.55 * vol, [1.05, 1.15]);
+    }
+  }
   function explode(pos) { if (!ctx) return; const out = spatial(pos, 2, 20); if (!out) return; const t = ctx.currentTime; noise(out, t, 1.4, 'lowpass', 1800, 60, 0.7, 1.2); tone(out, t, 0.8, 90, 25, 1.2); play('debris', pos, 1); }
   // moteur de voiture (une voix continue réglée chaque image)
   let eng = null;
@@ -223,7 +235,7 @@ export function createAudio() {
     if (kind === 'on') { tone(out, t, 0.12, 880, 880, 0.3, 'triangle'); tone(out, t + 0.13, 0.18, 1318, 1318, 0.3, 'triangle'); return; }
     if (kind === 'up') { [523, 659, 784, 1046].forEach((f, i) => tone(out, t + i * 0.07, 0.14, f, f * 1.01, 0.28, 'square')); noise(out, t, 0.3, 'bandpass', 3000, 1200, 1, 0.4); return; }
     noise(out, t, 0.5, 'bandpass', 1400, 500, 2, 0.5); for (let i = 0; i < 5; i++) noise(out, t + 0.12 + i * 0.13, 0.05, 'highpass', 3500, 2500, 1, 0.5); tone(out, t + 0.1, 0.9, 90, 260, 0.25, 'sawtooth'); }
-  const api = { sentry, hurt, armorBreak, ring, muffle, whistle, crack, firework, buzz, rotor, jet, cannon, water, init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state, journal: journal.slice() }), _ctx: () => ctx };
+  const api = { material, sentry, hurt, armorBreak, ring, muffle, whistle, crack, firework, buzz, rotor, jet, cannon, water, init, play, gun, tink, click, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state, journal: journal.slice() }), _ctx: () => ctx };
   // chaque bruitage : noté dans les derniers sons joués, et une erreur audio (valeur non finie refusée par le navigateur)
   // ne remonte plus dans le code du jeu, où elle interrompait l'action en cours
   for (const k of Object.keys(Object.getOwnPropertyDescriptors(api))) { const d = Object.getOwnPropertyDescriptor(api, k); if (typeof d.value !== 'function' || k === 'init' || k === 'debug' || k === '_ctx') continue; const f = d.value, quiet = k === 'engine' || k === 'roll' || k === 'muffle';
