@@ -64,10 +64,11 @@ export function installManiement(Game) {
     const W = this.weapon(a), D = WEAPONS[W.id], M = vm.M, H = this.vhand, parts = vm.parts, k = 1 - Math.exp(-dt * 14);
     const pistol = this.vgunPistol, len = this.vgunLen || 0.3;
     // ---- pose de base : à la hanche (nombre d'or) ou en visée, la ligne de mire au centre de l'écran
+    if (this.aiming !== vm.wasAim) { vm.wasAim = this.aiming; if (this.cam.fps) this.audio.mech?.('aim', this.aiming ? 1 : 0.6); }
     vm.ads += ((this.aiming ? 1 : 0) - vm.ads) * (1 - Math.exp(-dt * (this.aiming ? 16 : 13)));
     const sy = M ? M.sightY : (this.vgunTop || 0.12) + 0.012;
     const adsP = V(0, -sy - (M?.optic ? 0 : 0.0015), pistol ? -0.36 : -0.25 - Math.min(0.08, len * 0.12)), hip = this.hipLayout();
-    const e = vm.ads * vm.ads * (3 - 2 * vm.ads), pos = hip.clone().lerp(adsP, e), rot = V(0, 0, (1 - e) * e * -0.25); // léger roulis pendant la montée en visée
+    const e = vm.ads * vm.ads * (3 - 2 * vm.ads), pos = hip.clone().lerp(adsP, e), hr = this.vgunHipRot || { x: 0, y: 0 }, rot = V(hr.x * (1 - e), hr.y * (1 - e), (1 - e) * e * -0.25); // léger roulis pendant la montée en visée
     // ---- marche, respiration
     const t = C.bob, calm = 1 - e * 0.8, tt = this.time;
     pos.x += Math.cos(t) * 0.012 * bobA * calm; pos.y += -Math.abs(Math.sin(t)) * 0.015 * bobA * calm + Math.sin(tt * 1.7) * 0.0016 * calm; rot.z += Math.cos(t) * 0.012 * bobA * calm; rot.x += Math.sin(tt * 1.7 + 1) * 0.004 * calm;
@@ -89,7 +90,7 @@ export function installManiement(Game) {
     spring(vm.rz, 289, 26, dt); spring(vm.rp, 289, 26, dt); spring(vm.ry, 289, 24, dt); spring(vm.rr, 289, 22, dt);
     pos.z += vm.rz.x; rot.x += vm.rp.x; rot.y += vm.ry.x; rot.z += vm.rr.x; pos.y += vm.rp.x * 0.06;
     // ---- sortie de l'arme
-    if (vm.draw > 0) { vm.draw -= dt; const u = clamp(1 - vm.draw / 0.4, 0, 1), c1 = 1.9, o = 1 - (1 + (c1 + 1) * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2)); pos.x += 0.06 * o; pos.y -= 0.3 * o; pos.z += 0.08 * o; rot.x -= 0.95 * o; rot.z += 0.55 * o; rot.y += 0.3 * o; }
+    if (vm.draw > 0) { if (!vm.drawS) { vm.drawS = 1; this.audio.mech?.('draw'); } vm.draw -= dt; const u = clamp(1 - vm.draw / 0.4, 0, 1), c1 = 1.9, o = 1 - (1 + (c1 + 1) * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2)); pos.x += 0.06 * o; pos.y -= 0.3 * o; pos.z += 0.08 * o; rot.x -= 0.95 * o; rot.z += 0.55 * o; rot.y += 0.3 * o; }
 
     // ---- pièces mobiles et mains
     for (const n in parts) { const p = parts[n]; p.o.position.copy(p.p); p.o.rotation.copy(p.r); p.o.visible = true; }
@@ -103,11 +104,11 @@ export function installManiement(Game) {
     // barillet qui tourne d'un cran
     if (parts.cyl) { vm.cylT = Math.max(0, vm.cylT - dt); parts.cyl.o.rotation.x = vm.cylA - (vm.cylT / 0.12) * Math.PI / 3; }
     // pompe : la main gauche tire le fût en arrière puis le repousse
-    if (vm.pumpT > 0 && parts.pump) { vm.pumpT -= dt; const u = 1 - vm.pumpT / 0.56, b = bump(u, 0.3, 0.95), d = M.pump.travel * b; parts.pump.o.position.x -= d; H.Ls.z = d; pos.z += d * 0.25; rot.x += b * 0.05; rot.z -= b * 0.06; if (parts.bolt) parts.bolt.o.position.x -= tr * b; if (u > 0.55) ev('pump', () => { this.audio.click(); }); } else delete vm.ev.pump;
+    if (vm.pumpT > 0 && parts.pump) { vm.pumpT -= dt; const u = 1 - vm.pumpT / 0.56, b = bump(u, 0.3, 0.95), d = M.pump.travel * b; parts.pump.o.position.x -= d; H.Ls.z = d; pos.z += d * 0.25; rot.x += b * 0.05; rot.z -= b * 0.06; if (parts.bolt) parts.bolt.o.position.x -= tr * b; if (u > 0.28) ev('pump', () => { this.audio.mech('pump'); }); } else delete vm.ev.pump;
     // verrou : la main droite lève la poignée, tire, repousse, rabat
     if (vm.cycle > 0 && parts.bolt) { vm.cycle -= dt; const u = 1 - vm.cycle / vm.cycleD, lift = sm(u, 0.22, 0.36) * (1 - sm(u, 0.78, 0.92)), back = sm(u, 0.36, 0.52) * (1 - sm(u, 0.6, 0.78));
       parts.bolt.o.rotation.x = -lift * 0.95; parts.bolt.o.position.x -= tr * back; const hd = M.bolt.handle; H.R.copy(mv([hd[0] - tr * back, hd[1] + lift * 0.035, hd[2] - lift * 0.02])).add(V(0.02, -0.02, 0.05)); H.Rw = sm(u, 0.1, 0.24) * (1 - sm(u, 0.86, 1));
-      rot.z -= 0.1 * H.Rw; rot.x += 0.05 * H.Rw; pos.z += back * 0.025; pos.y -= 0.012 * H.Rw; if (u > 0.5) ev('boltc', () => this.audio.click()); } else delete vm.ev.boltc;
+      rot.z -= 0.1 * H.Rw; rot.x += 0.05 * H.Rw; pos.z += back * 0.025; pos.y -= 0.012 * H.Rw; if (u > 0.2) ev('b1', () => this.audio.mech('boltup')); if (u > 0.36) ev('b2', () => this.audio.mech('boltback')); if (u > 0.6) ev('b3', () => this.audio.mech('boltfwd')); if (u > 0.8) ev('b4', () => this.audio.mech('boltup', 0.8)); } else { delete vm.ev.b1; delete vm.ev.b2; delete vm.ev.b3; delete vm.ev.b4; }
 
     // ---- rechargement en étapes
     const total = D.reload * (a.perk?.reload || 1), on = a.reloadT > 0;
@@ -116,32 +117,32 @@ export function installManiement(Game) {
       const u = clamp(1 - a.reloadT / total, 0, 1), kind = M ? M.kind : null, hold = sm(u, 0, 0.12) * (1 - sm(u, 0.84, 1));
       const rackL = (u0, u1) => { // armement à la main gauche (levier ou glissière)
         const b = bump(u, u0, u1), w = sm(u, u0 - 0.07, u0) * (1 - sm(u, u1, u1 + 0.06)); if (parts.bolt) parts.bolt.o.position.x = parts.bolt.p.x - tr * (M.bolt?.slide ? 1 - sm(u, (u0 + u1) / 2, u1) : b);
-        const hd = M.bolt?.handle; if (hd && w > 0.001) { const tg = mv([hd[0] - tr * b, hd[1], hd[2]]).add(V(-0.03, -0.01, 0.03)); if (H.Lw > 0.001) H.L.lerp(tg, w); else H.L.copy(tg); H.Lw = Math.max(H.Lw, w); } pos.z += b * 0.02; rot.x += b * 0.04; if (u > (u0 + u1) / 2) ev('rack', () => { this.audio.click(); jolt(0, 0.6); }); };
+        const hd = M.bolt?.handle; if (hd && w > 0.001) { const tg = mv([hd[0] - tr * b, hd[1], hd[2]]).add(V(-0.03, -0.01, 0.03)); if (H.Lw > 0.001) H.L.lerp(tg, w); else H.L.copy(tg); H.Lw = Math.max(H.Lw, w); } pos.z += b * 0.02; rot.x += b * 0.04; if (u > u0 + (u1 - u0) * 0.2) ev('rack', () => { this.audio.mech('rack'); jolt(0, 0.6); }); };
       if (kind === 'mag' || kind === 'belt') {
         // l'arme se couche, la main gauche sort le chargeur vers le bas, hors champ, puis en remonte un plein
         if (pistol) { pos.x -= 0.1 * hold; pos.y += 0.13 * hold; pos.z -= 0.04 * hold; rot.z -= 0.5 * hold; rot.x += 0.55 * hold; } else { pos.x -= 0.11 * hold; pos.y += 0.075 * hold; pos.z += 0.02 * hold; rot.z -= 0.62 * hold; rot.x += 0.36 * hold; rot.y -= 0.12 * hold; }
         const belt = kind === 'belt', c0 = belt ? 0.1 : 0, out = sm(u, 0.13 + c0, 0.27 + c0), back = sm(u, 0.46 + c0, 0.62 + c0), d = out * (1 - back), far = bump(u, 0.24 + c0, 0.5 + c0);
         const dl = Math.hypot(M.magDir[0], M.magDir[1]), dx = M.magDir[0] / dl, dyy = M.magDir[1] / dl, dist = 0.2 * d + 0.25 * far;
         if (parts.mag) { parts.mag.o.position.x += dx * dist; parts.mag.o.position.y += dyy * dist; parts.mag.o.rotation.z = (out - back) * 0.25 * (1 - far); }
-        if (parts.cover) { const o = sm(u, 0.06, 0.16) * (1 - sm(u, 0.74, 0.82)); parts.cover.o.rotation.z = -1.15 * o; if (u > 0.8) ev('cover', () => { this.audio.click(); jolt(-0.25, -0.5); }); }
+        if (parts.cover) { const o = sm(u, 0.06, 0.16) * (1 - sm(u, 0.74, 0.82)); parts.cover.o.rotation.z = -1.15 * o; if (u > 0.07) ev('cov0', () => this.audio.mech('coveropen')); if (u > 0.8) ev('cover', () => { this.audio.mech('coverclose'); jolt(-0.25, -0.5); }); }
         H.L.copy(mv([M.mag[0] + dx * (dist + 0.05) - 0.03, M.mag[1] + dyy * (dist + 0.05), 0])).add(V(-0.015, 0, 0)); H.Lw = sm(u, 0.03, 0.12 + c0) * (1 - sm(u, 0.66 + c0, 0.78 + c0));
-        if (u > 0.2 + c0) ev('out', () => { this.audio.tink?.(); jolt(0.1, 0.3); }); if (u > 0.61 + c0) ev('in', () => { this.audio.click(); jolt(0.45, -0.7); });
-        if (vm.relEmpty && M.bolt) { if (M.bolt.slide) { if (parts.bolt) parts.bolt.o.position.x = parts.bolt.p.x - tr * (1 - sm(u, 0.8, 0.84)); if (u > 0.82) ev('rack', () => { this.audio.click(); jolt(0, -0.5); }); } else if (M.bolt.lift) { /* le verrou sera manœuvré au premier coup */ } else rackL(0.78 + c0 * 0.6, 0.9 + c0 * 0.4); }
+        if (u > 0.2 + c0) ev('out', () => { this.audio.mech('magout'); jolt(0.1, 0.3); }); if (u > 0.56 + c0) ev('in', () => { this.audio.mech('magin'); jolt(0.45, -0.7); });
+        if (vm.relEmpty && M.bolt) { if (M.bolt.slide) { if (parts.bolt) parts.bolt.o.position.x = parts.bolt.p.x - tr * (1 - sm(u, 0.8, 0.84)); if (u > 0.8) ev('rack', () => { this.audio.mech('slide'); jolt(0, -0.5); }); } else if (M.bolt.lift) { /* le verrou sera manœuvré au premier coup */ } else rackL(0.78 + c0 * 0.6, 0.9 + c0 * 0.4); }
       } else if (kind === 'tube') {
         // l'arme pivote, la main gauche glisse les cartouches une à une sous le boîtier
         pos.x -= 0.04 * hold; pos.y += 0.05 * hold; rot.z -= 0.7 * hold; rot.x += 0.3 * hold; const n = clamp(Math.round(total / 0.55), 2, 5), u0 = 0.14, u1 = vm.relEmpty ? 0.76 : 0.86, f = clamp((u - u0) / (u1 - u0), 0, 0.9999) * n, i = Math.floor(f), ph = f - i, inn = bump(ph, 0, 1);
-        H.L.copy(mv([0.07, 0.02 - 0.16 * (1 - inn), 0])).add(V(-0.01, 0, 0)); H.Lw = sm(u, 0.04, u0) * (1 - sm(u, u1, u1 + 0.08)); if (u > u0 && u < u1 && ph > 0.45) ev('s' + i, () => { this.audio.click(); jolt(0.25, -0.3); });
-        if (vm.relEmpty && parts.pump) { const b = bump(u, 0.84, 0.97), d = M.pump.travel * b; parts.pump.o.position.x -= d; H.Ls.z = d; if (u > 0.9) ev('rack', () => { this.audio.click(); jolt(0, 0.5); }); }
+        H.L.copy(mv([0.07, 0.02 - 0.16 * (1 - inn), 0])).add(V(-0.01, 0, 0)); H.Lw = sm(u, 0.04, u0) * (1 - sm(u, u1, u1 + 0.08)); if (u > u0 && u < u1 && ph > 0.45) ev('s' + i, () => { this.audio.mech('shell'); jolt(0.25, -0.3); });
+        if (vm.relEmpty && parts.pump) { const b = bump(u, 0.84, 0.97), d = M.pump.travel * b; parts.pump.o.position.x -= d; H.Ls.z = d; if (u > 0.85) ev('rack', () => { this.audio.mech('pump'); jolt(0, 0.5); }); }
       } else if (kind === 'revolver') {
         // barillet basculé à gauche, canon levé pour vider, la main gauche recharge, coup de poignet pour refermer
         const o = sm(u, 0.08, 0.2) * (1 - sm(u, 0.76, 0.84)); pos.x -= 0.06 * hold; pos.y += 0.04 * hold; rot.x += (0.75 * bump(u, 0.12, 0.42) + 0.1) * hold; rot.z += 0.35 * hold; rot.y += 0.25 * hold;
         if (parts.cyl) { parts.cyl.o.position.z -= 0.034 * o * M.k; parts.cyl.o.position.y -= 0.012 * o * M.k; parts.cyl.o.rotation.x += u * 9; }
-        H.L.copy(mv([M.mag[0], M.mag[1] - 0.02 - 0.2 * (1 - bump(u, 0.36, 0.86)), -0.05])); H.Lw = sm(u, 0.3, 0.44) * (1 - sm(u, 0.7, 0.8)); if (u > 0.58) ev('in', () => { this.audio.click(); jolt(0.2, -0.3); }); if (u > 0.82) ev('rack', () => { this.audio.click(); jolt(-0.2, 0.8); vm.rr.v += 3; });
+        H.L.copy(mv([M.mag[0], M.mag[1] - 0.02 - 0.2 * (1 - bump(u, 0.36, 0.86)), -0.05])); H.Lw = sm(u, 0.3, 0.44) * (1 - sm(u, 0.7, 0.8)); if (u > 0.09) ev('co', () => this.audio.mech('cylopen')); if (u > 0.58) ev('in', () => { this.audio.mech('shell'); jolt(0.2, -0.3); }); if (u > 0.8) ev('rack', () => { this.audio.mech('cylclose'); jolt(-0.2, 0.8); vm.rr.v += 3; });
       } else if (kind === 'break') {
         // les canons basculent, deux cartouches, on referme d'un coup sec
         const o = sm(u, 0.08, 0.2) * (1 - sm(u, 0.78, 0.86)); pos.x -= 0.05 * hold; pos.y += 0.05 * hold; rot.x += 0.3 * hold; rot.z -= 0.3 * hold; if (parts.brk) parts.brk.o.rotation.z = -0.62 * o;
         const f = clamp((u - 0.24) / 0.5, 0, 0.9999) * 2, ph = f - Math.floor(f); H.L.copy(mv([M.mag[0] - 0.02, M.mag[1] + 0.03 - 0.18 * (1 - bump(ph, 0, 1)), 0])); H.Lw = sm(u, 0.14, 0.26) * (1 - sm(u, 0.74, 0.82));
-        if (u > 0.24 && u < 0.74 && ph > 0.45) ev('s' + Math.floor(f), () => { this.audio.click(); jolt(0.2, -0.2); }); if (u > 0.84) ev('rack', () => { this.audio.click(); jolt(-0.3, 1.0); });
+        if (u > 0.24 && u < 0.74 && ph > 0.45) ev('s' + Math.floor(f), () => { this.audio.mech('shell'); jolt(0.2, -0.2); }); if (u > 0.09) ev('bo', () => this.audio.mech('brkopen')); if (u > 0.82) ev('rack', () => { this.audio.mech('brkclose'); jolt(-0.3, 1.0); });
       } else { const rel = Math.sin(u * Math.PI); pos.y -= rel * 0.15; rot.x += rel * 0.6; } // lanceurs : l'arme plonge hors champ
     } else if (locked && parts.bolt) parts.bolt.o.position.x = parts.bolt.p.x - tr;
     // chargeur du personnage vu à l'épaule : absent pendant l'échange

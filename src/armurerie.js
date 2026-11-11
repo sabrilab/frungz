@@ -9,7 +9,9 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { WEAPONS } from './data.js';
 
-let LO = false, cur = null;
+let LO = false, cur = null, DEC = null, TAG = null;
+// marquage gravé (texte) sur un flanc, ou réticule lumineux dans un viseur. side : +1 droite, -1 gauche, 0 face au tireur
+const mark = (text, x, y, z, h, side, o = {}) => { if (!LO && DEC) DEC.push({ text, x, y, z, h, side, grp: o.grp || 'body', ret: o.ret || null }); };
 const add = (m, g) => { cur.push([m, g]); return g; };
 const SEG = () => (LO ? 8 : 18);
 
@@ -62,7 +64,7 @@ function muzzleDev(kind, x0, y, r, m = 'DarkMetal') {
   add(m, pipe(r * 0.55, r, x0 - 0.012, x0, y)); return x0;
 }
 // poignée pistolet (centre à l'origine), plaquettes texturées
-function grip(m = 'Black', pad = 'Black2', s = 1) {
+function grip(m = 'Black', pad = 'Grip', s = 1) {
   add(m, ext(cham([[0.026, 0.046], [0.01, -0.02], [0.007, -0.057 * s], [-0.034, -0.057 * s], [-0.04, -0.046 * s], [-0.026, 0.0], [-0.03, 0.046]], 0.005), 0.03, 0.006));
   if (!LO) add(pad, ext(cham([[0.014, 0.022], [0.004, -0.046 * s], [-0.03, -0.046 * s], [-0.019, 0.022]], 0.004), 0.033, 0.003));
 }
@@ -121,13 +123,13 @@ function irons(xf, xr, y, hooded = false) {
 function redDot(x, y) { // viseur point rouge à tube
   add('Black2', ext(cham(rect(x - 0.024, x + 0.024, y, y + 0.014), 0.003), 0.024, 0.003));
   add('Black', pipe(0.0155, 0.02, x - 0.034, x + 0.034, y + 0.033)); if (!LO) { add('Black2', pipe(0.02, 0.0215, x - 0.034, x - 0.026, y + 0.033)); add('Black2', pipe(0.02, 0.0215, x + 0.026, x + 0.034, y + 0.033)); add('Black2', tubeY(0.006, y + 0.05, y + 0.062, x + 0.004)); add('Black2', tubeZ(0.006, 0.018, 0.03, x + 0.004, y + 0.033)); }
-  add('GlassLens', tube(0.0155, 0.0155, x + 0.02, x + 0.0206, y + 0.033));
+  add('GlassLens', tube(0.0155, 0.0155, x + 0.02, x + 0.0206, y + 0.033)); mark('', x + 0.019, y + 0.033, 0, 0.022, 0, { ret: 'dot' });
   return y + 0.033;
 }
 function holo(x, y) { // viseur holographique : fenêtre carrée sous un arceau
   add('Black2', ext(cham(rect(x - 0.04, x + 0.035, y, y + 0.018), 0.003), 0.03, 0.003));
   for (const z of [-0.0145, 0.0145]) add('Black', ext(cham([[x - 0.004, y + 0.016], [x + 0.03, y + 0.016], [x + 0.03, y + 0.058], [x + 0.008, y + 0.058]], 0.004), 0.003, 0.001, z));
-  add('Black', box(0.024, 0.003, 0.032, x + 0.019, y + 0.058)); add('GlassLens', box(0.0012, 0.04, 0.027, x + 0.024, y + 0.037));
+  add('Black', box(0.024, 0.003, 0.032, x + 0.019, y + 0.058)); add('GlassLens', box(0.0012, 0.04, 0.027, x + 0.024, y + 0.037)); mark('', x + 0.0225, y + 0.037, 0, 0.03, 0, { ret: 'holo' });
   if (!LO) { add('DarkMetal', tubeZ(0.005, -0.019, -0.015, x - 0.02, y + 0.009)); add('Black2', box(0.03, 0.012, 0.026, x - 0.022, y + 0.022)); }
   return y + 0.037;
 }
@@ -161,7 +163,7 @@ function assemble(parts, mat, lo) {
 }
 // une arme = pièces fixes + pièces mobiles nommées (chacune autour de son pivot)
 class Gun {
-  constructor() { this.groups = { body: { parts: [], pivot: [0, 0, 0] } }; this.meta = {}; cur = this.groups.body.parts; }
+  constructor() { this.groups = { body: { parts: [], pivot: [0, 0, 0] } }; this.meta = {}; this.decals = []; DEC = this.decals; cur = this.groups.body.parts; }
   part(name, pivot, fn) { const g = (this.groups[name] ||= { parts: [], pivot: pivot || [0, 0, 0] }); const prev = cur; cur = g.parts; fn(); cur = prev; }
 }
 
@@ -206,12 +208,13 @@ function carbine(o) {
   // crosse
   stock(st, xr, rx0, bore, furn); M.rear = xr;
   M.eject = [magx + 0.01, bore, w / 2];
+  if ((o.tag || TAG) && recv !== 'tube') { const my = recv === 'ak' ? bore - 0.004 : bore + 0.012; mark((o.tag || TAG), rx0 + 0.07, my, -(w / 2 + 0.0012) + (recv === 'ak' ? 0.002 : 0), 0.0075, -1); mark('FRUNGZ ARMS', rx0 + 0.062, my - 0.012, -(w / 2 + 0.0012) + (recv === 'ak' ? 0.002 : 0), 0.0055, -1); mark((o.tag || TAG), rx0 + 0.05, my, w / 2 + 0.0012 - (recv === 'ak' ? 0.002 : 0), 0.0075, 1); mark('S  1  A', 0.0, bot + 0.034, -(w / 2 + 0.0002), 0.0045, -1); }
   return G;
 }
 
 // pistolets semi-automatiques : carcasse, glissière mobile, chargeur dans la poignée
 function pistol(o) {
-  const G = new Gun(), M = G.meta, { L = 0.2, bore = 0.066, frame = 'Black', slide = 'DarkMetal', pad = 'Black2', ext2 = 0, comp = false, heavy = false, gs = 1 } = o;
+  const G = new Gun(), M = G.meta, { L = 0.2, bore = 0.066, frame = 'Black', slide = 'DarkMetal', pad = 'Grip', ext2 = 0, comp = false, heavy = false, gs = 1 } = o;
   const x1 = L - 0.062, x0 = -0.062, sy0 = bore - 0.017, sy1 = bore + 0.017, sw = heavy ? 0.03 : 0.027;
   add(frame, ext(cham([[x1 - 0.004, sy0], [x1 - 0.004, sy0 - 0.017], [0.075, sy0 - 0.02], [0.026, sy0 - 0.012], [0.01, -0.02], [0.007, -0.062 * gs], [-0.036, -0.062 * gs], [-0.042, -0.05 * gs], [-0.03, 0.0], [-0.04, sy0 - 0.012], [x0 - 0.008, sy0 - 0.006], [x0 - 0.008, sy0]], 0.004), sw + 0.001, 0.006));
   if (!LO) add(pad, ext(cham([[0.012, 0.024], [0.002, -0.05 * gs], [-0.031, -0.05 * gs], [-0.021, 0.024]], 0.004), sw + 0.004, 0.003));
@@ -229,6 +232,7 @@ function pistol(o) {
   add('Metal', pipe(0.0048, 0.0072, x1 - 0.03, x1 + 0.006, bore)); if (!LO) add('DarkMetal', tube(0.004, 0.004, x1 - 0.03, x1 + 0.002, sy0 + 0.006));
   G.part('mag', null, () => { const a = [[0.004, 0.02], [-0.006, -0.06 * gs - ext2], [-0.032, -0.06 * gs - ext2], [-0.022, 0.02]]; add('DarkMetal', ext(a, 0.018, 0.001)); add('Black2', ext(cham([[-0.002, -0.058 * gs - ext2], [-0.004, -0.07 * gs - ext2], [-0.037, -0.07 * gs - ext2], [-0.037, -0.058 * gs - ext2]], 0.002), sw, 0.003)); });
   M.mag = [-0.02, -0.07 * gs - ext2]; M.magDir = [-0.17, -1]; M.bolt = { travel: 0.036, slide: true }; M.muzzle = [x1 + 0.006, bore]; M.sightY = sy1 + 0.0075; M.rear = x0 - 0.008; M.eject = [0.035, sy1, sw / 2]; M.gb = -0.062 * gs; M.pistol = true;
+  if ((o.tag || TAG)) { mark((o.tag || TAG), x1 - 0.075, bore - 0.002, -(sw / 2 + 0.0004), 0.0075, -1, { grp: 'bolt' }); mark('FRUNGZ ARMS', x1 - 0.07, bore - 0.002, sw / 2 + 0.0004, 0.0065, 1, { grp: 'bolt' }); }
   return G;
 }
 
@@ -256,7 +260,7 @@ function shotgun(o) {
   M.rear = st === 'none' ? rx0 - 0.012 : xr;
   if (optic === 'ghost') { rail(rx0 + 0.03, rx1 - 0.01, bore + 0.02); M.sightY = irons(mz - 0.03, rx0 + 0.05, bore + 0.028); add('DarkMetal', box(0.02, 0.016, 0.014, mz - 0.03, bore + 0.018)); }
   else { add('Brass', tubeY(0.0028, bore + 0.011, bore + 0.018, mz - 0.012)); if (!LO) add('DarkMetal', box(mz - rx1 - 0.03, 0.003, 0.008, (mz + rx1) / 2, bore + 0.0125)); M.sightY = bore + 0.021; }
-  M.eject = [0.04, bore, w / 2]; M.kind = 'tube';
+  M.eject = [0.04, bore, w / 2]; M.kind = 'tube'; mark((o.tag || TAG) || 'CAL 12 · FRUNGZ ARMS', 0.035, bore - 0.014, -(w / 2 + 0.0004), 0.0075, -1);
   return G;
 }
 
@@ -265,17 +269,17 @@ const B = {
   pistol: () => pistol({ L: 0.24 }),
   pistolet_lourd: () => { const G = pistol({ L: 0.27, heavy: true, frame: 'Metal', slide: 'LightMetal', pad: 'DarkWood', bore: 0.07, gs: 1.04 }); return G; },
   pistolet_auto: () => { const G = pistol({ L: 0.235, ext2: 0.05, comp: true, frame: 'Tan', slide: 'Black' }); add('Black', pipe(0.005, 0.0105, 0.173, 0.2, 0.066)); G.meta.muzzle = [0.2, 0.066]; cur = G.groups.body.parts; return G; },
-  revolver: () => {
-    const G = new Gun(), M = G.meta, bore = 0.074, cy = bore - 0.016, mz = 0.25;
+  revolver: (mz = 0.25) => {
+    const G = new Gun(), M = G.meta, bore = 0.074, cy = bore - 0.016;
     add('LightMetal', ext(cham([[-0.045, 0.03], [-0.04, bore + 0.012], [0.07, bore + 0.014], [0.07, bore - 0.012], [0.058, bore - 0.012], [0.058, cy - 0.027], [0.03, cy - 0.036], [0.02, 0.01], [-0.02, 0.02]], 0.004), 0.02, 0.005, 0, [cham(rect(-0.008, 0.052, cy - 0.022, cy + 0.022), 0.002)]));
     add('LightMetal', tube(0.0105, 0.0105, 0.07, mz, bore)); add('LightMetal', ext(cham([[0.07, bore - 0.03], [mz - 0.012, bore - 0.03], [mz, bore - 0.02], [mz, bore - 0.004], [0.07, bore - 0.004]], 0.004), 0.016, 0.005));
-    add('LightMetal', ext(cham(rect(0.07, mz - 0.004, bore + 0.008, bore + 0.016), 0.002), 0.008, 0.002)); if (!LO) for (let i = 0; i < 5; i++) add('Black2', box(0.016, 0.004, 0.009, 0.092 + i * 0.03, bore + 0.012));
+    add('LightMetal', ext(cham(rect(0.07, mz - 0.004, bore + 0.008, bore + 0.016), 0.002), 0.008, 0.002)); if (!LO) for (let i = 0; i < Math.floor((mz - 0.095) / 0.03); i++) add('Black2', box(0.016, 0.004, 0.009, 0.092 + i * 0.03, bore + 0.012));
     add('LightMetal', pipe(0.006, 0.0105, mz - 0.002, mz + 0.003, bore)); add('Black2', ext(cham([[mz - 0.022, bore + 0.016], [mz - 0.004, bore + 0.016], [mz - 0.008, bore + 0.027], [mz - 0.02, bore + 0.022]], 0.001), 0.004, 0.001)); if (!LO) add('GlowDot', box(0.002, 0.004, 0.0042, mz - 0.019, bore + 0.022));
     add('Black2', box(0.012, 0.008, 0.012, -0.03, bore + 0.016)); add('Metal', ext(cham([[-0.045, bore + 0.002], [-0.04, bore + 0.022], [-0.058, bore + 0.03], [-0.062, bore + 0.024], [-0.05, bore + 0.016]], 0.002), 0.008, 0.002));
     add('DarkWood', ext(cham([[0.012, 0.022], [0.012, -0.03], [0.004, -0.072], [-0.04, -0.076], [-0.05, -0.06], [-0.032, -0.01], [-0.046, 0.03], [-0.02, 0.03]], 0.008), 0.03, 0.01)); if (!LO) add('Brass', tubeZ(0.005, -0.0158, 0.0158, -0.014, -0.02));
     guard(0.014, 0.062, cy - 0.03, cy - 0.074, 0.01, 'LightMetal');
     G.part('cyl', [0.022, cy, 0], () => { add('Metal', tube(0.0225, 0.0225, -0.02, 0.02, 0, 0, LO ? 8 : 24)); if (!LO) for (let i = 0; i < 6; i++) { const a = (i + 0.5) / 6 * Math.PI * 2; const g = tube(0.0065, 0.0065, -0.004, 0.0205, Math.cos(a) * 0.0205, Math.sin(a) * 0.0205, 10); add('DarkMetal', g); const a2 = i / 6 * Math.PI * 2; add('Brass', tube(0.0052, 0.0052, -0.0215, -0.0195, Math.cos(a2) * 0.0135, Math.sin(a2) * 0.0135, 8)); } });
-    M.kind = 'revolver'; M.mag = [0.022, cy - 0.03]; M.muzzle = [mz + 0.003, bore]; M.sightY = bore + 0.027; M.rear = -0.062; M.gb = -0.076; M.pistol = true; return G;
+    mark('.357 FRUNGZ', mz > 0.2 ? 0.2 : 0.12, bore - 0.016, -0.0086, 0.006, -1); M.kind = 'revolver'; M.mag = [0.022, cy - 0.03]; M.muzzle = [mz + 0.003, bore]; M.sightY = bore + 0.027; M.rear = -0.062; M.gb = -0.076; M.pistol = true; return G;
   },
   // MP5 de la police : boîtier tubulaire, chargeur courbe, crosse fixe
   smg: () => { const G = carbine({ bore: 0.07, rx0: -0.08, rx1: 0.1, hx1: 0.24, mz: 0.275, xr: -0.225, recv: 'tube', hg: 'poly', hr: 0.021, br: 0.0075, st: 'fixed', body: 'Black', low: 'Black', furn: 'Black2', magx: 0.075, mag: { w: 0.034, h: 0.15, lean: 0.06, curve: 0.2, th: 0.02 }, muz: 'plain', gas: false, optic: 'irons', bot: 0.036 }); return G; },
@@ -285,7 +289,7 @@ const B = {
   compact: () => {
     const G = new Gun(), M = G.meta, bore = 0.07;
     add('DarkMetal', ext(cham([[-0.11, bore - 0.03], [0.13, bore - 0.03], [0.13, bore + 0.026], [-0.1, bore + 0.026], [-0.11, bore + 0.016]], 0.004), 0.04, 0.005));
-    add('Black', ext(cham([[-0.05, bore - 0.03], [0.1, bore - 0.03], [0.09, bore - 0.045], [0.024, bore - 0.045], [0.014, -0.02], [0.012, -0.068], [-0.036, -0.068], [-0.036, 0.0]], 0.004), 0.036, 0.006)); if (!LO) add('Black2', ext(cham(rect(-0.03, 0.006, -0.058, 0.01), 0.004), 0.039, 0.003));
+    add('Black', ext(cham([[-0.05, bore - 0.03], [0.1, bore - 0.03], [0.09, bore - 0.045], [0.024, bore - 0.045], [0.014, -0.02], [0.012, -0.068], [-0.036, -0.068], [-0.036, 0.0]], 0.004), 0.036, 0.006)); if (!LO) add('Grip', ext(cham(rect(-0.03, 0.006, -0.058, 0.01), 0.004), 0.039, 0.003));
     guard(0.022, 0.085, bore - 0.045, -0.014, 0.011, 'Black'); pins([[0.1, bore - 0.01], [-0.08, bore - 0.01], [0.04, bore + 0.01]], 0.04);
     add('DarkMetal', tube(0.0085, 0.0085, 0.13, 0.2, bore)); add('Black2', pipe(0.006, 0.0135, 0.13, 0.165, bore)); add('DarkMetal', pipe(0.0055, 0.0085, 0.196, 0.203, bore));
     if (!LO) add('Black2', box(0.06, 0.018, 0.002, 0.05, bore + 0.004, 0.02));
@@ -317,6 +321,17 @@ const B = {
   },
   // fusil d'assaut 7,62 : tôle emboutie, garnitures bois, chargeur banane
   fusil_lourd: () => { const G = carbine({ recv: 'ak', hg: 'wood', st: 'wood', body: 'DarkMetal', low: 'DarkMetal', furn: 'Wood', rx0: -0.1, rx1: 0.14, hx1: 0.33, mz: 0.5, xr: -0.335, mag: { w: 0.062, h: 0.17, lean: 0.12, curve: 0.3, th: 0.024, m: 'DarkMetal', base: 'DarkMetal', rib: 3 }, magx: 0.1, muz: 'comp', br: 0.008, top: 0.078 + 0.034, hr: 0.024, knobSide: 1 }); return G; },
+  revolver_court: () => B.revolver(0.14),
+  // pistolet de match : glissière longue ajourée, compensateur, petit point rouge monté sur la glissière
+  pistolet_match: () => { const G = pistol({ L: 0.26, comp: true, frame: 'Black', slide: 'LightMetal' }), y = 0.083;
+    G.part('bolt', null, () => { add('Black2', ext(cham(rect(-0.04, -0.006, y, y + 0.006), 0.002), 0.024, 0.002)); for (const z of [-0.0105, 0.0105]) add('Black2', box(0.004, 0.022, 0.003, -0.012, y + 0.016, z)); add('Black2', box(0.004, 0.003, 0.024, -0.012, y + 0.0275)); add('GlassLens', box(0.001, 0.02, 0.019, -0.012, y + 0.016)); mark('', -0.0128, y + 0.016, 0, 0.018, 0, { ret: 'dot', grp: 'bolt' }); });
+    G.meta.sightY = y + 0.016; G.meta.optic = 'dot'; return G; },
+  pm_sil: () => carbine({ bore: 0.07, rx0: -0.08, rx1: 0.1, hx1: 0.22, mz: 0.23, xr: -0.225, recv: 'tube', hg: 'poly', hr: 0.021, br: 0.0085, st: 'skel', body: 'Black', low: 'Black', furn: 'Black2', magx: 0.075, mag: { w: 0.034, h: 0.15, lean: 0.06, curve: 0.2, th: 0.02 }, muz: 'sil', gas: false, optic: 'irons', bot: 0.036 }),
+  pm_vecteur: () => carbine({ bore: 0.074, rx0: -0.1, rx1: 0.15, hx1: 0.26, mz: 0.275, xr: -0.24, hg: 'mlok', hr: 0.024, br: 0.008, st: 'skel', body: 'Tan', low: 'Black', furn: 'Black', magx: 0.085, mag: { w: 0.036, h: 0.2, lean: 0.02, th: 0.022, m: 'Black2', base: 'Black' }, muz: 'comp', gas: false, optic: 'holo', fgrip: 0.21 }),
+  carabine_sil: () => carbine({ hx1: 0.37, mz: 0.4, muz: 'sil', optic: 'dot', body: 'Black', low: 'Black2', mag: { curve: 0.08, lean: 0.1, h: 0.155 } }),
+  ak_court: () => carbine({ recv: 'ak', hg: 'wood', st: 'skel', body: 'DarkMetal', low: 'DarkMetal', furn: 'Black', rx0: -0.1, rx1: 0.14, hx1: 0.28, mz: 0.35, xr: -0.31, mag: { w: 0.062, h: 0.17, lean: 0.12, curve: 0.3, th: 0.024, m: 'DarkMetal', base: 'DarkMetal', rib: 3 }, magx: 0.1, muz: 'flash', br: 0.008, top: 0.078 + 0.034, hr: 0.024, knobSide: 1, gas: false }),
+  chasse: () => carbine({ recv: 'ak', hg: 'wood', st: 'wood', body: 'DarkMetal', low: 'DarkMetal', furn: 'Wood', rx0: -0.1, rx1: 0.14, hx1: 0.36, mz: 0.62, xr: -0.34, mag: { w: 0.06, h: 0.07, lean: 0.05, th: 0.024, rib: 0 }, magx: 0.1, muz: 'plain', optic: 'scope', top: 0.078 + 0.034, hr: 0.024, knobSide: 1, gas: false }),
+  pompe_tac: () => shotgun({ pg: true, st: 'm4', optic: 'ghost', mz: 0.52, tubeEnd: 0.46, xr: -0.33, furn: 'Tan' }),
   shotgun: () => shotgun({}),
   pompe_court: () => shotgun({ mz: 0.4, tubeEnd: 0.36, pg: true, st: 'none', breach: true, furn: 'Black', rx0: -0.09, xr: -0.1 }),
   semi_auto: () => shotgun({ pump: false, pg: true, st: 'm4', optic: 'ghost', mz: 0.63, tubeEnd: 0.5, xr: -0.335, furn: 'Black' }),
@@ -354,7 +369,7 @@ const B = {
     add('DarkMetal', pipe(0.008, 0.014, mz, mz + 0.03, bore)); for (let i = 0; i < 2; i++) { add('DarkMetal', ext(cham(rect(mz + 0.03 + i * 0.05, mz + 0.045 + i * 0.05, bore - 0.03, bore + 0.03), 0.004), 0.1, 0.006)); add('DarkMetal', pipe(0.008, 0.016, mz + 0.045 + i * 0.05, mz + 0.08 + i * 0.05, bore)); }
     add('DarkMetal', ext(cham(rect(mz + 0.13, mz + 0.142, bore - 0.026, bore + 0.026), 0.004), 0.07, 0.005)); M.muzzle = [mz + 0.142, bore];
     G.part('bolt', [rx0 + 0.03, bore + 0.006, 0], () => { add('LightMetal', tube(0.011, 0.011, -0.03, 0.04, 0, 0, 12)); add('LightMetal', box(0.01, 0.01, 0.046, 0.02, -0.008, 0.04)); const k = new THREE.SphereGeometry(0.013, LO ? 6 : 12, LO ? 4 : 8); k.translate(0.02, -0.02, 0.066); add('Black2', k); }); M.bolt = { travel: 0.1, lift: true, handle: [rx0 + 0.05, bore - 0.014, 0.066] };
-    grip('Black', 'Black2', 1.05); guard(0.026, 0.09, bore - 0.034, 0.004, 0.012, 'DarkMetal'); G.part('mag', null, () => { M.mag = magazine(0.14, bore - 0.036, { w: 0.1, h: 0.1, lean: 0.05, th: 0.032, rib: 2 }); }); M.magDir = [0.05, -1];
+    grip('Black', 'Grip', 1.05); guard(0.026, 0.09, bore - 0.034, 0.004, 0.012, 'DarkMetal'); G.part('mag', null, () => { M.mag = magazine(0.14, bore - 0.036, { w: 0.1, h: 0.1, lean: 0.05, th: 0.032, rib: 2 }); }); M.magDir = [0.05, -1];
     // crosse squelette : deux tubes, plaque de couche réglable, béquille arrière
     for (const y of [bore + 0.008, bore - 0.06]) add('DarkMetal', tube(0.008, 0.008, xr + 0.01, rx0, y, 0, 10)); add('Black', ext(cham(rect(xr + 0.09, rx0 - 0.04, bore + 0.014, bore + 0.036), 0.005), 0.034, 0.008)); add('Rubber', ext(cham(rect(xr, xr + 0.018, bore - 0.11, bore + 0.03), 0.004), 0.04, 0.005)); add('DarkMetal', tubeY(0.006, bore - 0.14, bore - 0.06, xr + 0.07)); add('Rubber', tubeY(0.011, bore - 0.146, bore - 0.138, xr + 0.07));
     rail(rx0 + 0.02, rx1 + 0.06, bore + 0.028, 0.022); M.sightY = scope(-0.09, 0.3, bore + 0.036, { r: 0.017, ro: 0.034, re: 0.022, h: 0.044 }); M.scope = true;
@@ -373,15 +388,36 @@ const B = {
   },
 };
 
+// ---------------------------------------------------------------- marquages et réticules (textures dessinées)
+const TAGS = { rifle: 'FA-556  CAL 5,56', carabine: 'CT-4  CAL 5,56', carabine_sil: 'CT-4 SD  CAL 5,56', fusil_lourd: 'AR-762  CAL 7,62', ak_court: 'AR-762 C  CAL 7,62', chasse: 'CH-308  CAL 7,62', pm: 'PP-45  9×19', pm_vecteur: 'PV-9  9×19',
+  dmr: 'TE-762  CAL 7,62', mitrailleuse: 'FM-556  CAL 5,56', pistol: 'P-17  9×19', pistolet_lourd: 'PL-45  CAL .45', pistolet_auto: 'PA-18  9×19', pistolet_match: 'PM-17 MATCH  9×19' };
+const TEX = {};
+function engraving(text) {
+  if (TEX[text]) return TEX[text]; const c = document.createElement('canvas'), x = c.getContext('2d'); x.font = '600 44px "Arial Narrow", Arial, sans-serif'; const w = Math.ceil(x.measureText(text).width) + 16; c.width = w; c.height = 56;
+  const y = c.getContext('2d'); y.font = '600 44px "Arial Narrow", Arial, sans-serif'; y.textBaseline = 'middle'; y.fillStyle = 'rgba(8,9,10,0.55)'; y.fillText(text, 9, 30); y.fillStyle = 'rgba(222,226,230,0.82)'; y.fillText(text, 8, 28);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return (TEX[text] = { asp: w / 56, mat: new THREE.MeshStandardMaterial({ map: t, transparent: true, depthWrite: false, roughness: 0.55, metalness: 0.1, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3, name: 'Marquage' }) });
+}
+function reticle(kind) {
+  const key = 'ret:' + kind; if (TEX[key]) return TEX[key]; const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'), m = 128;
+  const glow = (r, a) => { const g = x.createRadialGradient(m, m, 0, m, m, r); g.addColorStop(0, `rgba(255,60,40,${a})`); g.addColorStop(1, 'rgba(255,40,30,0)'); x.fillStyle = g; x.beginPath(); x.arc(m, m, r, 0, 7); x.fill(); };
+  if (kind === 'dot') { glow(20, 0.4); x.fillStyle = '#ff4a38'; x.beginPath(); x.arc(m, m, 6, 0, 7); x.fill(); x.fillStyle = '#ffd9d0'; x.beginPath(); x.arc(m, m, 2.5, 0, 7); x.fill(); }
+  else { glow(22, 0.5); x.strokeStyle = 'rgba(255,80,60,0.95)'; x.lineWidth = 5; x.beginPath(); x.arc(m, m, 78, 0, 7); x.stroke(); x.fillStyle = '#ff6a56'; x.beginPath(); x.arc(m, m, 5, 0, 7); x.fill(); x.lineWidth = 5; for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; x.beginPath(); x.moveTo(m + Math.cos(a) * 78, m + Math.sin(a) * 78); x.lineTo(m + Math.cos(a) * 100, m + Math.sin(a) * 100); x.stroke(); } }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return (TEX[key] = { asp: 1, mat: new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, name: 'Reticule' }) });
+}
+
 // ---------------------------------------------------------------- fabrique
-const LOD_COL = { Black: '#24282d', Black2: '#191c20', Grey: '#4a4f57', Metal: '#676e78', DarkMetal: '#3a3f47', LightMetal: '#a9b0ba', Wood: '#8a5a3a', DarkWood: '#6a452e', Glass: '#16304d', GlassLens: '#22384a', Main: '#2f3740', MainLight: '#465563', MainDark: '#22282f', Green: '#4c573b', Tan: '#9a8563', Brass: '#b08a3e', Rubber: '#17191c', GlowDot: '#e8f6e0' };
+const LOD_COL = { Black: '#24282d', Black2: '#191c20', Grey: '#4a4f57', Metal: '#676e78', DarkMetal: '#3a3f47', LightMetal: '#a9b0ba', Wood: '#8a5a3a', DarkWood: '#6a452e', Glass: '#16304d', GlassLens: '#22384a', Main: '#2f3740', MainLight: '#465563', MainDark: '#22282f', Green: '#4c573b', Tan: '#9a8563', Brass: '#b08a3e', Rubber: '#17191c', Grip: '#1d2024', GlowDot: '#e8f6e0' };
 export const hasBuild = (id) => !!B[id];
 // construit l'arme « id ». mat(nom) donne la matière ; lo : version légère (un seul maillage, couleurs par sommet)
 export function buildGun(id, mat, lo = false) {
-  LO = lo; const G = B[id](), W = WEAPONS[id]; LO = false;
+  LO = lo; TAG = TAGS[id] || null; const G = B[id](), W = WEAPONS[id]; LO = false; TAG = null;
   const model = new THREE.Group(), lodCol = lo ? (m) => C.set(LOD_COL[m] || '#333').clone() : null;
   if (lo) { const all = []; for (const [name, g] of Object.entries(G.groups)) for (const [m, geo] of g.parts) { if (m === 'GlassLens') continue; if (name !== 'body') geo.translate(...g.pivot); all.push([m, geo]); } model.add(...assemble(all, mat, lodCol).children); }
-  else for (const [name, g] of Object.entries(G.groups)) { const grp = assemble(g.parts, mat); grp.name = name; grp.position.set(...g.pivot); model.add(grp); }
+  else { for (const [name, g] of Object.entries(G.groups)) { const grp = assemble(g.parts, mat); grp.name = name; grp.position.set(...g.pivot); model.add(grp); }
+    for (const d of G.decals) { const T = d.ret ? reticle(d.ret) : engraving(d.text), wd = d.h * T.asp, pl = new THREE.Mesh(new THREE.PlaneGeometry(wd, d.h), T.mat), piv = G.groups[d.grp].pivot;
+      pl.geometry.rotateY(d.side === 0 ? -Math.PI / 2 : d.side < 0 ? Math.PI : 0); pl.geometry.translate(d.x - piv[0], d.y - piv[1], d.z - piv[2]); pl.renderOrder = d.ret ? 7 : 5; model.getObjectByName(d.grp).add(pl); } }
   // mise à la longueur réelle de la fiche de l'arme
   const box3 = new THREE.Box3().setFromObject(model), k = W.len ? W.len / (box3.max.x - box3.min.x) : 1;
   model.traverse((o) => { if (o.isMesh) o.geometry.scale(k, k, k); else o.position.multiplyScalar(k); });

@@ -518,7 +518,7 @@ export class Game {
     if (a === this.player || end.distanceTo(this.player.pos) < 40) this.fx.impact(end, hw.n, kind);
   }
   setUpper(a) { const s = a.ch.actions.Idle_Gun_Shoot; }
-  startReload(a) { const W = this.weapon(a); if (a.reloadT > 0 || W.mag >= WEAPONS[W.id].mag) return; a.burstLeft = 0; a.reloadT = WEAPONS[W.id].reload * (a.perk?.reload || 1); a.relAuth = Anim.reload(this, a, a.reloadT); if (!a.relAuth) this.overlay(a, 'U_Reload', a.reloadT, { busy: true }); if (!a.bot) this.audio.reload(); }
+  startReload(a) { const W = this.weapon(a); if (a.reloadT > 0 || W.mag >= WEAPONS[W.id].mag) return; a.burstLeft = 0; a.reloadT = WEAPONS[W.id].reload * (a.perk?.reload || 1); a.relAuth = Anim.reload(this, a, a.reloadT); if (!a.relAuth) this.overlay(a, 'U_Reload', a.reloadT, { busy: true }); if (!a.bot && !(a === this.player && this.vm?.M)) this.audio.reload(); /* armes de l'armurerie : chaque geste a son propre son (src/maniement.js) */ }
 
   // ---------------------------------------------------------------- vitrines
   hitVitrine(v, dmg, by) {
@@ -1779,10 +1779,11 @@ export class Game {
     const key = cam.fov.toFixed(1) + cam.aspect.toFixed(3); if (this.vgunLayout?.key === key) return this.vgunLayout.v;
     const L = this.vgunLen || 0.6, fz = this.vgunBB ? -this.vgunBB.min.z : L * 0.7, rz = this.vgunBB ? this.vgunBB.max.z : L * 0.3;
     const fx = 2 * PHI - 1, fy = -(2 * PHI - 1); // point d'or en coordonnées écran (-1..1)
-    const rear = this.vgunPistol ? fx + (1 - PHI) * 0.9 : fx + (1 - PHI) * clamp(1.5 + L * 0.9, 2.0, 2.5); /* arme proche : l'arrière sort de l'écran à droite, l'arme tient le tiers d'or bas-droit (38,2 % de la largeur) */ // les armes courtes restent plus loin, à proportion de leur longueur // abscisse visée pour l'arrière de l'arme
-    // arme parallèle à l'axe de vue : x/(prof·tx) donne fx au bout et rear à l'arrière → profondeur de la poignée
-    const k = rear / fx; const d = (fz + k * rz) / (k - 1); // profondeur de la poignée (origine)
-    const X = fx * (d + fz) * tx, Y = fy * (d + fz) * ty - (this.vgunTop || 0.1); // le dessus de l'arme affleure la ligne des 61,8 %
+    // Arme tenue près de l'œil et tournée vers le centre, comme dans les jeux de tir à gros budget : elle occupe le tiers d'or bas-droit,
+    // le bout du canon reste sur le point d'or (61,8 % ; 61,8 %), la crosse et les avant-bras sortent par le bas et la droite
+    const P = this.vgunPistol, d = P ? 0.4 : clamp(0.27 + L * 0.04, 0.28, 0.33), th = P ? 0.07 : 0.115, ph = P ? 0.03 : 0.028; void rz;
+    const mzY = this.vgun?.userData.muzzle ? this.vgun.userData.muzzle.position.y : (this.vgunTop || 0.1) - 0.03, dz = d + fz * Math.cos(th);
+    const X = fx * tx * dz + fz * Math.sin(th), Y = fy * ty * dz - mzY - fz * Math.sin(ph); this.vgunHipRot = { x: ph, y: th };
     const v = V(X, Y, -d); this.vgunLayout = { key, v }; return v;
   }
   updateViewGun(dt, sp, bobA) {
@@ -1935,7 +1936,7 @@ export class Game {
     // réticule : s'ouvre avec la dispersion
     const D = W ? WEAPONS[W.id] : null; const sp = this.feetSpeed(a);
     const gap = D ? 4 + D.spread * 260 * (sp > 2 ? 1.6 : 1) * (this.aiming ? (this.cam.fps ? 0.1 : 0.18) : 1) * (a.onGround ? 1 : 1.8) + (this.ui.crossKick || 0) * 8 : 6; this.ui.crossKick = 0;
-    $('cross').style.setProperty('--g', gap.toFixed(1) + 'px'); $('cross').style.display = (this.cam.fps && this.aiming && D?.scope) || (a.inCar && a.inCar.kind !== 'heli') ? 'none' : '';
+    $('cross').style.setProperty('--g', gap.toFixed(1) + 'px'); $('cross').style.display = (this.cam.fps && this.aiming && (D?.scope || this.vm?.M)) || (a.inCar && a.inCar.kind !== 'heli') ? 'none' : ''; /* en visée subjective, on vise avec les organes de visée ou le réticule du viseur */ if ($('cross').dataset.k !== (D?.cat || '')) $('cross').dataset.k = D?.cat || '';
     // aide en bas de l'écran : selon le contexte (à pied, en véhicule, en visée) et le périphérique
     const kk = `${I.st.usingPad ? 1 : 0}|${a.inCar ? (a.inCar.kind || 'car') : ''}|${this.aiming && D?.scope ? 's' : ''}|${a.team}`;
     if (kk !== this._keysK) { this._keysK = kk; const P = I.st.usingPad, k = (x) => `<kbd>${x}</kbd>`;

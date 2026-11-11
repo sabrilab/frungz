@@ -123,7 +123,7 @@ export function makeCharacter(name) {
 // matières des armes : [couleur, rugosité, métal]. Les couleurs du pack sont presque noires : on les remonte en acier bronzé, polymère mat et bois verni pour que les volumes se lisent
 const GUN_MATS = { Black: ['#262a30', 0.6, 0.1], Black2: ['#1c1f24', 0.65, 0.1], Grey: ['#4a4f57', 0.5, 0.35], Metal: ['#646b75', 0.3, 0.9], DarkMetal: ['#3d424a', 0.36, 0.85], LightMetal: ['#a3abb6', 0.22, 0.95],
   Wood: ['#8f5d3b', 0.55, 0], DarkWood: ['#6e472f', 0.6, 0], Glass: ['#16304d', 0.08, 0.3], Main: ['#333e49', 0.5, 0.3], MainLight: ['#465563', 0.45, 0.4], MainDark: ['#232b34', 0.55, 0.25], Green: ['#4f5a3e', 0.62, 0.08],
-  Tan: ['#a08a66', 0.6, 0.05], Brass: ['#b08a3e', 0.35, 0.85], Rubber: ['#17191c', 0.88, 0], GlassLens: ['#9fd8ff', 0.05, 0], GlowDot: ['#dfffe0', 0.4, 0], LOD: ['#ffffff', 0.5, 0.45] };
+  Tan: ['#a08a66', 0.6, 0.05], Brass: ['#b08a3e', 0.35, 0.85], Rubber: ['#17191c', 0.88, 0], Grip: ['#1d2024', 0.8, 0], GlassLens: ['#9fd8ff', 0.05, 0], GlowDot: ['#dfffe0', 0.4, 0], LOD: ['#ffffff', 0.5, 0.45] };
 // Matière d'une pièce d'arme. Le grain est calculé dans le shader à partir de la position sur l'arme (les modèles n'ont pas d'UV) :
 // acier brossé dans le sens du canon, bois veiné, polymère finement grainé. « unit » convertit les unités du modèle en mètres.
 const GUN_GRAIN = `
@@ -134,20 +134,33 @@ float gNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 *
 const gunMatCache = {};
 export function gunMaterial(name, unit = 1) {
   const key = name + '|' + unit.toFixed(5); if (gunMatCache[key]) return gunMatCache[key];
-  const P = GUN_MATS[name] || GUN_MATS.Black, kind = /Metal|Brass/.test(name) ? 1 : /Wood/.test(name) ? 2 : /Glass|GlowDot|LOD/.test(name) ? 3 : 0;
+  const P = GUN_MATS[name] || GUN_MATS.Black, kind = /Metal|Brass/.test(name) ? 1 : /Wood/.test(name) ? 2 : /Glass|GlowDot|LOD/.test(name) ? 3 : name === 'Grip' ? 4 : 0;
   const m = new THREE.MeshStandardMaterial({ color: P[0], roughness: P[1], metalness: P[2], envMapIntensity: P[2] > 0.5 ? 1.7 : 1.0, name });
   if (name === 'GlassLens') { m.transparent = true; m.opacity = 0.16; m.depthWrite = false; m.envMapIntensity = 2.5; } else if (name === 'GlowDot') { m.emissive = new THREE.Color('#9dffb0'); m.emissiveIntensity = 1.4; } else if (name === 'LOD') m.vertexColors = true;
-  if (kind !== 3) { m.onBeforeCompile = (sh) => { sh.uniforms.gUnit = { value: unit };
+  if (kind !== 3) { const wear = { DarkMetal: 0.85, Metal: 0.55, LightMetal: 0.3, Brass: 0.45, Black: 0.7, Black2: 0.45, Main: 0.8, MainDark: 0.7, Tan: 0.8, Green: 0.8 }[name] ?? 0.5;
+    m.onBeforeCompile = (sh) => { sh.uniforms.gUnit = { value: unit }; sh.uniforms.gWear = { value: wear };
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGunP; uniform float gUnit;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvGunP = position * gUnit;');
-    const body = kind === 1
-      ? 'float gs = gNoise(vec3(vGunP.x * 14.0, vGunP.y * 900.0, vGunP.z * 900.0)); float gb = gNoise(vGunP * 38.0); float gG = (gs - 0.5) * 0.16 + (gb - 0.5) * 0.12; float gR = (gs - 0.5) * 0.22 + (gb - 0.5) * 0.18;'
-      : kind === 2
-        ? 'float gw = gNoise(vec3(vGunP.x * 9.0, vGunP.y * 70.0, vGunP.z * 70.0)); float gv = sin((vGunP.y + vGunP.z * 0.6) * 520.0 + gw * 9.0) * 0.5 + 0.5; float gG = (gv - 0.5) * 0.34 + (gw - 0.5) * 0.2; float gR = (0.5 - gv) * 0.25;'
-        : 'float gp = gNoise(vGunP * 1400.0); float gb = gNoise(vGunP * 30.0); float gG = (gp - 0.5) * 0.14 + (gb - 0.5) * 0.08; float gR = (gp - 0.5) * 0.2 + (gb - 0.5) * 0.12;';
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGunP;' + GUN_GRAIN)
+    // par matière : gG variation de teinte, gR de rugosité, gH relief (m), gW usure (0..1 : le métal nu ressort)
+    const body = kind === 1 // acier : brossage dans le sens du canon, fines rayures, bronzage usé par plaques
+      ? `float gs = gNoise(vec3(vGunP.x * 14.0, vGunP.y * 900.0, vGunP.z * 900.0)); float gb = gNoise(vGunP * 38.0); float gl = gNoise(vGunP * 7.3 + 3.1);
+         float sc = smoothstep(0.8, 0.87, gNoise(vec3(vGunP.x * 40.0, vGunP.y * 1700.0, vGunP.z * 1700.0) + 7.0)); float wr = smoothstep(0.56, 0.8, gl * 0.6 + gb * 0.4);
+         float gW = clamp(wr * 0.5 + sc * 0.45, 0.0, 1.0) * gWear; float gG = (gs - 0.5) * 0.16 + (gb - 0.5) * 0.14 + gW * 0.85; float gR = (gs - 0.5) * 0.22 + (gb - 0.5) * 0.18 - gW * 0.16; float gH = gs * 0.00005 - sc * 0.00009;`
+      : kind === 2 // bois : veines, vernis
+        ? `float gw = gNoise(vec3(vGunP.x * 9.0, vGunP.y * 70.0, vGunP.z * 70.0)); float gv = sin((vGunP.y + vGunP.z * 0.6) * 520.0 + gw * 9.0) * 0.5 + 0.5; float gk = gNoise(vec3(vGunP.x * 3.0, vGunP.y * 22.0, vGunP.z * 22.0) + 5.0);
+           float gW = 0.0; float gG = (gv - 0.5) * 0.34 + (gw - 0.5) * 0.2 + (gk - 0.5) * 0.3; float gR = (0.5 - gv) * 0.25; float gH = gv * 0.00007;`
+        : kind === 4 // quadrillage des poignées : petites pyramides en losange
+          ? `vec2 gq = vec2(vGunP.x + vGunP.y, vGunP.x - vGunP.y) * 430.0; vec2 gf = abs(fract(gq) - 0.5); float gc = 0.5 - max(gf.x, gf.y);
+             float gW = 0.0; float gG = gc * 0.7 - 0.12; float gR = 0.12 - gc * 0.2; float gH = gc * 0.0011;`
+          // polymère : grain moulé, éraflures plus claires et plus lisses
+          : `float gp = gNoise(vGunP * 900.0); float gb = gNoise(vGunP * 30.0); float gl = gNoise(vGunP * 6.0 + 1.7); float gW = smoothstep(0.6, 0.85, gl * 0.55 + gb * 0.45) * 0.5 * gWear;
+             float gG = (gp - 0.5) * 0.18 + (gb - 0.5) * 0.1 + gW * 0.45; float gR = (gp - 0.5) * 0.25 + (gb - 0.5) * 0.12 - gW * 0.22; float gH = gp * 0.00012; gW = 0.0;`;
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGunP; uniform float gWear;' + GUN_GRAIN + `
+        vec3 gPerturb(vec3 sp, vec3 n, vec2 dH) { vec3 sx = normalize(dFdx(sp)), sy = normalize(dFdy(sp)); vec3 r1 = cross(sy, n), r2 = cross(n, sx); float det = dot(sx, r1); vec3 gr = sign(det) * (dH.x * r1 + dH.y * r2); return normalize(abs(det) * n - gr); }`)
       .replace('#include <color_fragment>', '#include <color_fragment>\n' + body + '\ndiffuseColor.rgb *= 1.0 + gG;')
-      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor + gR, 0.06, 1.0);'); };
-    m.customProgramCacheKey = () => 'gun' + kind; }
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor + gR, 0.06, 1.0);')
+      .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor = mix(metalnessFactor, 0.95, gW * ' + (kind === 1 ? '1.0' : '0.0') + ');')
+      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n{ float gFd = clamp(1.7 - length(vViewPosition) * 0.7, 0.0, 1.0); float gDx = dFdx(gH), gDy = dFdy(gH); float gPx = length(dFdx(vViewPosition)) + 1e-6; vec2 gS = clamp(vec2(gDx, gDy) / gPx, -1.2, 1.2); normal = gPerturb(-vViewPosition, normal, gS * gFd); }'); };
+    m.customProgramCacheKey = () => 'gun2' + kind; }
   return (gunMatCache[key] = m);
 }
 export async function loadGuns(onEach) {

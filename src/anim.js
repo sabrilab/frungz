@@ -18,7 +18,7 @@ const _hip = V3(), _knee = V3(), _dir = V3(), _pole = V3(), _v = V3(), _w = V3()
 const SPINE = ['Body', 'Hips', 'Abdomen', 'Torso', 'Chest', 'Neck', 'Head'];
 const iBody = 0, iAbdomen = 2, iTorso = 3, iChest = 4, iNeck = 5, iHead = 6;
 // force du coup de recul par arme (vitesse donnée au ressort)
-const KICK = { pistol: 1.5, revolver: 2.6, pistolet_lourd: 2.2, pistolet_auto: 0.8, smg: 0.9, pm: 0.85, compact: 0.8, rifle: 1.15, carabine: 1.05, rafale: 1.1, fusil_lourd: 1.7, shotgun: 3.6, pompe_court: 3.8, semi_auto: 2.8, canon_scie: 4.4, dmr: 2.6, sniper: 4.2, calibre50: 6, mitrailleuse: 1.2 };
+const KICK = { pistol: 1.5, revolver: 2.6, pistolet_lourd: 2.2, pistolet_auto: 0.8, smg: 0.9, pm: 0.85, compact: 0.8, rifle: 1.15, carabine: 1.05, rafale: 1.1, fusil_lourd: 1.7, shotgun: 3.6, pompe_court: 3.8, semi_auto: 2.8, canon_scie: 4.4, dmr: 2.6, sniper: 4.2, calibre50: 6, mitrailleuse: 1.2, pistolet_match: 1.4, revolver_court: 2.8, pm_sil: 0.8, pm_vecteur: 0.75, carabine_sil: 1.0, ak_court: 1.8, pompe_tac: 3.5, chasse: 3.2 };
 
 // ressort amorti (intégration semi-implicite, stable aux grands pas) : f en Hz, z = amortissement (1 = critique, < 1 = dépasse puis revient)
 // Ressort amorti. Intégré par petits pas (1/120 s au plus) : en un seul pas de 1/30 s ou plus, les ressorts raides
