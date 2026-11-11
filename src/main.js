@@ -562,9 +562,10 @@ if (Q.has('bench')) {
   const gpu = (() => { try { const gl = renderer.getContext(), e = gl.getExtension('WEBGL_debug_renderer_info'); return e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch { return '?'; } })();
   const go = () => {
     if (!window.__loaded) return setTimeout(go, 250);
-    start(); const t0 = performance.now(); let last = t0; const ft = [];
+    start(); let t0 = performance.now(), last = t0, calm = 0; const ft = [];
     const tick = (now) => {
-      const d = now - last; last = now; const el = (now - t0) / 1000;
+      const d = now - last; last = now; if (ft.length === 0 && (d > 250 || calm < 60)) { calm = d > 250 ? 0 : calm + 1; t0 = now; } // la mise en route (compilation des shaders, gel de plusieurs secondes) ne compte pas : le chrono repart après 60 images normales
+      const el = (now - t0) / 1000;
       if (game) { if (game.paused && !game.over) closePause(); game.cam.yaw += d / 1000 * 0.35; }
       if (el > warm) ft.push(d);
       if (el < warm + dur) { box.textContent = el < warm ? `Banc d\u2019essai : mise en route ${Math.ceil(warm - el)} s` : `Banc d\u2019essai : mesure ${Math.ceil(warm + dur - el)} s \u00b7 ${fpsShown} images/s`; requestAnimationFrame(tick); return; }

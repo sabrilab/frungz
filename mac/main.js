@@ -35,7 +35,7 @@ let win, blocker = null, usingLocal = false;
 function createWindow() {
   win = new BrowserWindow({
     width: BENCH ? 1440 : 1600, height: BENCH ? 900 : 1000, minWidth: 960, minHeight: 600,
-    fullscreen: !BENCH && prefs.fullscreen, backgroundColor: '#000000', title: 'Frungz', show: false,
+    fullscreen: BENCH ? process.argv.includes('--plein-ecran') : prefs.fullscreen, backgroundColor: '#000000', title: 'Frungz', show: false,
     titleBarStyle: 'hiddenInset', autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), backgroundThrottling: false, contextIsolation: true, sandbox: true, spellcheck: false },
   });
@@ -59,7 +59,6 @@ function createWindow() {
     // le jeu écrit son résultat dans le titre de la page : on l'enregistre et on quitte
     const out = arg('out') || path.join(app.getPath('home'), 'frungz-bench-app.json');
     win.webContents.on('page-title-updated', (e, t) => { if (t.startsWith('BENCH ')) { fs.writeFileSync(out, t.slice(6)); setTimeout(() => app.quit(), 3000); } });
-    if (process.argv.includes('--plein-ecran')) win.once('ready-to-show', () => win.setFullScreen(true));
     const u = new URL(START_URL || ONLINE); u.searchParams.set('bench', BENCH); for (const [k, v] of [['q', arg('q')], ['n', arg('n')]]) if (v) u.searchParams.set(k, v);
     win.loadURL(u.toString());
   } else win.loadURL(START_URL || ONLINE);
