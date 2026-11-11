@@ -84,9 +84,11 @@ void main(){
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) continue;
     vec3 v = vpos(uv) - P; float vv = dot(v, v), vn = dot(v, N);
     float fall = 1.0 - smoothstep(R * R, R * R * 4.0, vv);
-    ao += max(0.0, vn - 0.015 * z * 0.05 - 0.02) / (vv + 0.02 * R) * fall * R; wsum += 1.0;
+    // angle au-dessus du plan tangent, avec un seuil : un mur plat ou un sol plat ne s'occultent jamais eux-mêmes (pas de voile gris)
+    float cosA = vn * inversesqrt(vv + 1e-6);
+    ao += max(0.0, cosA - 0.3) / 0.7 * fall; wsum += 1.0;
   }
-  ao = wsum > 0.0 ? 1.0 - ao / wsum * 3.5 : 1.0;
+  ao = wsum > 0.0 ? 1.0 - ao / wsum * 1.5 : 1.0;
   ao = clamp(ao, 0.35, 1.0); ao = mix(ao, 1.0, smoothstep(uFar * 0.6, uFar, z));
   gl_FragColor = vec4(ao, 1.0, 1.0, 1.0);
 }`;
@@ -110,8 +112,8 @@ void main(){
   if (uAOk > 0.0) {
     float s = 0.0, w = 0.0;
     for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
-      vec2 o = vec2(float(i), float(j)) * uAOTexel * 1.25; float zt = lin(texture2D(tDepth, vUv + o).x);
-      float wt = exp(-abs(zt - z) / (z * 0.04 + 0.05)) * (i == 0 && j == 0 ? 2.0 : 1.0);
+      vec2 o = vec2(float(i), float(j)) * uAOTexel * 0.75; float zt = lin(texture2D(tDepth, vUv + o).x);
+      float wt = exp(-abs(zt - z) / (z * 0.015 + 0.02)) * (i == 0 && j == 0 ? 2.0 : 1.0);
       s += texture2D(tAO, vUv + o).r * wt; w += wt;
     }
     float ao = w > 0.0 ? s / w : 1.0; ao = clamp(ao, 0.0, 1.0);
@@ -124,7 +126,7 @@ void main(){
   if (uAerial > 0.0) {
     vec4 p = uProjInv * vec4(vUv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0); vec3 P = p.xyz / p.w;
     vec3 wd = normalize(mat3(uCamWorld) * P); float wy = (uCamWorld * vec4(P, 1.0)).y;
-    float k = (1.0 - exp(-max(z - 30.0, 0.0) * uDen * exp(-max(wy, 0.0) * 0.012))) * uAerial;
+    float k = (1.0 - exp(-max(z - 80.0, 0.0) * uDen * exp(-max(wy, 0.0) * 0.012))) * uAerial;
     vec3 hz = uHaze + uSunCol * pow(max(dot(wd, uSunDir), 0.0), 6.0) * 0.5;
     c = mix(c, hz, clamp(k, 0.0, 0.85));
   }
@@ -139,10 +141,10 @@ export class PhotoPass extends Pass {
     // (écrire dans l'autre cible du composer, dont la profondeur est lue ensuite, formerait une boucle de rétroaction)
     this.outRT = new THREE.WebGLRenderTarget(2, 2, { depthBuffer: false, type: THREE.HalfFloatType }); this.colorOut = null;
     this.aoRT = new THREE.WebGLRenderTarget(2, 2, { depthBuffer: false, type: THREE.UnsignedByteType, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
-    this.aoMat = new THREE.ShaderMaterial({ uniforms: { tDepth: { value: null }, uProjInv: { value: new THREE.Matrix4() }, uProjY: { value: 1 }, uAspect: { value: 1 }, uRadius: { value: 1.4 }, uFar: { value: 160 }, uTexel: { value: new THREE.Vector2() } },
+    this.aoMat = new THREE.ShaderMaterial({ uniforms: { tDepth: { value: null }, uProjInv: { value: new THREE.Matrix4() }, uProjY: { value: 1 }, uAspect: { value: 1 }, uRadius: { value: 0.9 }, uFar: { value: 160 }, uTexel: { value: new THREE.Vector2() } },
       vertexShader: VS, fragmentShader: aoFrag, depthTest: false, depthWrite: false });
     this.compMat = new THREE.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, tDepth: { value: null }, tAO: { value: this.aoRT.texture }, uProjInv: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() }, uAOTexel: { value: new THREE.Vector2() },
-      uHaze: { value: new THREE.Color() }, uSunCol: { value: new THREE.Color() }, uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uDebug: { value: 0 }, uAOk: { value: 1.0 }, uAerial: { value: 1 }, uDen: { value: 0.0012 }, uNear: { value: 0.05 }, uFar: { value: 1000 } },
+      uHaze: { value: new THREE.Color() }, uSunCol: { value: new THREE.Color() }, uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uDebug: { value: 0 }, uAOk: { value: 1.0 }, uAerial: { value: 1 }, uDen: { value: 0.0007 }, uNear: { value: 0.05 }, uFar: { value: 1000 } },
       vertexShader: VS, fragmentShader: compFrag, depthTest: false, depthWrite: false });
     this.aoQ = new FullScreenQuad(this.aoMat); this.compQ = new FullScreenQuad(this.compMat);
     this.enabled2 = true; // choix du joueur
@@ -167,3 +169,21 @@ export class PhotoPass extends Pass {
   }
   dispose() { this.outRT.dispose(); this.aoRT.dispose(); this.aoMat.dispose(); this.compMat.dispose(); this.aoQ.dispose(); this.compQ.dispose(); }
 }
+
+// ---------- netteté : accentuation adaptative au contraste (façon AMD CAS) ----------
+// Dernier passage, après l'anticrénelage : rend le piqué des textures (pierre, pavés, tissus) sans créer de halos,
+// car la force baisse là où le contraste local est déjà fort. uSharp : 0 = rien, 1 = maximum.
+export const SharpenShader = {
+  uniforms: { tDiffuse: { value: null }, uTexel: { value: new THREE.Vector2(1 / 1280, 1 / 720) }, uSharp: { value: 0.6 } },
+  vertexShader: VS,
+  fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 uTexel; uniform float uSharp; varying vec2 vUv;
+    void main(){
+      vec3 a = texture2D(tDiffuse, vUv + vec2(0.0, -uTexel.y)).rgb, b = texture2D(tDiffuse, vUv + vec2(-uTexel.x, 0.0)).rgb, c = texture2D(tDiffuse, vUv).rgb;
+      vec3 d = texture2D(tDiffuse, vUv + vec2(uTexel.x, 0.0)).rgb, e = texture2D(tDiffuse, vUv + vec2(0.0, uTexel.y)).rgb;
+      vec3 mn = min(c, min(min(a, b), min(d, e))), mx = max(c, max(max(a, b), max(d, e)));
+      vec3 amp = sqrt(clamp(min(mn, 1.0 - mx) / max(mx, vec3(1e-4)), 0.0, 1.0));
+      vec3 w = -amp / mix(8.0, 4.6, clamp(uSharp, 0.0, 1.0));
+      vec3 r = (c + (a + b + d + e) * w) / (1.0 + 4.0 * w);
+      gl_FragColor = vec4(clamp(r, 0.0, 1.0), 1.0);
+    }`,
+};
