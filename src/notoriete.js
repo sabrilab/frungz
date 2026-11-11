@@ -101,6 +101,7 @@ const CSS = `
 #news .head{background:rgba(255,255,255,.96);color:#0b1e4d;font:900 13px/1.15 Inter;padding:4px 8px;max-width:100%;box-sizing:border-box;text-transform:uppercase;letter-spacing:.01em}
 #news .say{position:absolute;left:8px;right:8px;bottom:64px;z-index:2;font:700 11.5px/1.3 Inter;color:#fff;text-align:center;text-shadow:0 1px 2px #000,0 0 6px #000}
 #news .tick{position:absolute;left:0;right:0;bottom:0;height:16px;background:#0b1e4d;color:#fff;font:700 10px/16px Inter;white-space:nowrap;overflow:hidden;z-index:2}#news .tick span{display:inline-block;padding-left:100%;animation:ntick 22s linear infinite}
+body.touch #news{left:auto;right:var(--sr,10px);top:calc(var(--st,8px) + 2px);width:168px;height:96px}body.touch #news .loc,body.touch #news .bug{font-size:8px}body.touch #news .live{font-size:7.5px}body.touch #news .say{display:none!important}body.touch #news .tick{display:none}body.touch #news .low{bottom:4px}body.touch #news .head{font-size:10px;padding:3px 6px}body.touch.newson #feed{opacity:0}body.touch #chaos{top:calc(var(--st,8px) + 44px);font-size:8.5px;padding:2px 7px}body.touch #chaos .seg i{width:9px}body.touch #notopop{top:calc(var(--st,8px) + 66px)}body.touch #notopop b{font-size:20px}body.touch #notopop .st{font-size:24px}
 @keyframes ntick{to{transform:translateX(-100%)}}
 #news.u .tag{background:#ff2f6d;animation:chaosblink .6s steps(1) infinite}
 #news .rec{position:absolute;inset:0;z-index:1;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.35))}
