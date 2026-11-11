@@ -565,3 +565,21 @@ function frame() {
 window.__cineState = (dt) => cine && cineState(dt);
 renderMenu(); frame();
 loadAll().catch((e) => { $('loadtxt').textContent = 'Erreur de chargement : ' + e.message; console.error(e); });
+
+// ---------- mise à jour : recharger la dernière version publiée ----------
+// Chaque build porte un numéro (__BUILD__) et publie version.json ; l'accueil le relit de temps en temps et allume le bouton quand une version plus récente est en ligne.
+{
+  const BUILD = typeof __BUILD__ !== 'undefined' ? __BUILD__ : 'dev'; window.__build = BUILD;
+  const btn = $('updBtn'); if (btn) btn.title = `Recharger la dernière version du jeu (version ${BUILD})`;
+  let latest = null;
+  async function check() {
+    if (BUILD === 'dev' || game) return;
+    try { const j = await (await fetch('version.json?t=' + Date.now(), { cache: 'no-store' })).json(); latest = j.id; if (j.id && j.id !== BUILD && btn) { btn.classList.add('new'); btn.querySelector('.t').textContent = 'Nouvelle version !'; } } catch {}
+  }
+  btn?.addEventListener('click', async () => {
+    btn.classList.add('busy'); btn.querySelector('.t').textContent = 'Mise à jour…'; audio.init(); audio.play('uiSelect'); persist();
+    try { await fetch(location.pathname, { cache: 'reload' }); } catch {}
+    const u = new URL(location.href); u.searchParams.set('v', latest || Date.now().toString(36)); location.replace(u.toString());
+  });
+  setTimeout(check, 4000); setInterval(check, 120000); addEventListener('focus', check);
+}
