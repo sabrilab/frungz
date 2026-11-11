@@ -139,28 +139,41 @@ export function gunMaterial(name, unit = 1) {
   if (name === 'GlassLens') { m.transparent = true; m.opacity = 0.16; m.depthWrite = false; m.envMapIntensity = 2.5; } else if (name === 'GlowDot') { m.emissive = new THREE.Color('#9dffb0'); m.emissiveIntensity = 1.4; } else if (name === 'LOD') m.vertexColors = true;
   if (kind !== 3) { const wear = { DarkMetal: 0.85, Metal: 0.55, LightMetal: 0.3, Brass: 0.45, Black: 0.7, Black2: 0.45, Main: 0.8, MainDark: 0.7, Tan: 0.8, Green: 0.8 }[name] ?? 0.5;
     m.onBeforeCompile = (sh) => { sh.uniforms.gUnit = { value: unit }; sh.uniforms.gWear = { value: wear };
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGunP; uniform float gUnit;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvGunP = position * gUnit;');
-    // par matière : gG variation de teinte, gR de rugosité, gH relief (m), gW usure (0..1 : le métal nu ressort)
-    const body = kind === 1 // acier : brossage dans le sens du canon, fines rayures, bronzage usé par plaques
-      ? `float gs = gNoise(vec3(vGunP.x * 14.0, vGunP.y * 900.0, vGunP.z * 900.0)); float gb = gNoise(vGunP * 38.0); float gl = gNoise(vGunP * 7.3 + 3.1);
-         float sc = smoothstep(0.8, 0.87, gNoise(vec3(vGunP.x * 40.0, vGunP.y * 1700.0, vGunP.z * 1700.0) + 7.0)); float wr = smoothstep(0.56, 0.8, gl * 0.6 + gb * 0.4);
-         float gW = clamp(wr * 0.5 + sc * 0.45, 0.0, 1.0) * gWear; float gG = (gs - 0.5) * 0.16 + (gb - 0.5) * 0.14 + gW * 0.85; float gR = (gs - 0.5) * 0.22 + (gb - 0.5) * 0.18 - gW * 0.16; float gH = gs * 0.00005 - sc * 0.00009;`
-      : kind === 2 // bois : veines, vernis
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGunP; varying float vGunE; uniform float gUnit; attribute float gE;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvGunP = position * gUnit; vGunE = gE;');
+    // Matières calculées au pixel, donc nettes d'aussi près qu'on veut (pas de texture qui devient floue). Par matière :
+    // gG variation de teinte, gR de rugosité, gH relief (m), gW usure (0..1 : le métal nu ressort), gD salissure dans les creux.
+    // gEd : arêtes vives de la pièce, usées en premier (liseré clair, comme sur une arme qui a servi).
+    const body = kind === 1 // acier : brossage dans le sens du canon, rayures, piqûres, bronzage usé par plaques, traces de doigts grasses
+      ? `float gN = clamp(2.2 - length(vViewPosition) * 1.1, 0.0, 1.0); float gs = gNoise(vec3(vGunP.x * 14.0, vGunP.y * 900.0, vGunP.z * 900.0)); float gs2 = gNoise(vec3(vGunP.x * 60.0, vGunP.y * 2600.0, vGunP.z * 2600.0) + 2.0); float gb = gNoise(vGunP * 38.0); float gl = gNoise(vGunP * 7.3 + 3.1);
+         float sc = gN * smoothstep(0.8, 0.88, gNoise(vec3(vGunP.x * 40.0, vGunP.y * 1700.0, vGunP.z * 1700.0) + 7.0)); float sc2 = gN * smoothstep(0.85, 0.9, gNoise(vec3((vGunP.x + vGunP.y * 0.6) * 55.0, (vGunP.y - vGunP.x * 0.6) * 1500.0, vGunP.z * 1500.0) + 11.0));
+         float pit = gN * smoothstep(0.8, 0.9, gNoise(vGunP * 1300.0)); float wr = smoothstep(0.54, 0.8, gl * 0.6 + gb * 0.4); float oil = smoothstep(0.45, 0.75, gNoise(vGunP * 21.0 + 9.0));
+         float gEd = vGunE * smoothstep(0.38, 0.72, gNoise(vGunP * 150.0) * 0.55 + gb * 0.45 + gWear * 0.2);
+         float gW = clamp(wr * 0.45 + sc * 0.2 + sc2 * 0.14 + gEd * 0.6, 0.0, 1.0) * gWear; float gG = (gs - 0.5) * 0.2 + (gs2 - 0.5) * 0.1 + (gb - 0.5) * 0.16 - pit * 0.1 + gW * 0.8;
+         float gR = (gs - 0.5) * 0.24 + (gb - 0.5) * 0.2 - gW * 0.2 - oil * 0.14 + pit * 0.1; float gH = gs * 0.00006 - sc * 0.00008 - sc2 * 0.00006 - pit * 0.00002;`
+      : kind === 2 // bois : veines, pores, vernis usé aux arêtes
         ? `float gw = gNoise(vec3(vGunP.x * 9.0, vGunP.y * 70.0, vGunP.z * 70.0)); float gv = sin((vGunP.y + vGunP.z * 0.6) * 520.0 + gw * 9.0) * 0.5 + 0.5; float gk = gNoise(vec3(vGunP.x * 3.0, vGunP.y * 22.0, vGunP.z * 22.0) + 5.0);
-           float gW = 0.0; float gG = (gv - 0.5) * 0.34 + (gw - 0.5) * 0.2 + (gk - 0.5) * 0.3; float gR = (0.5 - gv) * 0.25; float gH = gv * 0.00007;`
-        : kind === 4 // quadrillage des poignées : petites pyramides en losange
-          ? `vec2 gq = vec2(vGunP.x + vGunP.y, vGunP.x - vGunP.y) * 430.0; vec2 gf = abs(fract(gq) - 0.5); float gc = 0.5 - max(gf.x, gf.y);
-             float gW = 0.0; float gG = gc * 0.7 - 0.12; float gR = 0.12 - gc * 0.2; float gH = gc * 0.0011;`
-          // polymère : grain moulé, éraflures plus claires et plus lisses
-          : `float gp = gNoise(vGunP * 900.0); float gb = gNoise(vGunP * 30.0); float gl = gNoise(vGunP * 6.0 + 1.7); float gW = smoothstep(0.6, 0.85, gl * 0.55 + gb * 0.45) * 0.5 * gWear;
-             float gG = (gp - 0.5) * 0.18 + (gb - 0.5) * 0.1 + gW * 0.45; float gR = (gp - 0.5) * 0.25 + (gb - 0.5) * 0.12 - gW * 0.22; float gH = gp * 0.00012; gW = 0.0;`;
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGunP; uniform float gWear;' + GUN_GRAIN + `
+           float po = smoothstep(0.7, 0.85, gNoise(vec3(vGunP.x * 120.0, vGunP.y * 1400.0, vGunP.z * 1400.0))); float gEd = vGunE * smoothstep(0.3, 0.7, gNoise(vGunP * 120.0));
+           float gW = 0.0; float gG = (gv - 0.5) * 0.36 + (gw - 0.5) * 0.22 + (gk - 0.5) * 0.3 - po * 0.2 + gEd * 0.25; float gR = (0.5 - gv) * 0.25 + po * 0.2 + gEd * 0.2 - 0.08; float gH = gv * 0.00008 - po * 0.00008;`
+        : kind === 4 // quadrillage des poignées : petites pyramides en losange, pointes lustrées par la main
+          ? `vec2 gq = vec2(vGunP.x + vGunP.y, vGunP.x - vGunP.y) * 430.0; vec2 gf = abs(fract(gq) - 0.5); float gc = 0.5 - max(gf.x, gf.y); float gl = gNoise(vGunP * 30.0);
+             float gW = 0.0; float gG = gc * 0.8 - 0.14 + (gl - 0.5) * 0.15; float gR = 0.12 - gc * 0.3 - gl * 0.1; float gH = gc * 0.0012;`
+          // polymère et peinture cuite : grain moulé net, éraflures plus claires et lisses, arêtes blanchies, poussière
+          : `float gN = clamp(2.2 - length(vViewPosition) * 1.1, 0.0, 1.0); float gp = gNoise(vGunP * 900.0); float gp2 = gNoise(vGunP * 2300.0 + 4.0); float gb = gNoise(vGunP * 30.0); float gl = gNoise(vGunP * 6.0 + 1.7);
+             float sc = gN * smoothstep(0.82, 0.89, gNoise(vec3((vGunP.x - vGunP.y * 0.4) * 45.0, (vGunP.y + vGunP.x * 0.4) * 1300.0, vGunP.z * 1300.0) + 3.0));
+             float gEd = vGunE * smoothstep(0.4, 0.72, gNoise(vGunP * 140.0) * 0.55 + gb * 0.45 + gWear * 0.15);
+             float gW = clamp(smoothstep(0.58, 0.85, gl * 0.55 + gb * 0.45) * 0.45 + sc * 0.3 + gEd * 0.6, 0.0, 1.0) * gWear; float dust = smoothstep(0.5, 0.8, gNoise(vGunP * 11.0 + 6.0)) * 0.1;
+             float gG = (gp - 0.5) * 0.26 + (gp2 - 0.5) * 0.12 + (gb - 0.5) * 0.12 + gW * 0.6 + dust; float gR = (gp - 0.5) * 0.3 + (gb - 0.5) * 0.14 - gW * 0.28 + dust; float gH = gp * 0.0002 + gp2 * 0.00006 - sc * 0.00008; gW = 0.0;`;
+    const hf = kind === 1 ? 'return gNoise(vec3(P.x * 14.0, P.y * 900.0, P.z * 900.0)) * 0.00004 - smoothstep(0.8, 0.88, gNoise(vec3(P.x * 40.0, P.y * 1700.0, P.z * 1700.0) + 7.0)) * 0.00006;'
+      : kind === 2 ? 'float gw = gNoise(vec3(P.x * 9.0, P.y * 70.0, P.z * 70.0)); return (sin((P.y + P.z * 0.6) * 520.0 + gw * 9.0) * 0.5 + 0.5) * 0.00008;'
+      : kind === 4 ? 'vec2 gq = vec2(P.x + P.y, P.x - P.y) * 430.0; vec2 gf = abs(fract(gq) - 0.5); return (0.5 - max(gf.x, gf.y)) * 0.0012;'
+      : 'return gNoise(P * 900.0) * 0.00016;';
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGunP; varying float vGunE; uniform float gWear;' + GUN_GRAIN + '\nfloat gHf(vec3 P) { ' + hf + ' }' + `
         vec3 gPerturb(vec3 sp, vec3 n, vec2 dH) { vec3 sx = normalize(dFdx(sp)), sy = normalize(dFdy(sp)); vec3 r1 = cross(sy, n), r2 = cross(n, sx); float det = dot(sx, r1); vec3 gr = sign(det) * (dH.x * r1 + dH.y * r2); return normalize(abs(det) * n - gr); }`)
-      .replace('#include <color_fragment>', '#include <color_fragment>\n' + body + '\ndiffuseColor.rgb *= 1.0 + gG;')
+      .replace('#include <color_fragment>', '#include <color_fragment>\n' + body + '\ndiffuseColor.rgb *= 1.0 + gG;' + (kind === 1 ? '\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.5, 0.51, 0.53), gW * 0.3);' : ''))
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor + gR, 0.06, 1.0);')
       .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor = mix(metalnessFactor, 0.95, gW * ' + (kind === 1 ? '1.0' : '0.0') + ');')
-      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n{ float gFd = clamp(1.7 - length(vViewPosition) * 0.7, 0.0, 1.0); float gDx = dFdx(gH), gDy = dFdy(gH); float gPx = length(dFdx(vViewPosition)) + 1e-6; vec2 gS = clamp(vec2(gDx, gDy) / gPx, -1.2, 1.2); normal = gPerturb(-vViewPosition, normal, gS * gFd); }'); };
-    m.customProgramCacheKey = () => 'gun2' + kind; }
+      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n{ float gFd = clamp(1.9 - length(vViewPosition) * 0.6, 0.0, 1.0); float gH0 = gHf(vGunP); float gDx = gHf(vGunP + dFdx(vGunP)) - gH0, gDy = gHf(vGunP + dFdy(vGunP)) - gH0; float gPx = length(dFdx(vViewPosition)) + 1e-6; vec2 gS = clamp(vec2(gDx, gDy) / gPx, -0.8, 0.8); normal = gPerturb(-vViewPosition, normal, gS * gFd); }'); };
+    m.customProgramCacheKey = () => 'gun4' + kind; }
   return (gunMatCache[key] = m);
 }
 export async function loadGuns(onEach) {

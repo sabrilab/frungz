@@ -17,8 +17,26 @@ const mv = (p, dz = 0) => V(p[2] ?? dz, p[1], -p[0]);
 // ressort amorti (position x, vitesse v)
 function spring(s, k, c, dt) { const n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n; for (let i = 0; i < n; i++) { s.v += (-k * s.x - c * s.v) * h; s.x += s.v * h; } }
 
+// Focale de l'arme : comme dans les jeux de tir à gros budget, l'arme et les mains sont dessinées avec une focale plus longue que le décor
+// (ici 1,5 fois). L'arme paraît plus grande et plus massive, le canon ne file plus en pointe et les mains près de l'œil ne gonflent plus.
+// C'est fait dans le shader des matières de la vue subjective (la position à l'écran est agrandie autour du centre), sans seconde caméra.
+export const VIEW_MAG = 1.5;
+const vmCache = new Map();
+function viewMat(m) {
+  if (m.userData.vm) return m; let v = vmCache.get(m.uuid); if (v) return v;
+  v = m.clone(); v.userData = { ...m.userData, vm: true }; const prev = m.onBeforeCompile, key = m.customProgramCacheKey;
+  v.onBeforeCompile = (sh, r) => { if (prev) prev.call(v, sh, r); sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\ngl_Position.xy *= ' + VIEW_MAG.toFixed(3) + ';');
+    /* ce qui passerait à moins de 17 cm de l'œil (crosse en visée) n'est pas dessiné : rien ne vient boucher la ligne de mire */
+    sh.fragmentShader = sh.fragmentShader.replace('void main() {', 'void main() {\nif (1.0 / gl_FragCoord.w < 0.17) discard;'); };
+  v.customProgramCacheKey = () => (key ? key.call(m) : '') + '|vm'; vmCache.set(m.uuid, v); return v;
+}
+
 export function installManiement(Game) {
   const P = Game.prototype;
+  // matières « vue subjective » sur tout ce qui est accroché à la caméra (arme, mains, munition des lanceurs)
+  P.vmMats = function () { for (const c of this.camera.children) if (c.userData.viewModel) c.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) o.material = Array.isArray(o.material) ? o.material.map(viewMat) : viewMat(o.material); }); };
+  // où un point de l'arme est vu à l'écran, ramené dans le monde (bouche du canon pour la flamme et la traînée, fenêtre d'éjection)
+  P.vmSeen = function (p) { const c = this.camera.worldToLocal(p); c.x *= VIEW_MAG; c.y *= VIEW_MAG; return this.camera.localToWorld(c); };
   // vue à l'épaule (comme dans Fortnite) : l'arme longue qu'on n'a pas en main se porte dans le dos, en travers, canon vers le haut
   const equip0 = P.equip;
   P.equip = function (a, i, silent) {
@@ -40,7 +58,7 @@ export function installManiement(Game) {
     const old = this.vm;
     this.vm = { M, parts, id: this.weapon(this.player).id, draw: 0.4, boltT: 0, cycle: 0, cycleD: 0, pumpT: 0, cylA: old?.id === this.weapon(this.player).id ? old.cylA : 0, cylT: 0,
       rz: { x: 0, v: 0 }, rp: { x: 0, v: 0 }, ry: { x: 0, v: 0 }, rr: { x: 0, v: 0 }, dy: { x: 0, v: 0 }, lagX: 0, lagY: 0, tilt: 0, run: 0, ads: 0, yaw: this.cam.yaw, pitch: this.cam.pitch, wasGround: true, fall: 0, relEmpty: false, relOn: false, ev: {} };
-    this.vhand = { L: V(), Lw: 0, R: V(), Rw: 0, Ls: V() };
+    this.vhand = { L: V(), Lw: 0, R: V(), Rw: 0, Ls: V() }; this.vmMats();
   };
 
   // tir du joueur : recul, culasse, pompe, verrou, barillet
@@ -67,8 +85,10 @@ export function installManiement(Game) {
     if (this.aiming !== vm.wasAim) { vm.wasAim = this.aiming; if (this.cam.fps) this.audio.mech?.('aim', this.aiming ? 1 : 0.6); }
     vm.ads += ((this.aiming ? 1 : 0) - vm.ads) * (1 - Math.exp(-dt * (this.aiming ? 16 : 13)));
     const sy = M ? M.sightY : (this.vgunTop || 0.12) + 0.012;
-    const adsP = V(0, -sy - (M?.optic ? 0 : 0.0015), pistol ? -0.36 : -0.25 - Math.min(0.08, len * 0.12)), hip = this.hipLayout();
-    const e = vm.ads * vm.ads * (3 - 2 * vm.ads), pos = hip.clone().lerp(adsP, e), hr = this.vgunHipRot || { x: 0, y: 0 }, rot = V(hr.x * (1 - e), hr.y * (1 - e), (1 - e) * e * -0.25); // léger roulis pendant la montée en visée
+    const adsP = V(0, -sy - (M?.optic ? 0 : 0.0015), pistol ? -0.33 : (M?.optic ? -0.2 : -0.29) - Math.min(0.05, len * 0.05)) /* arme tenue contre l'œil : en visée elle remplit le bas de l'écran */, hip = this.hipLayout();
+    /* fusils à pompe et de chasse (simple guidon) : l'œil se place un peu au-dessus de la bande et l'arme pique légèrement de la crosse, sinon le boîtier bouche la vue */
+    const hh = M && (M.kind === 'tube' || M.kind === 'break') ? 0.024 : 0, hp = hh / Math.max(0.3, g.userData.muzzle?.position.x || 0.6); adsP.y -= hh;
+    const e = vm.ads * vm.ads * (3 - 2 * vm.ads), pos = hip.clone().lerp(adsP, e), hr = this.vgunHipRot || { x: 0, y: 0 }, rot = V(hr.x * (1 - e) + hp * e, hr.y * (1 - e), (1 - e) * e * -0.25); // léger roulis pendant la montée en visée
     // ---- marche, respiration
     const t = C.bob, calm = 1 - e * 0.8, tt = this.time;
     pos.x += Math.cos(t) * 0.012 * bobA * calm; pos.y += -Math.abs(Math.sin(t)) * 0.015 * bobA * calm + Math.sin(tt * 1.7) * 0.0016 * calm; rot.z += Math.cos(t) * 0.012 * bobA * calm; rot.x += Math.sin(tt * 1.7 + 1) * 0.004 * calm;
@@ -92,6 +112,7 @@ export function installManiement(Game) {
     // ---- sortie de l'arme
     if (vm.draw > 0) { if (!vm.drawS) { vm.drawS = 1; this.audio.mech?.('draw'); } vm.draw -= dt; const u = clamp(1 - vm.draw / 0.4, 0, 1), c1 = 1.9, o = 1 - (1 + (c1 + 1) * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2)); pos.x += 0.06 * o; pos.y -= 0.3 * o; pos.z += 0.08 * o; rot.x -= 0.95 * o; rot.z += 0.55 * o; rot.y += 0.3 * o; }
 
+    vm.matT = (vm.matT || 0) - dt; if (vm.matT <= 0) { vm.matT = 0.3; this.vmMats(); } /* pièces ajoutées après coup (roquette dans le tube) */
     // ---- pièces mobiles et mains
     for (const n in parts) { const p = parts[n]; p.o.position.copy(p.p); p.o.rotation.copy(p.r); p.o.visible = true; }
     H.Lw = 0; H.Rw = 0; H.Ls.set(0, 0, 0);
@@ -120,7 +141,7 @@ export function installManiement(Game) {
         const hd = M.bolt?.handle; if (hd && w > 0.001) { const tg = mv([hd[0] - tr * b, hd[1], hd[2]]).add(V(-0.03, -0.01, 0.03)); if (H.Lw > 0.001) H.L.lerp(tg, w); else H.L.copy(tg); H.Lw = Math.max(H.Lw, w); } pos.z += b * 0.02; rot.x += b * 0.04; if (u > u0 + (u1 - u0) * 0.2) ev('rack', () => { this.audio.mech('rack'); jolt(0, 0.6); }); };
       if (kind === 'mag' || kind === 'belt') {
         // l'arme se couche, la main gauche sort le chargeur vers le bas, hors champ, puis en remonte un plein
-        if (pistol) { pos.x -= 0.1 * hold; pos.y += 0.13 * hold; pos.z -= 0.04 * hold; rot.z -= 0.5 * hold; rot.x += 0.55 * hold; } else { pos.x -= 0.11 * hold; pos.y += 0.075 * hold; pos.z += 0.02 * hold; rot.z -= 0.62 * hold; rot.x += 0.36 * hold; rot.y -= 0.12 * hold; }
+        if (pistol) { pos.x -= 0.1 * hold; pos.y += 0.13 * hold; pos.z -= 0.04 * hold; rot.z -= 0.5 * hold; rot.x += 0.55 * hold; } else { pos.x -= 0.2 * hold; pos.y += 0.11 * hold; pos.z += 0.02 * hold; rot.z -= 0.62 * hold; rot.x += 0.36 * hold; rot.y -= 0.12 * hold; }
         const belt = kind === 'belt', c0 = belt ? 0.1 : 0, out = sm(u, 0.13 + c0, 0.27 + c0), back = sm(u, 0.46 + c0, 0.62 + c0), d = out * (1 - back), far = bump(u, 0.24 + c0, 0.5 + c0);
         const dl = Math.hypot(M.magDir[0], M.magDir[1]), dx = M.magDir[0] / dl, dyy = M.magDir[1] / dl, dist = 0.2 * d + 0.25 * far;
         if (parts.mag) { parts.mag.o.position.x += dx * dist; parts.mag.o.position.y += dyy * dist; parts.mag.o.rotation.z = (out - back) * 0.25 * (1 - far); }
