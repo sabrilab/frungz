@@ -24,7 +24,7 @@ const fmt = (n) => Math.round(n).toLocaleString('fr-FR');
 const Q = new URLSearchParams(location.search);
 
 // ---------- sauvegarde ----------
-const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, cls: { ordre: 'intervention', civils: 'casseur' }, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Bloc_Cagoule', settings: { sens: 1, padSens: 1, touchSens: 1, assist: true, fps: false, teamSize: 50, invertY: false, dynres: true } };
+const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, cls: { ordre: 'intervention', civils: 'casseur' }, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Bloc_Cagoule', settings: { sens: 1, padSens: 1, touchSens: 1, fireAds: true, autoSprint: true, assist: true, fps: false, teamSize: 50, invertY: false, dynres: true } };
 const SAVE_KEY = 'frungz-save' + (Q.get('profil') ? '-' + Q.get('profil').replace(/\W/g, '').slice(0, 12) : ''); // ?profil=x : une autre sauvegarde (tester à plusieurs dans le même navigateur)
 let save; try { save = { ...DEFAULT, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; save.settings = { ...DEFAULT.settings, ...save.settings }; save.upgrades ||= {}; save.cls = { ...DEFAULT.cls, ...save.cls }; save.kit ||= {}; } catch { save = structuredClone(DEFAULT); }
 const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {} };
@@ -120,7 +120,7 @@ addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; cam
 const audio = createAudio(); const input = createInput(renderer.domElement); Object.assign(input.settings, save.settings);
 // téléphone / tablette / app iPhone : joystick et boutons à l'écran (src/tactile.js)
 if (NATIVE) document.documentElement.classList.add('native');
-const touch = isTouchDevice() ? createTouch({ input, onTap: () => audio.init() }) : null; window.__touch = touch;
+const touch = isTouchDevice() ? createTouch({ input, onTap: () => audio.init(), layout: save.settings.touchLayout, onSave: (l) => { save.settings.touchLayout = l; persist(); } }) : null; window.__touch = touch;
 const fx = createFX(scene, camera);
 
 // ---------- chargement ----------
@@ -415,6 +415,8 @@ pause.innerHTML = `<h2>PAUSE</h2>
 <div class="settings">
 <label class="desk-only">Sensibilité souris <input type="range" min="0.3" max="5" step="0.05" id="s-sens"></label>
 <label class="touch-only">Sensibilité tactile <input type="range" min="0.3" max="3" step="0.05" id="s-touch"></label>
+<label class="touch-only"><input type="checkbox" id="s-fireads"> Tirer = viser puis tirer (comme CoD Mobile)</label>
+<label class="touch-only"><input type="checkbox" id="s-autosprint"> Sprint auto : joystick poussé à fond vers l'avant</label>
 <label>Sensibilité manette <input type="range" min="0.3" max="5" step="0.05" id="s-pad"></label>
 <label><input type="checkbox" id="s-assist"> Visée assistée (manette et tactile)</label>
 <label><input type="checkbox" id="s-inv"> Inverser l'axe vertical</label>
@@ -426,11 +428,12 @@ pause.innerHTML = `<h2>PAUSE</h2>
 <label>Images/s <b id="s-fpsn">–</b></label>
 <label>Joueurs par camp (prochaine partie) <select id="s-team"><option value="5">5 contre 5</option><option value="10">10 contre 10</option><option value="15">15 contre 15</option><option value="20">20 contre 20</option><option value="25">25 contre 25</option><option value="35">35 contre 35</option><option value="50">50 contre 50</option></select></label>
 </div>
-<div class="row-btns"><button class="big" id="resume">REPRENDRE</button><button class="ghost" id="quit">Quitter la partie</button><button class="ghost desk-only" id="s-fullscreen">Plein écran (⌘L)</button></div>
+<div class="row-btns"><button class="big" id="resume">REPRENDRE</button><button class="ghost touch-only" id="s-touchedit">Personnaliser les touches</button><button class="ghost" id="quit">Quitter la partie</button><button class="ghost desk-only" id="s-fullscreen">Plein écran (⌘L)</button></div>
 <div class="controls"><div class="touch-only"><h3>Tactile</h3>
-<p>Pouce gauche : joystick (il se pose où tu touches) · poussé à fond vers l'avant : sprint</p><p>Pouce droit : glisse pour regarder · le bouton de tir se fait glisser pour viser en tirant</p>
-<p>Viser : touche pour basculer · Lancer : maintiens pour viser, lâche pour lancer</p><p>Agir apparaît quand une action est possible (voler, casser, monter dans un véhicule, armurerie)</p>
-<p>Touche une arme en bas pour la prendre · touche la minimap pour la carte</p><p>Véhicule : joystick pour accélérer, freiner et tourner</p></div><div><h3>Manette</h3>
+<p>Pouce gauche : joystick (il se pose où tu touches) · poussé à fond vers l'avant : sprint</p><p>Pouce droit : glisse n'importe où pour tourner la caméra</p>
+<p>Maintiens Tirer : tu mets en joue et ça tire · fusil de précision : vise en maintenant, le coup part quand tu lâches · le bouton de tir se fait glisser</p>
+<p>Accroupi en pleine course : glissade · Lancer : maintiens pour viser, lâche pour lancer</p><p>Agir apparaît quand une action est possible, Série quand un atout est prêt</p>
+<p>Touche une arme en bas pour la prendre · touche la minimap pour la carte</p><p>Personnaliser les touches : déplace, agrandis, rends transparentes, masque, ou ajoute des touches de l'inventaire (barricade, glissade, sprint, vue, arme suivante, sac, carte…)</p></div><div><h3>Manette</h3>
 <p><kbd>L</kbd> se déplacer · <kbd>R</kbd> regarder</p><p><kbd>R2</kbd> tirer · <kbd>L2</kbd> viser</p><p><kbd>✕</kbd> sauter / escalader · <kbd>○</kbd> roulade / glissade</p>
 <p><kbd>L1</kbd> s'accroupir · <kbd>L3</kbd> sprint · <kbd>R3</kbd> vue FPS / TPS</p><p><kbd>□</kbd> agir, ramasser, monter dans un véhicule · <kbd>△</kbd> changer d'arme</p>
 <p><kbd>R1</kbd> maintenir pour viser un lancer, lâcher pour lancer · <kbd>↑</kbd><kbd>↓</kbd> force · <kbd>←</kbd> changer · <kbd>L2</kbd> annuler</p>
@@ -448,7 +451,8 @@ document.body.appendChild(pause);
 const st = document.createElement('style'); st.textContent = `.padfocus{outline:3px solid #ffcc3d!important;outline-offset:3px;box-shadow:0 0 0 7px rgba(255,204,61,.22)!important}.settings{display:grid;gap:10px;text-align:left;background:rgba(255,255,255,.06);padding:16px;border-radius:12px;min-width:min(420px,100%)}.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left;margin-top:10px;font-size:13px}.controls h3{margin:0 0 6px;font:800 14px Inter}.controls p{margin:3px 0}@media(max-width:760px){.controls{grid-template-columns:1fr}}.settings label{display:flex;justify-content:space-between;gap:12px;align-items:center;font-weight:700}#minimap.big{width:min(700px,90vw);height:min(350px,45vw);left:50%;top:50%;transform:translate(-50%,-50%)}body.scoped #app canvas{}body.scoped::after{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 30vh,#000 30.5vh);z-index:1}body.scoped::before{content:'';position:fixed;left:50%;top:0;bottom:0;width:1px;background:#000;z-index:2;box-shadow:0 0 0 0 #000}`;
 document.head.appendChild(st);
 const bindSet = (id, key, prop = 'value', conv = Number) => { const el = $(id); el[prop] = save.settings[key]; el.addEventListener('input', () => { save.settings[key] = conv(el[prop]); input.settings[key] = save.settings[key]; persist(); if (key === 'fps' && game) { game.cam.fps = save.settings.fps; game.viewGun(); } }); };
-if (save.settings.killcam === undefined) save.settings.killcam = true; bindSet('s-killcam', 'killcam', 'checked', Boolean); bindSet('s-sens', 'sens'); bindSet('s-touch', 'touchSens'); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); if (save.settings.cine === undefined) save.settings.cine = true; bindSet('s-cine', 'cine', 'checked', Boolean); $('s-cine').addEventListener('input', () => { if (cine) cine.enabled2 = save.settings.cine; }); bindSet('s-team', 'teamSize');
+if (save.settings.killcam === undefined) save.settings.killcam = true; bindSet('s-killcam', 'killcam', 'checked', Boolean); bindSet('s-sens', 'sens'); bindSet('s-touch', 'touchSens'); bindSet('s-fireads', 'fireAds', 'checked', Boolean); bindSet('s-autosprint', 'autoSprint', 'checked', Boolean);
+$('s-touchedit')?.addEventListener('click', () => { if (!touch) return; const back = !pause.classList.contains('hidden'); pause.classList.add('hidden'); touch.openEditor(() => { if (back) pause.classList.remove('hidden'); }); }); bindSet('s-pad', 'padSens'); bindSet('s-assist', 'assist', 'checked', Boolean); bindSet('s-inv', 'invertY', 'checked', Boolean); bindSet('s-fps', 'fps', 'checked', Boolean); bindSet('s-dynres', 'dynres', 'checked', Boolean); if (save.settings.cine === undefined) save.settings.cine = true; bindSet('s-cine', 'cine', 'checked', Boolean); $('s-cine').addEventListener('input', () => { if (cine) cine.enabled2 = save.settings.cine; }); bindSet('s-team', 'teamSize');
 { const el = $('s-quality'); el.value = save.settings.quality || 'auto'; el.addEventListener('change', () => { save.settings.quality = el.value; persist(); location.reload(); }); }
 function openSettings() { pause.querySelector('h2').textContent = 'RÉGLAGES'; $('resume').style.display = 'none'; $('quit').textContent = 'Retour au salon'; pause.classList.remove('hidden'); audio.init(); audio.play('uiSelect'); }
 function openPause() { if (!game || game.over) return; pause.querySelector('h2').textContent = 'PAUSE'; $('resume').style.display = ''; $('quit').textContent = 'Quitter la partie'; game.paused = true; pause.classList.remove('hidden'); document.exitPointerLock?.(); $('s-fps').checked = game.cam.fps; }
