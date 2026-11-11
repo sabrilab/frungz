@@ -13,7 +13,9 @@ const GRAV = 19;
 const mats = {};
 function mat(color, o = {}) {
   const key = color + JSON.stringify(o); if (mats[key]) return mats[key];
-  return (mats[key] = new THREE.MeshStandardMaterial({ color, roughness: o.r ?? 0.55, metalness: o.m ?? 0.1, flatShading: o.flat ?? true, emissive: o.e ?? '#000000', emissiveIntensity: o.ei ?? 1, transparent: o.t != null, opacity: o.t ?? 1, depthWrite: o.t == null }));
+  // (passe réalisme : surfaces lisses ; peintures vernies en qualité haute)
+  const hq = !['bas', 'mobile'].includes(globalThis.__quality), P = o.p && hq ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial;
+  return (mats[key] = new P({ color, roughness: o.r ?? 0.55, metalness: o.m ?? 0.1, flatShading: o.flat ?? false, ...(o.p && hq ? { clearcoat: 1, clearcoatRoughness: 0.04 } : {}), emissive: o.e ?? '#000000', emissiveIntensity: o.ei ?? 1, transparent: o.t != null, opacity: o.t ?? 1, depthWrite: o.t == null }));
 }
 const M = {
   noir: () => mat('#17191d', { r: 0.6 }), metal: () => mat('#9aa0a8', { r: 0.3, m: 0.75 }), alu: () => mat('#c3c7cc', { r: 0.28, m: 0.8 }), chrome: () => mat('#d9dde2', { r: 0.15, m: 0.95 }),
@@ -24,7 +26,7 @@ const M = {
 function mesh(geo, m, x = 0, y = 0, z = 0) { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; return o; }
 const box = (w, h, d, m, x, y, z) => mesh(new THREE.BoxGeometry(w, h, d), m, x, y, z);
 // cylindre d'un point à un autre
-function tube(a, b, r, m, seg = 8, r2 = r) {
+function tube(a, b, r, m, seg = 16, r2 = r) {
   const d = b.clone().sub(a), L = d.length(); const o = mesh(new THREE.CylinderGeometry(r2, r, L, seg), m);
   o.position.copy(a).addScaledVector(d, 0.5); o.quaternion.setFromUnitVectors(V(0, 1, 0), d.normalize()); return o;
 }
@@ -32,19 +34,22 @@ function tube(a, b, r, m, seg = 8, r2 = r) {
 function profile(pts, width, m, bevel = 0.02) {
   const s = new THREE.Shape(pts.map(([z, y]) => new THREE.Vector2(z, y)));
   const b = Math.min(bevel, width * 0.3);
-  const g = new THREE.ExtrudeGeometry(s, { depth: Math.max(0.002, width - 2 * b), bevelEnabled: b > 0, bevelThickness: b, bevelSize: b, bevelSegments: 1, curveSegments: 4 });
+  const g = new THREE.ExtrudeGeometry(s, { depth: Math.max(0.002, width - 2 * b), bevelEnabled: b > 0, bevelThickness: b, bevelSize: b, bevelSegments: 3, curveSegments: 10 });
   g.translate(0, 0, -(width - 2 * b) / 2); g.rotateY(-Math.PI / 2); g.computeVertexNormals();
   return mesh(g, m);
 }
 // roue : pneu, jante à branches, moyeu, disque de frein ; tourne autour de son axe X
 function wheel(R, w, rimCol, disc = true) {
   const g = new THREE.Group();
-  const tire = mesh(new THREE.TorusGeometry(R - w * 0.5, w * 0.5, 7, 22), M.pneu()); tire.rotation.y = Math.PI / 2; g.add(tire);
-  const rimR = R - w * 0.95; const rm = mat(rimCol, { r: 0.35, m: 0.6 });
-  const rim = mesh(new THREE.TorusGeometry(rimR, 0.018, 5, 22), rm); rim.rotation.y = Math.PI / 2; g.add(rim);
-  for (let i = 0; i < 5; i++) { const sp = box(0.03, rimR * 2 * 0.98, 0.028, rm); sp.rotation.x = i * Math.PI / 5; g.add(sp); }
-  g.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, w * 0.9, 10).rotateZ(Math.PI / 2), M.alu()));
-  if (disc) { const d = mesh(new THREE.CylinderGeometry(rimR * 0.78, rimR * 0.78, 0.008, 18).rotateZ(Math.PI / 2), M.chrome()); d.position.x = w * 0.42; g.add(d); }
+  // pneu au profil arrondi (tourné), jante à bâtons dédoublés, moyeu, disque de frein et étrier
+  const prof = []; const Ri = R - w * 0.95; for (let k = 0; k <= 16; k++) { const a = -Math.PI / 2 + k / 16 * Math.PI; prof.push(new THREE.Vector2(Ri + (R - Ri) * (0.55 + 0.45 * Math.cos(a)), Math.sin(a) * w * 0.5)); }
+  const tg = new THREE.LatheGeometry(prof, 36); tg.rotateZ(-Math.PI / 2); g.add(mesh(tg, M.pneu()));
+  const rimR = Ri; const rm = mat(rimCol, { r: 0.3, m: 0.7, p: true });
+  const rim = mesh(new THREE.TorusGeometry(rimR, 0.016, 8, 40), rm); rim.rotation.y = Math.PI / 2; g.add(rim);
+  for (let i = 0; i < 5; i++) for (const d of [-0.06, 0.06]) { const sp = box(0.022, rimR * 0.98, 0.02, rm); sp.geometry.translate(0, rimR * 0.49, 0); sp.rotation.x = i * Math.PI * 2 / 5 + d; g.add(sp); }
+  g.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, w * 0.9, 20).rotateZ(Math.PI / 2), M.alu()));
+  if (disc) { const d = mesh(new THREE.CylinderGeometry(rimR * 0.78, rimR * 0.78, 0.008, 32).rotateZ(Math.PI / 2), M.chrome()); d.position.x = w * 0.42; g.add(d);
+    const hubD = mesh(new THREE.CylinderGeometry(rimR * 0.4, rimR * 0.4, 0.012, 20).rotateZ(Math.PI / 2), M.noir()); hubD.position.x = w * 0.42; g.add(hubD); }
   g.userData.R = R; return g;
 }
 const named = (o, n) => { o.name = n; return o; };
@@ -60,7 +65,7 @@ export const MOTOS = {
 
 function buildMoto(type) {
   const S = MOTOS[type]; const g = new THREE.Group(); g.name = 'moto-' + type;
-  const body = mat(S.body, { r: 0.35, m: 0.25 }), acc = mat(S.accent, { r: 0.4, m: 0.2 });
+  const body = mat(S.body, { r: 0.3, m: 0.3, p: true }), acc = mat(S.accent, { r: 0.35, m: 0.2, p: true });
   const zf = S.wb / 2, zb = -S.wb / 2, R = S.R;
   // colonne de direction : pivot en haut de la fourche, axe local Y incliné de l'angle de chasse
   const head = V(0, R + S.fork * Math.cos(S.rake), zf - S.fork * Math.sin(S.rake));

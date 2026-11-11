@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { TEAMS, WEAPONS } from './data.js';
 import { THROWS } from './throws.js';
 import { svg } from './icons.js';
+import { truckMesh } from './camions.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -20,42 +21,7 @@ Object.assign(THROWS, {
 });
 
 // ------------------------------------------------------------------ maillages
-const MAT = {}; const mat = (c, e = 0) => MAT[c + e] ||= new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, metalness: 0.2, flatShading: true, emissive: e ? c : '#000', emissiveIntensity: e });
-const GEO = {}; const box = (w, h, d) => GEO[`${w}|${h}|${d}`] ||= new THREE.BoxGeometry(w, h, d);
-const WHEEL = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 10).rotateZ(Math.PI / 2);
-const part = (geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); return o; };
-const LOOK = {
-  eau: { body: '#1c2a44', cab: '#e9eef5', len: 7.5 },
-  armee: { body: '#4f5a35', cab: '#5d6a3e', len: 7, bache: '#6b7148' },
-  belier: { body: '#2a2a2a', cab: '#e0592a', len: 8 },
-  bande: { body: '#e9e6df', cab: '#e9e6df', len: 5.2, stripe: '#2f8f4e' },
-  crs: { body: '#e9eef5', cab: '#e9eef5', len: 5.4, stripe: '#1c3f8f', gyro: 1 }, // fourgon CRS : blanc, bande bleue, gyrophares
-  emeute: { body: '#7a7d80', cab: '#7a7d80', len: 5, stripe: '#3a3c3e' }, // utilitaire gris cabossé
-};
-// camion orienté vers +z, roues au sol (y = 0)
-function truckMesh(kind) {
-  const L = LOOK[kind], g = new THREE.Group(), dark = mat('#1b1d21'), body = mat(L.body), cab = mat(L.cab);
-  const len = L.len, cabL = 2.2, back = len - cabL;
-  g.add(part(box(2.5, 0.5, len), dark, 0, 0.75, 0));
-  g.add(part(box(2.5, 2.1, cabL), cab, 0, 1.95, len / 2 - cabL / 2), part(box(2.3, 0.8, 0.1), mat('#7fb6d9', 0.15), 0, 2.4, len / 2 + 0.01));
-  const wheels = []; for (const z of [len / 2 - 1.2, -len / 2 + 1.3, ...(len > 6 ? [-len / 2 + 2.5] : [])]) for (const x of [-1.25, 1.25]) { const w = part(WHEEL, dark, x, 0.5, z); g.add(w); wheels.push(w); }
-  const ud = { wheels };
-  if (kind === 'eau') {
-    g.add(part(box(2.5, 2.2, back), body, 0, 2, -cabL / 2), part(box(2.52, 0.3, back), mat('#e9eef5'), 0, 1.4, -cabL / 2));
-    const tur = new THREE.Group(); tur.position.set(0, 3.3, 0.6); const base = part(box(0.9, 0.5, 0.9), dark); const noz = new THREE.Group(); noz.add(part(box(0.22, 0.22, 1.6), mat('#9aa3ad'), 0, 0, 0.8)); noz.position.y = 0.2; tur.add(base, noz); g.add(tur);
-    const l1 = part(box(0.5, 0.15, 0.25), mat('#2a6bff', 3), -0.6, 3.05, len / 2 - 0.4), l2 = part(box(0.5, 0.15, 0.25), mat('#ff2a2a', 3), 0.6, 3.05, len / 2 - 0.4); g.add(l1, l2);
-    Object.assign(ud, { tur, noz, l1, l2 });
-  } else if (kind === 'armee') {
-    g.add(part(box(2.5, 0.9, back), body, 0, 1.45, -cabL / 2), part(box(2.4, 1.6, back - 0.1), mat(L.bache), 0, 2.7, -cabL / 2));
-  } else if (kind === 'belier') {
-    g.add(part(box(2.6, 2.4, back), body, 0, 2.15, -cabL / 2));
-    g.add(part(box(3.2, 1.5, 0.35), mat('#8d949c'), 0, 1.25, len / 2 + 0.3), part(box(0.3, 0.3, 1), dark, -1, 1.2, len / 2), part(box(0.3, 0.3, 1), dark, 1, 1.2, len / 2));
-  } else {
-    g.add(part(box(2.3, 2.1, back), body, 0, 1.95, -cabL / 2), part(box(2.32, 0.35, back), mat(L.stripe), 0, 1.6, -cabL / 2));
-    if (L.gyro) { const l1 = part(box(0.4, 0.14, 0.22), mat('#2a6bff', 3), -0.5, 3.07, len / 2 - 0.5), l2 = part(box(0.4, 0.14, 0.22), mat('#2a6bff', 3), 0.5, 3.07, len / 2 - 0.5); g.add(l1, l2); Object.assign(ud, { l1, l2 }); }
-  }
-  g.traverse((o) => { if (o.isMesh) o.castShadow = true; }); g.userData = ud; return g;
-}
+// camions et fourgons détaillés : camions.js (construits une fois par modèle, clonés à chaque arrivée)
 
 export function installConvois(Game) {
   const P = Game.prototype;
