@@ -44,7 +44,8 @@ export function setupScene(renderer) {
   const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 16), skyMat); sky.frustumCulled = false; scene.add(sky);
   sky.onBeforeRender = () => { skyMat.uniforms.uTime.value = performance.now() / 1000; };
   scene.fog = new THREE.Fog('#c4ced8', 150, 620);
-  const hemi = new THREE.HemisphereLight('#bcd3f2', '#8c7a62', 0.8); scene.add(hemi);
+  // lumière du ciel : gris-bleu léger, pas bleu franc (avec les reflets du ciel en plus, les ombres viraient au bleu)
+  const hemi = new THREE.HemisphereLight('#c8d2e0', '#94806a', 0.8); scene.add(hemi);
   const sun = new THREE.DirectionalLight('#ffe6c4', 4.0);
   const SUN = new THREE.Vector3(-0.48, 0.78, 0.4).normalize();
   sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);

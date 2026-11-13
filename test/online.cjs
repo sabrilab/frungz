@@ -4,7 +4,10 @@ const { chromium } = require('playwright');
 (async () => {
   const [,, url = 'http://localhost:8124/', out = '/tmp'] = process.argv;
   const b = await chromium.launch({ args: ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'] });
-  const page = async (q, tag) => { const br = await chromium.launch(); const p = await (await br.newContext({ viewport: { width: 960, height: 540 } })).newPage(); p.br = br; p.on('pageerror', (e) => console.log(`[${tag} err]`, e.message, e.stack?.split('\n').slice(0, 3).join(' | '))); p.on('console', (m) => { const t = m.text(); if (/salon|erreur|Error|net/i.test(t) && !/GPU|WebGL/.test(t)) console.log(`[${tag}]`, t.slice(0, 300)); }); await p.goto(url + q); return p; };
+  // MOBILE=1 : ami1 en iPhone, ami2 en Android (émulation : écran paysage, tactile, user-agent), le chef reste sur ordinateur
+  const { devices } = require('playwright');
+  const DEV = process.env.MOBILE === 'android' ? { ami1: 'Pixel 7 landscape' } : { ami1: 'iPhone 15 Pro Max landscape', ami2: 'Pixel 7 landscape' }; // MOBILE=android : ami1 en Android
+  const page = async (q, tag) => { const br = await chromium.launch(); const d = process.env.MOBILE && DEV[tag] ? { ...devices[DEV[tag]], defaultBrowserType: undefined } : { viewport: { width: 960, height: 540 } }; delete d.defaultBrowserType; const p = await (await br.newContext(d)).newPage(); p.br = br; p.on('pageerror', (e) => console.log(`[${tag} err]`, e.message, e.stack?.split('\n').slice(0, 3).join(' | '))); p.on('console', (m) => { const t = m.text(); if (/salon|erreur|Error|net/i.test(t) && !/GPU|WebGL/.test(t)) console.log(`[${tag}]`, t.slice(0, 300)); }); await p.goto(url + q); return p; };
   const base = '?net=ws://localhost:8125&q=bas&noreal&norender&n=6';
   const H = await page(base + '&profil=h', 'chef');
   await H.waitForFunction('window.__loaded', null, { timeout: 240000 });
@@ -62,7 +65,7 @@ const { chromium } = require('playwright');
   
   // départ d'un ami : son perso disparaît chez le chef
   const g1id = await G[0].evaluate(() => window.__game.player.id);
-  await G[0].br.close(); await H.waitForTimeout(50000); // le relais de test oublie un joueur après 30 s sans nouvelles, puis 12 s de grâce
+  await G[0].br.close(); await H.waitForTimeout(+(process.env.ATTENTE_DEPART || 50000)); // le relais de test oublie un joueur après 30 s sans nouvelles, puis 12 s de grâce
   console.log('ami1 parti, perso retiré chez le chef :', await H.evaluate((id) => window.__game.actors[id].gone, g1id));
   await b.close(); await H.br.close(); if (G.length > 1) await G[G.length - 1].br.close();
 })();

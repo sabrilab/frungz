@@ -482,7 +482,7 @@ export class Game {
     const hip = D.scope && !a.bot && !scopedShot ? 22 : 1, settle = scopedShot ? 1 + (1 - (this.sc?.settle ?? 1)) * 14 : 1;
     const spread = D.spread * moving * aiming * air * (a.crouch ? 0.7 : 1) * hip * settle;
     this.audio.gun(D.sound, a === this.player ? null : a.pos, a === this.player ? 0.9 : 1);
-    this.fx.muzzle(muzzle, D.pellets > 1 ? 1.4 : 1);
+    this.fx.muzzle(muzzle, D.pellets > 1 ? 1.4 : 1, dir);
     if (a !== this.player) this.notePing(a, muzzle);
     // douille éjectée à droite de l'arme (pas pour le revolver, qui garde ses douilles)
     if (D.casings && (a === this.player || a.pos.distanceToSquared(this.player.pos) < 625)) { const yw = a === this.player ? this.cam.yaw : a.yaw; const ep = V(); const vg = a === this.player && this.cam.fps && this.vgun; if (vg) { const B = this.vgunBB; ep.set(B ? (B.min.x + B.max.x) / 2 + 0.03 : 0.03, B ? B.max.y - 0.02 : 0.05, B ? B.min.z * 0.3 : -0.1); this.vgun.localToWorld(ep); this.vmSeen?.(ep); } else (a.ch.gun || a.ch.root).getWorldPosition(ep); /* en vue subjective : fenêtre d’éjection, sur le dessus de l’arme */ this.fx.casing(ep, V(-Math.cos(yw), 0, Math.sin(yw)), D.pellets > 1); }
