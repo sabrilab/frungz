@@ -12,10 +12,11 @@ const { chromium } = require('playwright');
     await p.goto(`${url}?map=${map}&q=bas&noreal&n=${n}`); await p.waitForFunction('window.__loaded', null, { timeout: 600000 });
     const load = ((Date.now() - t0) / 1000).toFixed(1);
     await p.evaluate(() => window.__start()); await p.waitForTimeout(1500);
-    const r = await p.evaluate(async () => {
+    const training = map === 'salle'; // salle d'entraînement : pas de fin de match, on joue 5 min sans erreur
+    const r = await p.evaluate(async (training) => {
       const g = window.__game, I = g.input; const t = performance.now(); let steps = 0, worst = 0, nan = 0, low = 0, deaths = 0, lastAlive = true;
       const keys = ['KeyW', 'KeyA', 'KeyD', 'ShiftLeft'];
-      while (!g.over && g.time < g.matchLen + 5) {
+      while (!g.over && g.time < (training ? 300 : g.matchLen + 5)) {
         // le joueur : avance, tourne, tire, change d'arme de temps en temps
         if (I && I.keys) { for (const k of keys) I.keys[k] = Math.random() < 0.3; I.mouse = I.mouse || {}; I.mouse.left = Math.random() < 0.2; }
         if (g.player) g.player.yaw = (g.player.yaw || 0) + 0.02;
@@ -29,10 +30,10 @@ const { chromium } = require('playwright');
         if (steps > 30000) break;
       }
       return { over: g.over, winner: g.winner, time: +g.time.toFixed(0), score: g.score, steps, msMoy: +((performance.now() - t) / steps).toFixed(2), msPire: +worst.toFixed(0), nan, sousCarte: low, mortsJoueur: deaths, bas: (window.__bas || []).slice(0, 4), acteurs: g.actors.length };
-    });
+    }, training);
     await p.waitForTimeout(4000); // l'écran de fin arrive 1,5 s après la fin du match
     const fin = await p.evaluate(() => !document.getElementById('end').classList.contains('hidden'));
-    const bad = !r.over || !fin || r.nan || errs.length;
+    const bad = (!training && (!r.over || !fin)) || r.nan || errs.length;
     if (bad) ko++;
     console.log(`${bad ? 'KO' : 'OK'} ${map} : chargé en ${load} s,`, JSON.stringify(r), '| écran de fin', fin, '| erreurs', errs.length, errs.slice(0, 6));
     await b.close();
