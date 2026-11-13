@@ -40,6 +40,8 @@ const P = {
   base: '<path d="M3 9l9-5 9 5zM5 9v9M9.6 9v9M14.4 9v9M19 9v9M2 21h20M3 18h18"/>',
   bag: '<path d="M5 8h14l-1.4 13H6.4zM9 8V6a3 3 0 0 1 6 0v2"/>',
   check: '<path d="M4 12.5l5 5L20 6.5"/>',
+  nitro: '<path d="M10 2.5h4M12 2.5v3M8.5 9a3.5 3.5 0 0 1 7 0v12.5h-7zM8.5 13h7"/>',
+  wrench: '<path d="M14.7 6.3a4 4 0 0 0 5 5L11 20a2.1 2.1 0 0 1-3-3l8.7-8.7a4 4 0 0 1-2-2z"/>',
 };
 export const ICON_NAMES = Object.keys(P);
 // <svg> en ligne, aux dimensions du texte ; inconnu → chaîne vide
@@ -48,6 +50,6 @@ export function svg(name, cls = '') {
   return `<svg class="ico${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true">${p}</svg>`;
 }
 // anciens emojis encore présents dans du texte (toasts, annonces) → pictogrammes
-const EMO = { '🛸': 'drone', '🪂': 'parachute', '🚀': 'missile', '🧨': 'petards', '🎆': 'artifice', '☂️': 'parachute', '💨': 'gas', '🌫️': 'smoke', '💣': 'frag', '💀': 'skull', '☠': 'skull', '🎯': 'target', '🧱': 'barricade', '🦺': 'vest', '⚠': 'alert', '🚨': 'siren', '💥': 'glass', '💰': 'cash', '🚗': 'car', '🏛️': 'base', '✓': 'check' };
+const EMO = { '🛸': 'drone', '🪂': 'parachute', '🚀': 'missile', '🧨': 'petards', '🎆': 'artifice', '☂️': 'parachute', '💨': 'gas', '🌫️': 'smoke', '💣': 'frag', '💀': 'skull', '☠': 'skull', '🎯': 'target', '🧱': 'barricade', '🦺': 'vest', '⚠': 'alert', '🚨': 'siren', '💥': 'glass', '💰': 'cash', '🚗': 'car', '🏛️': 'base', '✓': 'check', '⛽': 'nitro', '🔧': 'wrench' };
 const EMO_RE = new RegExp(Object.keys(EMO).sort((a, b) => b.length - a.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
 export function iconize(html) { return String(html).replace(EMO_RE, (m) => svg(EMO[m])); }

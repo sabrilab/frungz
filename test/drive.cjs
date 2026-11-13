@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
 p.on('pageerror', (e) => console.log('[err]', e.message, e.stack?.split('\n').slice(0,4).join(' | ')));
 await p.goto(url); await p.waitForFunction('window.__loaded', null, { timeout: 480000 }); await p.evaluate(() => window.__start());
 const r = await p.evaluate(() => { const g = window.__game, pl = g.player, I = g.input; pl.alive = true;
-  const car = g.cars.slice().sort((a, b) => a.pos.distanceTo(pl.pos) - b.pos.distanceTo(pl.pos))[0]; g.enterCar(pl, car);
+  const car = g.cars.filter((c) => !c.kind && !c.flipped).sort((a, b) => a.pos.distanceTo(pl.pos) - b.pos.distanceTo(pl.pos))[0]; g.enterCar(pl, car);
   let best = 0, by = car.yaw; for (let k = 0; k < 16; k++) { const y = k * Math.PI / 8; let d = 0; for (; d < 80; d += 2) { const q = car.pos.clone(); q.x += Math.sin(y) * d; q.z += Math.cos(y) * d; q.y += 0.8; if (!g.world.los(car.pos.clone().setY(car.pos.y + 0.8), q)) break; } if (d > best) { best = d; by = y; } } car.yaw = by; car.vel = null; car.speed = 0;
   let mv = { x: 0, y: 0 }, tr = 0, hand = false; I.move = () => mv; const down0 = I.down.bind(I); I.down = (k) => k === 'jump' ? hand : down0(k);
   const poll0 = I.poll.bind(I); I.poll = (...a) => { const r = poll0(...a); I.st.triggerR = tr; return r; };

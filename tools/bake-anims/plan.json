@@ -59,5 +59,7 @@
   {"name": "A_HitB", "src": "Standing_React_Small_From_Back", "trim": [0, 0.8], "spineOnly": true, "additive": true},
   {"name": "A_HitL", "src": "Standing_React_Small_From_Left", "trim": [0, 0.8], "spineOnly": true, "additive": true},
   {"name": "A_HitR", "src": "Standing_React_Small_From_Right", "trim": [0, 0.8], "spineOnly": true, "additive": true},
-  {"name": "U_FistPump", "src": "standing_fist_pump", "trim": [0.3, 2.2], "upperOnly": true}
+  {"name": "U_FistPump", "src": "standing_fist_pump", "trim": [0.3, 2.2], "upperOnly": true},
+  {"name": "MX_BailRoll", "src": "falling_to_roll"},
+  {"name": "MX_BailFlat", "seq": [{"src": "falling_flat_impact", "trim": [0, 1.0]}, {"src": "roll_left (v2)"}, {"src": "stand_up", "trim": [0, 2.1]}], "blend": 0.2}
 ]

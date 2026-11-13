@@ -39,6 +39,7 @@ const P = {
   zoom: '<svg viewBox="0 0 48 48"><circle cx="21" cy="21" r="12" fill="none" stroke="currentColor" stroke-width="3.4"/><path d="M30 30l10 10M21 15v12M15 21h12" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/></svg>',
   map: '<svg viewBox="0 0 48 48"><path d="M6 12l12-5 12 5 12-5v29l-12 5-12-5-12 5zM18 7v29M30 12v29" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></svg>',
   next: '<svg viewBox="0 0 48 48"><path d="M8 18h28l-7-7M40 30H12l7 7" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  nitro: '<svg viewBox="0 0 48 48"><path d="M20 5h8M24 5v6M17 18a7 7 0 0 1 14 0v25H17zM17 26h14" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   sprint: '<svg viewBox="0 0 48 48"><circle cx="30" cy="9" r="4.5" fill="currentColor"/><path d="M14 22l8-6 8 3 4 8 6 2M22 16l-4 12 8 4-2 10M18 28l-8 6" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 
@@ -72,6 +73,7 @@ const KEYS = [
   { id: 'brake', act: ['jump'], ico: 'brake', lbl: 'Frein', modes: ['car'], size: 76, x: 0.92, y: 0.76, on: true },
   { id: 'horn', act: ['horn'], ico: 'horn', lbl: 'Klaxon', modes: ['car'], size: 54, x: 0.79, y: 0.86, on: true },
   { id: 'exit', act: ['car'], ico: 'exit', lbl: 'Sortir', modes: ['car', 'heli'], size: 54, x: 0.94, y: 0.42, on: true },
+  { id: 'nitro', act: ['sprint'], ico: 'nitro', lbl: 'Nitro', modes: ['car'], size: 62, x: 0.79, y: 0.64, on: true },
   // hélico
   { id: 'hfire', act: ['fire'], ico: 'fire', lbl: 'Tir', modes: ['heli'], size: 80, x: 0.8, y: 0.7, on: true },
   { id: 'up', act: ['jump'], ico: 'up', lbl: 'Monter', modes: ['heli'], size: 56, x: 0.95, y: 0.64, on: true },
