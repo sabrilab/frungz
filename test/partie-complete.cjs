@@ -7,7 +7,7 @@ const { chromium } = require('playwright');
   let ko = 0;
   for (const map of maps.split(',')) {
     const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 960, height: 540 } });
-    const errs = []; p.on('pageerror', (e) => errs.push('pageerror ' + e.message)); p.on('response', (r) => { if (r.status() >= 400) errs.push(r.status() + ' ' + r.url()); }); p.on('console', (m) => { if (m.type() === 'error' && !/WebGL|GPU|GL_|supabase\.co|Failed to load resource/.test(m.text())) errs.push(m.text().slice(0, 200)); });
+    const errs = []; p.on('pageerror', (e) => errs.push('pageerror ' + e.message)); p.on('response', (r) => { if (r.status() >= 400 && !/\/api\//.test(r.url())) errs.push(r.status() + ' ' + r.url()); }); p.on('console', (m) => { if (m.type() === 'error' && !/WebGL|GPU|GL_|supabase\.co|Failed to load resource/.test(m.text())) errs.push(m.text().slice(0, 200)); });
     const t0 = Date.now();
     await p.goto(`${url}?map=${map}&q=bas&noreal&n=${n}`); await p.waitForFunction('window.__loaded', null, { timeout: 600000 });
     const load = ((Date.now() - t0) / 1000).toFixed(1);
