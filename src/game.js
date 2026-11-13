@@ -1221,6 +1221,8 @@ export class Game {
     const ck = a.slideT > 0 || a.rollT > 0 || a.climb ? 0 : (a.crouchK || 0);
     ch.model.position.y = lerp(ch.model.position.y, (a.slideT > 0 ? (ch.actions.MX_Slide ? 0 : ch.actions.MX_Idle ? 0.05 : 0.35) : 0) - (ch.actions.MX_CrouchIdle ? 0 : ck * 0.42) + (-chars[a.skin].minY * chars[a.skin].k), 1 - Math.exp(-dt * 14));
     if (ck > 0.02 && !far && !ch.actions.MX_CrouchIdle) this.crouchPose(a, ck);
+    // lancer vu de l'extérieur : l'arme est rangée le temps du geste (la main lance à vide, sinon elle jetterait la grenade avec le fusil en main)
+    { const thr = !!a.overs?.some((o) => o.name === 'U_Throw' && o.t < o.dur - 0.1); if (thr !== !!a.thr) { a.thr = thr; if (ch.gun) ch.gun.visible = !thr; } }
     // armes longues : crosse ramenée dans le creux de l'épaule, tête dégagée (src/hold.js), avant les couches qui posent la main gauche
     { const wid = this.weapon(a)?.id, on = wid && ch.gun && a.alive && !far && !a.lodHidden && !a.climb && !a.inCar && !a.swim && !a.thr && !a.celebrate && !a.channel && (a === this.player || a.pos.distanceToSquared(this.camera.position) < 1600);
       a.holdW = lerp(a.holdW || 0, on ? 1 : 0, 1 - Math.exp(-dt * 10)); if (on && a.holdW > 0.02) shoulderGun(ch, wid, a.holdW); }
