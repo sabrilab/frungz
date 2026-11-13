@@ -8,6 +8,14 @@ Jeu de tir à la troisième personne dans un quartier de Paris (Three.js) : mode
 
 Assets : personnages et armes Quaternius (CC0), sons CC0 (voir `public/assets/sfx/LICENCES.md`), voitures (voir `public/assets/cars/VEHICULES-LICENCES.md`). Motos et skateboards : modélisés dans le code (`src/deuxroues.js`), formes génériques sans marque.
 
+## Voitures : nitro, bonus, saut en marche
+
+- Nitro : `Maj` (R1 / L3 à la manette, bouton Nitro au tactile). La jauge bleue sous la vitesse se remplit en dérapant et en frôlant voitures et passants.
+- Bonus posés sur la chaussée, ramassés en roulant dessus : bouteille de nitro (jauge pleine), caisse à outils (réparation), sac de billets, plaques de blindage (30 s, dégâts réduits).
+- Sauter d'une voiture en marche : `F` au-delà de 20 km/h. Plongeon et roulade, ou à grande vitesse chute à plat, roulé-boulé et relevé (`MX_BailRoll`, `MX_BailFlat`). La voiture garde l'accélérateur bloqué et fonce sur l'adversaire visé (repère rouge « Sauter : voiture sur … »), puis explose au choc.
+- Bord de carte : barrages de chantier (blocs béton, barrières, « ROUTE BARRÉE ») posés automatiquement là où les rues sortent de la carte. Frotter un mur ne stoppe plus la voiture : seul un choc de face l'abîme.
+- Code : `src/conduite.js`. Test : `node test/conduite.cjs "http://localhost:8124/?map=paris" dossier` (`ZONE=x0,x1,z0,z1` pour choisir la ligne droite).
+
 ## Motos et skates
 
 `F` (□ à la manette) près d'une moto ou d'un skate pour monter, encore `F` pour descendre.

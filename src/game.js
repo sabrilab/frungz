@@ -22,6 +22,7 @@ import { installBarricades, TIERS, tierInfo, fmtG } from './barricades.js';
 import { installLanceurs } from './lanceurs.js';
 import { installManiement, VIEW_MAG } from './maniement.js';
 import { installTurrets } from './tourelles.js';
+import { installConduite } from './conduite.js';
 import { createFeedback } from './feedback.js';
 import { installEntrainement } from './entrainement.js';
 
@@ -799,6 +800,8 @@ export class Game {
       thr = Math.max(-m.y, I.st.triggerR); brk = Math.max(m.y > 0 ? m.y : 0, I.st.triggerL); st = -m.x; hand = I.down('jump');
       if (I.pressed('horn')) this.audio.horn();
     }
+    // pilote automatique (conduite.js) : nitro (accélérateur à fond) ou voiture lancée après un saut (accélérateur bloqué, direction vers la cible)
+    if (c.auto) { if (c.auto.thr != null) { thr = Math.max(thr, c.auto.thr); brk = 0; } if (c.auto.st != null) st = c.auto.st; }
     // modèle arcade : vitesse dans le monde, décomposée en avant / côté ; l'adhérence latérale ramène la voiture dans l'axe
     // (forte sur route, faible au frein à main : dérive contrôlable), direction plus douce et moins braquée à haute vitesse
     const f = V(Math.sin(c.yaw), 0, Math.cos(c.yaw)), side = V(Math.cos(c.yaw), 0, -Math.sin(c.yaw));
@@ -830,16 +833,19 @@ export class Game {
       this.world.pushOut(q, r, c.pos.y + 0.2, c.col); const dx = q.x - q0.x, dz = q.z - q0.z;
       if (dx || dz) { c.pos.x += dx; c.pos.z += dz; const L = Math.hypot(dx, dz); n.x += dx; n.z += dz; bump = Math.max(bump, L); }
     }
-    if (bump > 0.01) { n.normalize(); const into = c.vel.dot(n); if (into < 0) { c.vel.addScaledVector(n, -into * 1.35); c.speed = c.vel.dot(fwd); } }
-    if (bump > 0.02 && Math.abs(c.speed) > 3) {
-      const imp = Math.abs(c.speed); if (imp > 9) { this.hitCar(c, imp * 2.2, null); this.audio.play('slam', c.pos, Math.min(1.2, imp / 20)); this.fx.burst(c.pos.clone().addScaledVector(fwd, c.L / 2 * Math.sign(c.speed)).add(V(0, 0.6, 0)), 8, { color: '#ffd27a', speed: 5, size: 0.03, emissive: true, life: 0.3 }); if (drv === this.player) { this.cam.trauma = Math.min(1, this.cam.trauma + imp / 30); this.input.rumble(1, 1, 200); } }
-      c.vel.multiplyScalar(0.7); c.speed = c.vel.dot(fwd);
+    // contact : on retire la vitesse qui rentre dans l'obstacle (petit rebond) et on garde celle qui longe le mur ;
+    // seul le choc de face (vitesse perpendiculaire) abîme et freine la voiture : frotter un mur ne l'arrête plus net
+    let imp = 0; if (bump > 0.01) { n.normalize(); const into = c.vel.dot(n); if (into < 0) { imp = -into; c.vel.addScaledVector(n, -into * 1.2); c.vel.multiplyScalar(0.992); c.speed = c.vel.dot(fwd); } }
+    if (bump > 0.02 && imp > 2.5) {
+      if (imp > 8) { this.hitCar(c, imp * 2.2, null); this.audio.play('slam', c.pos, Math.min(1.2, imp / 20)); this.fx.burst(c.pos.clone().addScaledVector(fwd, c.L / 2 * Math.sign(c.speed)).add(V(0, 0.6, 0)), 8, { color: '#ffd27a', speed: 5, size: 0.03, emissive: true, life: 0.3 }); if (drv === this.player) { this.cam.trauma = Math.min(1, this.cam.trauma + imp / 30); this.input.rumble(1, 1, 200); } }
+      c.vel.multiplyScalar(clamp(1 - imp * 0.032, 0.55, 0.96)); c.speed = c.vel.dot(fwd);
     }
     // écrasement des piétons
+    const by = drv || c.launch?.by || null; // voiture lancée : les dégâts vont à celui qui a sauté
     if (Math.abs(c.speed) > 4) for (const a of this.actors) {
-      if (!a.alive || a.inCar || (drv && a.team === drv.team)) continue;
+      if (!a.alive || a.inCar || a.bail || (by && a.team === by.team)) continue;
       const dx = a.pos.x - c.pos.x, dz = a.pos.z - c.pos.z; const lx = dx * Math.cos(c.yaw) - dz * Math.sin(c.yaw), lz = dx * Math.sin(c.yaw) + dz * Math.cos(c.yaw);
-      if (Math.abs(lx) < c.W / 2 + 0.35 && Math.abs(lz) < c.L / 2 + 0.35) { this.damage(a, Math.abs(c.speed) * 5, drv, { blast: true }); a.vel.addScaledVector(fwd, c.speed * 0.8); a.vel.y = 4; a.onGround = false; c.vel.multiplyScalar(0.85); this.audio.play('thud', a.pos, 1); }
+      if (Math.abs(lx) < c.W / 2 + 0.35 && Math.abs(lz) < c.L / 2 + 0.35) { this.damage(a, Math.abs(c.speed) * 5, by, { blast: true }); a.vel.addScaledVector(fwd, c.speed * 0.8); a.vel.y = 4; a.onGround = false; c.vel.multiplyScalar(0.85); this.audio.play('thud', a.pos, 1); }
     }
     const cgy = this.world.groundY(c.pos.x, c.pos.z, c.pos.y + 0.6);
     // chute (quai, trémie) : gravité au lieu de coller au sol
@@ -944,12 +950,12 @@ export class Game {
     if (I.keys.has('WheelUp') || I.keys.has('WheelDown')) {}
     if (this.thr || I.pressed('grenade')) this.updateThrowAim(a, I, dt);
     if (I.pressed('reload') && !this.thr) this.startReload(a);
-    this.aiming = !this.thr && (I.down('aim') || I.st.triggerL > 0.3) && !a.climb; // (on peut viser et tirer pendant l'esquive et la glissade : on esquive en plein combat sans lâcher sa cible)
+    this.aiming = !this.thr && (I.down('aim') || I.st.triggerL > 0.3) && !a.climb && !a.bail; // (on peut viser et tirer pendant l'esquive et la glissade : on esquive en plein combat sans lâcher sa cible)
     this.updateScope(dt, I, a);
     const W = this.weapon(a), D = WEAPONS[W.id];
     const wantFire = (D.burst && a.burstLeft > 0) || (D.auto ? (I.down('fire') || I.st.triggerR > 0.4) : (I.pressed('fire') || (I.st.triggerR > 0.4 && !this._trigWas)));
     this._trigWas = I.st.triggerR > 0.4;
-    if (wantFire && !this.thr && !a.carryTurret && (this._thrJust = Math.max(0, (this._thrJust || 0) - dt)) <= 0 && !a.climb && !a.channel) {
+    if (wantFire && !a.bail && !this.thr && !a.carryTurret && (this._thrJust = Math.max(0, (this._thrJust || 0) - dt)) <= 0 && !a.climb && !a.channel) {
       if (!I.st.locked && !I.st.usingPad && !I.st.usingTouch) { this.renderer.domElement.requestPointerLock?.(); }
       else {
         const o = this.camera.position.clone(); const d = V(); this.camera.getWorldDirection(d);
@@ -1970,7 +1976,9 @@ export class Game {
         ? (P ? `${k('✕')} monter · ${k('○')} descendre · ${k('L3')} turbo · ${k('R2')} mitrailleuse · ${k('R1')} arsenal · ${k('→')} changer · ${k('□')} sortir`
           : `${k('Espace')} monter · ${k('Ctrl')}${k('C')} descendre · ${k('Maj')} turbo · ${k('Clic')} mitrailleuse · ${k('G')} arsenal · ${k('X')} changer · ${k('F')} sortir`)
         : a.inCar
-        ? (P ? `${k('R2')} accélérer · ${k('L2')} freiner · ${k('✕')} ${a.inCar.kind === 'skate' ? 'ollie' : 'frein à main'} · ${k('□')} descendre${a.inCar.kind === 'skate' ? '' : ` · ${k('↓')} klaxon`}`
+        ? (!a.inCar.kind ? (P ? `${k('R2')} accélérer · ${k('L2')} freiner · ${k('✕')} frein à main · ${k('R1')} nitro · ${k('□')} descendre (en marche : sauter) · ${k('↓')} klaxon`
+            : `${k('Z')}${k('S')} avancer / freiner · ${k('Espace')} frein à main · ${k('Maj')} nitro · ${k('F')} descendre (en marche : sauter, la voiture fonce sur la cible) · ${k('H')} klaxon`)
+          : P ? `${k('R2')} accélérer · ${k('L2')} freiner · ${k('✕')} ${a.inCar.kind === 'skate' ? 'ollie' : 'frein à main'} · ${k('□')} descendre${a.inCar.kind === 'skate' ? '' : ` · ${k('↓')} klaxon`}`
           : `${k('Z')}${k('S')} avancer / freiner · ${k('Espace')} ${a.inCar.kind === 'skate' ? 'ollie' : 'frein à main'} · ${k('F')} descendre${a.inCar.kind === 'skate' ? '' : ` · ${k('H')} klaxon`}`)
         : this.aiming && D?.scope
           ? (P ? `${k('R3')} zoom ×4 / ×8 · ${k('L3')} retenir son souffle · ${k('R2')} tirer` : `${k('Molette')} zoom ×4 / ×8 · ${k('Maj')} retenir son souffle · ${k('Clic')} tirer`)
@@ -2054,6 +2062,7 @@ installBarricades(Game);
 installManiement(Game);
 installLanceurs(Game); // après les barricades : complète this.blast (vitrines)
 installTurrets(Game); // après les barricades : enrobe blast, wallPrompt, placeWall, updateWalls
+installConduite(Game); // nitro, bonus de route, barrages, saut d'une voiture en marche, lance-voiture (src/conduite.js)
 installNotoriete(Game); // presque en dernier : enrobe addGalons, kill, multiKill, addStreak, captureZone, killFeed, drawRank, update, build
 installElimination(Game); // retour visuel des éliminations (src/elimination.js)
 installEntrainement(Game); // mode entraînement (carte La Salle, src/entrainement.js) : n'agit que si opts.training
