@@ -1095,7 +1095,7 @@ export class Game {
     const load = a.bag.length ? 1 - 0.18 * (1 - 0.2 * (a.bot ? 0 : this.save.upgrades.sac || 0)) : 1; // porter un objet ralentit
     const slow = 1 - (a.inGas || 0) * 0.2;
     const K = classOf(a.team, a.cls), mob = (K.speed || 1) * (WEAPONS[this.weapon(a)?.id]?.mob || 1);
-    let top = (sprint ? 6.6 + a.momentum * (civ ? 3.2 : 1.8) * (a.perk?.sprint || 1) : 4.4) * load * slow * mob; if (this.aiming && !a.bot) top *= 0.6; a.crouchK = lerp(a.crouchK || 0, a.crouch ? 1 : 0, 1 - Math.exp(-dt * 12)); if (a.crouch) top *= 0.5;
+    let top = (sprint ? 6.2 + a.momentum * (civ ? 2.1 : 1.3) * (a.perk?.sprint || 1) : 4.1) * load * slow * mob; if (this.aiming && !a.bot) top *= 0.6; a.crouchK = lerp(a.crouchK || 0, a.crouch ? 1 : 0, 1 - Math.exp(-dt * 12)); if (a.crouch) top *= 0.5;
     if (!sprint) top *= fwdK >= 0 ? lerp(0.88, 1, fwdK) : lerp(0.88, 0.74, -fwdK);
     a.landK = Math.max(0, (a.landK || 0) - dt); if (a.landK > 0) top *= 1 - 0.4 * Math.min(1, a.landK / 0.25); // réception : on encaisse avant de repartir
     a.jumpFat = Math.max(0, (a.jumpFat || 0) - dt * 0.7);
@@ -1112,7 +1112,7 @@ export class Game {
     else {
       // poids : départ franc puis l'accélération s'essouffle près de la vitesse de pointe ; freiner ou repartir à contresens prend un instant
       const spd = Math.hypot(a.vel.x, a.vel.z), along = wl > 0.1 && spd > 0.5 ? (a.vel.x * wish.x + a.vel.z * wish.z) / (spd * wl) : 1;
-      const acc = !a.onGround ? 6 : wl > 0.1 ? (along < 0 ? 26 : lerp(30, 17, clamp(spd / 8, 0, 1))) : 17 + spd * 1.3;
+      const acc = !a.onGround ? 6 : wl > 0.1 ? (along < 0 ? 20 : lerp(17, 6, clamp(spd / 7, 0, 1))) : 13 + spd * 1.2; // (un corps a une masse : une demi-seconde pour se lancer, la pointe se gagne ensuite avec l'élan)
       const dvx = target.x - a.vel.x, dvz = target.z - a.vel.z, dl = Math.hypot(dvx, dvz), mx = acc * dt;
       if (dl > mx) { a.vel.x += dvx / dl * mx; a.vel.z += dvz / dl * mx; } else { a.vel.x = target.x; a.vel.z = target.z; }
     }
@@ -1262,7 +1262,11 @@ export class Game {
       for (let i = 0; i < 4; i++) { const k = move * dirs[i] / tot; add(W[i], k * (1 - run), STRIDE[W[i]] || 1.4); add(Rn[i], k * run, STRIDE[Rn[i]] || 2); }
       a.locoRunF = run * dirs[0] / tot * (aiming || P ? 0 : 1);
     }
-    if (Wsum > 0) L.phase = (L.phase + dt * sp / (D / Wsum)) % 1;
+    // cadence humaine : au-delà de ce que les jambes peuvent tourner, c'est la foulée qui s'allonge (anim.js écarte les appuis d'autant), pas les pas qui s'emballent
+    // (avant : 7,5 pas par seconde en sprint, les pieds patinaient ; un sprinteur en fait 4 à 4,5)
+    if (Wsum > 0) { const D0 = D / Wsum, cad = 0.72 + 0.183 * Math.min(sp, 4) + 0.15 * Math.max(0, sp - 4), warp = clamp(sp / (cad * D0), 0.85, 1.55);
+      L.warp = lerp(L.warp || 1, warp, 1 - Math.exp(-dt * 8)); L.phase = (L.phase + dt * sp / (D0 * L.warp)) % 1; L.cad = sp / (D0 * L.warp); }
+    else { L.warp = lerp(L.warp || 1, 1, 1 - Math.exp(-dt * 8)); L.cad = 0; }
     for (const n of Object.keys(want)) L.acts.add(n);
     for (const n of L.acts) {
       const act = A[n], w = (want[n] || 0) * L.w;
@@ -1617,7 +1621,7 @@ export class Game {
     C.kickP *= Math.exp(-dt * 9); C.kickY *= Math.exp(-dt * 9); C.dip *= Math.exp(-dt * 7);
     const sp = a.alive && !a.inCar ? this.feetSpeed(a) : 0; const fps = (C.fps || !!this.sc?.was) && !a.inCar && a.alive;
     const k = fps ? 1 : 0.55; // balancement plus fort en vue subjective
-    if (a.onGround && sp > 0.5) C.bob += dt * sp * 1.25;
+    if (a.onGround && sp > 0.5) C.bob += dt * (a.loco?.cad ? a.loco.cad * 2 * Math.PI : sp * 1.25); // un balancement par pas du perso : la vue subjective et la vue extérieure marchent au même rythme
     const bobA = Math.min(1, sp / 7) * (a.slideT > 0 || a.rollT > 0 ? 0 : 1);
     const bobY = Math.abs(Math.sin(C.bob)) * 0.055 * bobA * k * (1 + a.momentum * 0.6), bobX = Math.cos(C.bob) * 0.035 * bobA * k;
     // inclinaison : glissade, roulade, vitesse latérale
