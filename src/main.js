@@ -306,7 +306,9 @@ function placePlates() {
 // ouvrir l'équipe ouvre aussi ton salon en ligne (sauf si tu es déjà dans celui d'un ami)
 function openInvite() { $('pseudo').value = save.pseudo || ''; $('teamCode').textContent = net.room && !net.host ? net.room : save.teamCode; if (!net.online && net.status !== 'joining') goOnline(save.teamCode, true); renderParty(); $('invite').classList.remove('hidden'); audio.init(); audio.play('uiSelect'); }
 function closeInvite() { $('invite').classList.add('hidden'); renderParty(); }
-const inviteLink = () => `${location.origin}${location.pathname}?equipe=${net.guest ? net.room : save.teamCode}`;
+// dans l'app iPhone, la page vient de capacitor://localhost : le lien envoyé à un ami doit pointer vers le site public
+const WEB_URL = 'https://frungz.vercel.app/';
+const inviteLink = () => `${/^https?:$/.test(location.protocol) && !NATIVE ? location.origin + location.pathname : WEB_URL}?equipe=${net.guest ? net.room : save.teamCode}`;
 async function copyText(t) { try { await navigator.clipboard.writeText(t); return true; } catch { return false; } }
 const flashBtn = (b, txt) => { const o = b.dataset.o || (b.dataset.o = b.textContent); b.textContent = txt; clearTimeout(b._t); b._t = setTimeout(() => (b.textContent = o), 1600); };
 const partyClick = (e) => {

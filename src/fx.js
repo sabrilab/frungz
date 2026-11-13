@@ -129,11 +129,11 @@ export function createFX(scene, camera) {
     const o = pool.add({ p: pos.clone(), size, rot: Math.random() * 6.28, r: color.r, g: color.g, b: color.b, a: alpha });
     items.push({ t: 0, life, upd: upd ? (it, k, dt) => upd(o, k, dt) : null, end: () => pool.remove(o) }); return o;
   }
-  function muzzle(pos, big = 1) {
+  function muzzle(pos, big = 1, dir = null) {
     if (!fin(pos)) return;
     const k = (0.35 + Math.random() * 0.25) * big; sprite(glow, pos, k, FLASH, 1, 0.05);
     // la lumière ne suit que les tirs proches de la caméra (au loin, elle n'éclaire rien de visible)
-    if (pos.distanceToSquared(camera.position) < 45 * 45 || flashT <= 0) { flashLight.position.copy(pos); flashLight.position.y += 0.12; /* jamais pile sur une surface */ flashLight.intensity = 14 * big; flashT = 0.05; }
+    if (pos.distanceToSquared(camera.position) < 45 * 45 || flashT <= 0) { flashLight.position.copy(pos); if (dir && fin(dir)) flashLight.position.addScaledVector(dir, 0.35); /* devant le canon : le tireur n'est pas brûlé au blanc */ flashLight.position.y += 0.12; /* jamais pile sur une surface */ flashLight.intensity = 14 * big; flashT = 0.05; }
   }
 
   // particules ponctuelles (étincelles, verre, débris, confettis) : petits cubes instanciés, qui rétrécissent pour disparaître
