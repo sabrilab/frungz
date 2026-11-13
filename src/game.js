@@ -22,6 +22,7 @@ import { installLanceurs } from './lanceurs.js';
 import { installManiement, VIEW_MAG } from './maniement.js';
 import { installTurrets } from './tourelles.js';
 import { createFeedback } from './feedback.js';
+import { installEntrainement } from './entrainement.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
@@ -2054,4 +2055,5 @@ installLanceurs(Game); // après les barricades : complète this.blast (vitrines
 installTurrets(Game); // après les barricades : enrobe blast, wallPrompt, placeWall, updateWalls
 installNotoriete(Game); // presque en dernier : enrobe addGalons, kill, multiKill, addStreak, captureZone, killFeed, drawRank, update, build
 installElimination(Game); // retour visuel des éliminations (src/elimination.js)
+installEntrainement(Game); // mode entraînement (carte La Salle, src/entrainement.js) : n'agit que si opts.training
 installRegie(Game); // tout dernier : met en scène annonces, bandeau, gains, fil, flashs (src/regie.js)

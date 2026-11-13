@@ -1,7 +1,8 @@
 // Point d'entrée : chargement, menu (camp, skin), armurerie, réglages, partie, écran de fin.
 import * as THREE from 'three';
 import { setupScene, loadMap, loadGLB, World, loader } from './world.js';
-import { loadGuns, makeCharacter, attachGun, chars, loadMx } from './assets.js';
+import { buildSalle, salleGameplay, armerMur } from './salle.js';
+import { loadGuns, makeCharacter, attachGun, chars, loadMx, gunInstance } from './assets.js';
 import { loadSkinBases, registerSkin, BUILTIN_SKINS, userSkins } from './skins.js';
 import { createAudio } from './audio.js';
 import { createFX } from './fx.js';
@@ -37,6 +38,8 @@ if ((save.sv || 1) < 2) { save.sv = 2; save.settings.teamSize = 50; } // passage
 const MAPS = {
   paris: { nom: 'Place Frungz', court: 'Paris', desc: 'cœur de Paris', glb: 'assets/map.glb', gp: 'assets/gameplay.json' },
   banlieue: { nom: 'Les Hauts de Frungz', court: 'Banlieue', desc: 'banlieue parisienne', glb: 'assets/banlieue/map.glb', gp: 'assets/banlieue/gameplay.json' },
+  // troisième carte : petite salle d'entraînement d'arcade construite en code (src/salle.js), sans adversaires au départ (src/entrainement.js)
+  salle: { nom: 'La Salle', court: 'Entraînement', desc: "salle d'entraînement", build: true, training: true },
 };
 const MAP_ID = MAPS[Q.get('map')] ? Q.get('map') : MAPS[save.settings.map] ? save.settings.map : 'paris';
 const MAP = MAPS[MAP_ID]; window.__map = MAP_ID;
@@ -153,17 +156,18 @@ let world, mapRoot, carDefs = [], night = null, lobby = null;
 let progress = { map: 0, chars: 0, guns: 0, cars: 0 };
 const showProgress = () => { const p = progress.map * 0.6 + progress.chars / ALL_SKINS.length * 0.25 + progress.guns / Object.keys(WEAPONS).length * 0.05 + progress.cars / CARS.length * 0.1; $('loadbar').style.width = (p * 100).toFixed(0) + '%'; };
 async function loadAll() {
-  const gp = await fetch(MAP.gp).then((r) => r.json());
+  const gp = MAP.build ? salleGameplay() : await fetch(MAP.gp).then((r) => r.json());
   const [{ root, ground, cassables, rame }] = await Promise.all([
-    loadMap(MAP.glb, (p) => { progress.map = p; showProgress(); }),
+    MAP.build ? (async () => { const s = buildSalle(); s.root.userData.slots = s.slots; progress.map = 1; showProgress(); return { root: s.root, ground: s.ground, cassables: [], rame: null }; })() : loadMap(MAP.glb, (p) => { progress.map = p; showProgress(); }),
     Promise.all([loadSkinBases(), loadMx()]).then(([, mx]) => { for (const d of ALL_SKINS) { try { registerSkin(chars, d, mx, 1.8, { tex: 512 }); } catch (e) { console.warn('skin', d.id, e); } progress.chars++; showProgress(); } }),
     loadGuns(() => { progress.guns++; showProgress(); }),
     (async () => { const hq = QN !== 'bas' && QN !== 'mobile'; for (const spec of CARS) { await new Promise((r) => setTimeout(r, 0)); try { const s = buildCar(spec, { hq, lod: hq ? 1 : 0.6 }), far = buildCar(spec, { hq: false, lod: 0.32 }); carDefs.push({ scene: s, far, classe: spec[2], nom: spec[3], size: s.userData.size, R: s.children[0].userData.wheels['wheel-front-left'].radius }); } catch (e) { console.warn('voiture', spec[0], e); } progress.cars++; showProgress(); } })(),
   ]);
   $('loadtxt').textContent = 'Préparation du quartier…'; await new Promise((r) => setTimeout(r, 30));
   mapRoot = root; scene.add(root);
+  if (MAP.build) { try { armerMur(root, root.userData.slots, gunInstance); } catch (e) { console.warn('mur d\'armes', e); } }
   // matières réalistes (grain, salissures, coulures, chaussée mouillée par plaques) : sauf en qualité basse
-  if (QN !== 'bas' && QN !== 'mobile' && !Q.has('noreal')) { try { applyRealism(root, { wet: 0.4, presets: gp.realisme }); window.__real = realismUniforms; } catch (e) { console.warn('réalisme indisponible', e); } }
+  if (QN !== 'bas' && QN !== 'mobile' && !Q.has('noreal') && !MAP.build) { try { applyRealism(root, { wet: 0.4, presets: gp.realisme }); window.__real = realismUniforms; } catch (e) { console.warn('réalisme indisponible', e); } }
   // reflets réalistes des vitres, du zinc et de la ferronnerie ; textures nettes en vue rasante (filtrage anisotrope)
   if (QN !== 'bas' && QN !== 'mobile') enhanceMap(root, renderer.capabilities.getMaxAnisotropy());
   // allègements selon la qualité : pas d'ombre des feuillages en moyenne, pas de décor lointain en basse (caché par le brouillard)
@@ -197,7 +201,7 @@ function renderMenu() {
   $('bank').textContent = fmt(save.bank); $('lvl').textContent = save.lvl || 1;
   { const l = save.lvl || 1, a = 100 * (l - 1) ** 2, b = 100 * l ** 2; $('xpbar').style.width = Math.max(4, Math.min(100, ((save.xp || 0) - a) / (b - a) * 100)).toFixed(0) + '%'; }
   $('menu').classList.toggle('t-ordre', save.team === 'ordre'); $('invite').classList.toggle('t-ordre', save.team === 'ordre');
-  $('modeLine').textContent = `Domination · ${save.settings.teamSize} contre ${save.settings.teamSize}${save.settings.night ? ' · de nuit' : ''}`;
+  $('modeLine').textContent = MAP.training ? `Entraînement · bots à la demande${save.settings.night ? ' · de nuit' : ''}` : `Domination · ${save.settings.teamSize} contre ${save.settings.teamSize}${save.settings.night ? ' · de nuit' : ''}`;
   net.update(netMeta()); renderParty();
 }
 document.querySelectorAll('.side').forEach((b) => b.addEventListener('click', () => { if (net.guest) { $('inviteNote').textContent = 'En ligne, c\'est le chef qui choisit le camp de l\'équipe.'; return; } save.team = b.dataset.team; persist(); renderMenu(); audio.init(); audio.play('uiSelect'); }));
@@ -529,9 +533,9 @@ function start() {
   $('menu').classList.add('hidden'); $('hud').classList.remove('hidden'); lobby?.show(false);
   if (game) { scene.remove(game.root); world.dynamic.length = 0; }
   if (net.guest) return; // un invité attend que son chef lance
-  const online = net.online && net.friends().length > 0, friends = online ? net.friends().slice(0, 3) : [];
+  const online = !MAP.training && net.online && net.friends().length > 0, friends = online ? net.friends().slice(0, 3) : [];
   let teamSize = +(Q.get('n') || save.settings.teamSize); if (online) teamSize = Math.max(friends.length + 1, Math.min(teamSize, ONLINE_MAX_TEAM));
-  game = new Game({ mapRoot, renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts: { squad: window.__squad(), friends, net: online ? net : null, pseudo: save.pseudo, teamSize, botSkill: 1, cars: carDefs, lod: QS.lod, lodShadow: QS.lodShadow } });
+  game = new Game({ mapRoot, renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts: { squad: window.__squad(), friends, net: online ? net : null, pseudo: save.pseudo, teamSize, botSkill: 1, cars: carDefs, lod: QS.lod, lodShadow: QS.lodShadow, training: !!MAP.training } });
   game.onShop = openShop; game.onPause = openPause; game.onEnd = (r) => endGame(r);
   game.build(); window.__game = game; if (online) net.attach(game);
   renderer.domElement.requestPointerLock?.();
