@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { WEAPONS } from './data.js';
 import { gunInstance } from './assets.js';
+import { throwMesh } from './throws.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -21,6 +22,7 @@ function spring(s, k, c, dt) { const n = Math.max(1, Math.ceil(dt / 0.008)), h =
 // (ici 1,5 fois). L'arme paraît plus grande et plus massive, le canon ne file plus en pointe et les mains près de l'œil ne gonflent plus.
 // C'est fait dans le shader des matières de la vue subjective (la position à l'écran est agrandie autour du centre), sans seconde caméra.
 export const VIEW_MAG = 1.5;
+const THROW_T = 0.46; // durée du geste de lancer en vue subjective
 const vmCache = new Map();
 function viewMat(m) {
   if (m.userData.vm) return m; let v = vmCache.get(m.uuid); if (v) return v;
@@ -50,6 +52,12 @@ export function installManiement(Game) {
       const m = new THREE.Matrix4().makeBasis(X, Y, Z).setPosition(pos).scale(V(sc, sc, sc)); m.premultiply(Bn.matrixWorld.clone().invert()); m.decompose(g.position, g.quaternion, g.scale);
       g.traverse((q) => { if (q.isMesh) q.castShadow = true; }); Bn.add(g); ch.backGun = g; ch.meshes = null; } catch (e) { console.warn('arme dans le dos', e); }
   };
+  // lancer du joueur : le geste part au moment où l'objet quitte la main
+  const cast0 = P.castThrow;
+  P.castThrow = function (a, kind, vel, origin) {
+    const n = this.thrown ? this.thrown.length : 0; cast0.call(this, a, kind, vel, origin);
+    if (a === this.player && this.vm && (this.thrown ? this.thrown.length : 0) > n) { const vm = this.vm; vm.thF = THROW_T; vm.thP0 = (vm.th > 0.5 ? vm.thP : V(0.36, -0.3, -0.5)).clone(); vm.thK = vm.th > 0.5 ? 1 : 0; this._thrJust = Math.max(this._thrJust || 0, THROW_T + 0.12); this.audio.mech?.('draw', 0.8); }
+  };
   const viewGun0 = P.viewGun;
   P.viewGun = function () {
     viewGun0.call(this); if (!this.vgun) return;
@@ -58,7 +66,7 @@ export function installManiement(Game) {
     const old = this.vm;
     this.vm = { M, parts, id: this.weapon(this.player).id, draw: 0.4, boltT: 0, cycle: 0, cycleD: 0, pumpT: 0, cylA: old?.id === this.weapon(this.player).id ? old.cylA : 0, cylT: 0,
       rz: { x: 0, v: 0 }, rp: { x: 0, v: 0 }, ry: { x: 0, v: 0 }, rr: { x: 0, v: 0 }, dy: { x: 0, v: 0 }, lagX: 0, lagY: 0, tilt: 0, run: 0, ads: 0, yaw: this.cam.yaw, pitch: this.cam.pitch, wasGround: true, fall: 0, relEmpty: false, relOn: false, ev: {} };
-    this.vhand = { L: V(), Lw: 0, R: V(), Rw: 0, Ls: V() }; this.vmMats();
+    this.vhand = { L: V(), Lw: 0, R: V(), Rw: 0, Ls: V(), Tw: 0, Tp: V(), Tf: V(0, 1, 0), Tn: V(-1, 0, 0) }; this.vm.th = 0; this.vm.thF = 0; this.vm.thP = V(0.3, -0.25, -0.3); this.vmMats();
   };
 
   // tir du joueur : recul, culasse, pompe, verrou, barillet
@@ -109,6 +117,25 @@ export function installManiement(Game) {
     // ---- recul à ressort
     spring(vm.rz, 289, 26, dt); spring(vm.rp, 289, 26, dt); spring(vm.ry, 289, 24, dt); spring(vm.rr, 289, 22, dt);
     pos.z += vm.rz.x; rot.x += vm.rp.x; rot.y += vm.ry.x; rot.z += vm.rr.x; pos.y += vm.rp.x * 0.06;
+    // ---- lancer (grenades, fumigènes, atouts) : l'arme s'abaisse hors champ, la main droite monte avec l'objet, armée près de l'épaule ;
+    // au lâcher elle fouette vers l'avant, l'objet part, la main retombe et l'arme remonte
+    { const aimT = !!this.thr && a.alive; vm.th += ((aimT ? 1 : 0) - vm.th) * (1 - Math.exp(-dt * (aimT ? 13 : 20))); if (aimT && !vm.thS) this.audio.mech?.('draw', 0.7); vm.thS = aimT;
+      const fl = vm.thF > 0; if (fl) vm.thF = Math.max(0, vm.thF - dt); const u = fl || vm.thU < 1 ? 1 - vm.thF / THROW_T : 1; vm.thU = u;
+      const hw = sm(vm.th, 0, 1), down = Math.max(hw, u < 1 ? 1 - sm(u, 0.72, 1) : 0);
+      if (down > 0.001) { pos.y -= 0.36 * down; pos.x += 0.06 * down; pos.z += 0.05 * down; rot.x -= 0.55 * down; rot.z += 0.25 * down; }
+      const kind = this.thr?.kind; if (vm.tobj && (vm.tobj.kind !== kind || !aimT)) { this.camera.remove(vm.tobj.m); vm.tobj = null; }
+      if (aimT && !vm.tobj && kind) { const m = throwMesh(kind); m.userData.viewModel = true; m.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 5; } }); m.scale.setScalar(kind === 'frag' ? 0.5 : kind === 'petards' ? 0.45 : 0.55); this.camera.add(m); vm.tobj = { kind, m }; this.vmMats(); }
+      H.Tw = 0;
+      if (hw > 0.001 || u < 1) {
+        const pw = this.thrPower ?? 0.55, cock = V(0.3 + pw * 0.03, -0.13 + pw * 0.03 + Math.sin(tt * 2.1) * 0.004, -0.62 + pw * 0.07), F = V(0.05, 0.8, -0.6), N = V(-0.75, 0.1, -0.65);
+        if (u < 1) { /* fouetté : de l'épaule vers l'avant et le centre, puis la main retombe sous l'écran */
+          const p0 = vm.thP0 || cock, top = V(0.26, 0.0, -0.6), fwd = V(0.06, -0.06, -0.95), end = V(0.12, -0.6, -0.7), a1 = sm(u, 0, 0.2), a2 = sm(u, 0.12, 0.42), a3 = sm(u, 0.5, 1);
+          H.Tp.copy(p0).lerp(top, a1 * (1 - (vm.thK || 0) * 0.5)).lerp(fwd, a2).lerp(end, a3); F.lerp(V(0, -0.15, -1), a2).lerp(V(0, -0.8, -0.6), a3 * 0.6); N.lerp(V(-0.2, -0.95, -0.25), a2);
+          H.Tw = Math.max(hw, sm(u, 0, 0.1)) * (1 - sm(u, 0.9, 1)); }
+        else { H.Tp.copy(cock); H.Tp.y -= (1 - hw) * 0.3; H.Tw = hw; vm.thP.copy(H.Tp); }
+        H.Tf.copy(F.normalize()); H.Tn.copy(N.normalize());
+        if (vm.tobj) { const m = vm.tobj.m; m.visible = g.visible && hw > 0.35 && u >= 1; m.position.copy(H.Tp).addScaledVector(H.Tf, 0.075).addScaledVector(H.Tn, 0.03); m.rotation.set(0.5, 0.3, -0.35); }
+      } else if (vm.tobj) vm.tobj.m.visible = false; }
     // ---- sortie de l'arme
     if (vm.draw > 0) { if (!vm.drawS) { vm.drawS = 1; this.audio.mech?.('draw'); } vm.draw -= dt; const u = clamp(1 - vm.draw / 0.4, 0, 1), c1 = 1.9, o = 1 - (1 + (c1 + 1) * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2)); pos.x += 0.06 * o; pos.y -= 0.3 * o; pos.z += 0.08 * o; rot.x -= 0.95 * o; rot.z += 0.55 * o; rot.y += 0.3 * o; }
 

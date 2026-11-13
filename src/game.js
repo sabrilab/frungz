@@ -1769,7 +1769,9 @@ export class Game {
     // main gauche : paume sous le garde-main, doigts qui remontent de l'autre côté (fusils) ; plaquée à gauche de la poignée, doigts par-dessus ceux de la main droite (pistolets)
     const [lp, lq] = A.pistol ? place(A.hands.L, dir(0.15, -0.35, -0.9), dir(1, 0, 0.15), V(-0.032, A.gb + 0.025, A.front - 0.022), 1, 0) : A.fore ? place(A.hands.L, dir(0.2, -0.25, -0.95), dir(1, 0, 0.1), A.support.clone().add(V(-0.03, 0, -0.02)), 1, 0) /* poignée avant verticale : main refermée autour */
       : place(A.hands.L, dir(0.5, -0.5, -0.7), dir(0.72, 0.68, 0.1), A.support.clone().add(V(-0.012, 0.004, 0)), 0.62, 0.014); /* paume contre l'arête basse gauche du garde-main : on voit le dos de la main et le pouce, les doigts passent dessous */
-    { const O = this.vhand; if (O) { /* maniement : pompe (la main suit le fût), chargeur, verrou */ if (O.Ls.lengthSq() > 0) lp.add(O.Ls.clone().applyQuaternion(vq)); if (O.Lw > 0) lp.lerp(this.vgun.localToWorld(O.L.clone()), O.Lw); if (O.Rw > 0) rp.lerp(this.vgun.localToWorld(O.R.clone()), O.Rw); } }
+    { const O = this.vhand; if (O) { /* maniement : pompe (la main suit le fût), chargeur, verrou */ if (O.Ls.lengthSq() > 0) lp.add(O.Ls.clone().applyQuaternion(vq)); if (O.Lw > 0) lp.lerp(this.vgun.localToWorld(O.L.clone()), O.Lw); if (O.Rw > 0) rp.lerp(this.vgun.localToWorld(O.R.clone()), O.Rw);
+      /* lancer : la main droite quitte l'arme et tient l'objet, placée dans le repère de la caméra */
+      if (O.Tw > 0) { const [tp, tq] = place(A.hands.R, cdir(O.Tf.x, O.Tf.y, O.Tf.z), cdir(O.Tn.x, O.Tn.y, O.Tn.z), this.vgun.worldToLocal(cam.localToWorld(O.Tp.clone())), 0, 0); rp.lerp(tp, O.Tw); rq.slerp(tq, O.Tw); } } }
     const down = V(0, -1, 0).applyQuaternion(vq), right = V(1, 0, 0).applyQuaternion(vq);
     /* On ne montre que les mains et le départ de l'avant-bras : le haut du bras n'est pas dessiné, donc le coude se place librement.
        L'avant-bras part de la main vers le bas de l'écran et sort vite du cadre (jamais de gros bras en travers de l'image) ; l'épaule est posée derrière le coude, hors champ. */

@@ -29,7 +29,7 @@ export const THROWS = {
 // ------------------------------------------------------------------ maillages
 const MAT = {}; const mat = (c, e = 0) => MAT[c + e] ||= new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, metalness: 0.2, flatShading: true, emissive: e ? c : '#000', emissiveIntensity: e });
 const cyl = (r0, r1, h, s, m, y = 0) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, h, s), m); o.position.y = y; return o; };
-function throwMesh(kind) {
+export function throwMesh(kind) {
   const g = new THREE.Group(); const T = THROWS[kind];
   if (kind === 'frag') { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.075, 0), mat('#4a5a32')); g.add(b); g.add(cyl(0.02, 0.025, 0.05, 6, mat('#999'), 0.08)); }
   else if (kind === 'gas' || kind === 'smoke') { g.add(cyl(0.05, 0.05, 0.16, 8, mat(kind === 'gas' ? '#7d8a6a' : '#ff4fa0'))); g.add(cyl(0.02, 0.02, 0.04, 6, mat('#333'), 0.1)); }
