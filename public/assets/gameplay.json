@@ -1,5 +1,5 @@
 {
- "version": 14,
+ "version": 15,
  "joueurs": "50 contre 50 (50 spawns par camp)",
  "unite": "mètre",
  "axes": "x est, y haut, z sud",
@@ -3061,9 +3061,9 @@
    "id": "CASSABLE_terrasse_1",
    "type": "terrasse",
    "pos": [
-    -12.86,
+    -13,
     0.15,
-    114.6
+    114.61
    ],
    "yaw": 3.142,
    "pv": 30,
@@ -3073,9 +3073,9 @@
    "id": "CASSABLE_terrasse_2",
    "type": "terrasse",
    "pos": [
-    -14.64,
+    -14.59,
     0.15,
-    114.63
+    114.6
    ],
    "yaw": 3.142,
    "pv": 30,
@@ -3085,9 +3085,9 @@
    "id": "CASSABLE_terrasse_3",
    "type": "terrasse",
    "pos": [
-    -7.29,
+    -7.22,
     0.15,
-    117.96
+    118
    ],
    "yaw": 2.356,
    "pv": 30,
@@ -3097,9 +3097,9 @@
    "id": "CASSABLE_terrasse_4",
    "type": "terrasse",
    "pos": [
-    -8.99,
+    -8.95,
     0.15,
-    116.23
+    116.28
    ],
    "yaw": 2.356,
    "pv": 30,
@@ -3109,9 +3109,9 @@
    "id": "CASSABLE_terrasse_5",
    "type": "terrasse",
    "pos": [
-    68.79,
+    68.91,
     0.15,
-    114.6
+    114.59
    ],
    "yaw": 3.142,
    "pv": 30,
@@ -3121,9 +3121,9 @@
    "id": "CASSABLE_terrasse_6",
    "type": "terrasse",
    "pos": [
-    67.25,
+    67.11,
     0.15,
-    114.62
+    114.61
    ],
    "yaw": 3.142,
    "pv": 30,
@@ -3135,7 +3135,7 @@
    "pos": [
     -110.6,
     0.15,
-    66.91
+    66.84
    ],
    "yaw": 1.571,
    "pv": 30,
@@ -3145,9 +3145,9 @@
    "id": "CASSABLE_terrasse_8",
    "type": "terrasse",
    "pos": [
-    -110.58,
+    -110.6,
     0.15,
-    65.15
+    65.29
    ],
    "yaw": 1.571,
    "pv": 30,
@@ -3157,9 +3157,9 @@
    "id": "CASSABLE_terrasse_9",
    "type": "terrasse",
    "pos": [
-    122.62,
+    122.6,
     0.15,
-    -6.89
+    -6.9
    ],
    "yaw": -1.571,
    "pv": 30,
@@ -3169,9 +3169,9 @@
    "id": "CASSABLE_terrasse_10",
    "type": "terrasse",
    "pos": [
-    122.63,
+    122.6,
     0.15,
-    -5.27
+    -5.25
    ],
    "yaw": -1.571,
    "pv": 30,
@@ -3181,9 +3181,9 @@
    "id": "CASSABLE_terrasse_11",
    "type": "terrasse",
    "pos": [
-    110.6,
+    110.61,
     0.15,
-    -24.18
+    -24.35
    ],
    "yaw": -1.571,
    "pv": 30,
@@ -3193,9 +3193,9 @@
    "id": "CASSABLE_terrasse_12",
    "type": "terrasse",
    "pos": [
-    110.61,
+    110.62,
     0.15,
-    -22.53
+    -22.39
    ],
    "yaw": -1.571,
    "pv": 30,
@@ -3205,9 +3205,9 @@
    "id": "CASSABLE_terrasse_13",
    "type": "terrasse",
    "pos": [
-    -21.92,
+    -21.96,
     0.15,
-    -105.4
+    -105.38
    ],
    "yaw": 3.142,
    "pv": 30,
@@ -3217,9 +3217,9 @@
    "id": "CASSABLE_terrasse_14",
    "type": "terrasse",
    "pos": [
-    -23.66,
+    -23.76,
     0.15,
-    -105.4
+    -105.39
    ],
    "yaw": 3.142,
    "pv": 30,
@@ -3229,9 +3229,9 @@
    "id": "CASSABLE_terrasse_15",
    "type": "terrasse",
    "pos": [
-    -53.08,
+    -53.09,
     0.15,
-    -105.36
+    -105.4
    ],
    "yaw": 3.142,
    "pv": 30,
@@ -3241,9 +3241,9 @@
    "id": "CASSABLE_terrasse_16",
    "type": "terrasse",
    "pos": [
-    -54.67,
+    -54.7,
     0.15,
-    -105.37
+    -105.42
    ],
    "yaw": 3.142,
    "pv": 30,
@@ -3253,7 +3253,7 @@
    "id": "CASSABLE_terrasse_17",
    "type": "terrasse",
    "pos": [
-    -56.33,
+    -56.26,
     0.15,
     -105.4
    ],
@@ -3265,9 +3265,9 @@
    "id": "CASSABLE_terrasse_18",
    "type": "terrasse",
    "pos": [
-    -57.9,
+    -57.88,
     0.15,
-    -105.42
+    -105.39
    ],
    "yaw": 3.142,
    "pv": 30,
@@ -3277,9 +3277,9 @@
    "id": "CASSABLE_terrasse_19",
    "type": "terrasse",
    "pos": [
-    -68.63,
+    -68.57,
     0.15,
-    -105.42
+    -105.4
    ],
    "yaw": 3.142,
    "pv": 30,
@@ -3289,9 +3289,9 @@
    "id": "CASSABLE_terrasse_20",
    "type": "terrasse",
    "pos": [
-    -70.29,
+    -70.35,
     0.15,
-    -105.43
+    -105.4
    ],
    "yaw": 3.142,
    "pv": 30,
@@ -3301,7 +3301,7 @@
    "id": "CASSABLE_terrasse_21",
    "type": "terrasse",
    "pos": [
-    -81.03,
+    -80.99,
     0.15,
     -105.4
    ],
@@ -3313,9 +3313,9 @@
    "id": "CASSABLE_terrasse_22",
    "type": "terrasse",
    "pos": [
-    -82.62,
+    -82.66,
     0.15,
-    -105.4
+    -105.42
    ],
    "yaw": 3.142,
    "pv": 30,
@@ -3325,11 +3325,11 @@
    "id": "CASSABLE_terrasse_23",
    "type": "terrasse",
    "pos": [
-    -54.53,
+    -27.72,
     0.15,
-    -83.41
+    -75.46
    ],
-   "yaw": -0.028,
+   "yaw": 3.107,
    "pv": 30,
    "points": 15
   },
@@ -3337,31 +3337,7 @@
    "id": "CASSABLE_terrasse_24",
    "type": "terrasse",
    "pos": [
-    -52.84,
-    0.15,
-    -83.36
-   ],
-   "yaw": -0.028,
-   "pv": 30,
-   "points": 15
-  },
-  {
-   "id": "CASSABLE_terrasse_25",
-   "type": "terrasse",
-   "pos": [
-    -27.71,
-    0.15,
-    -75.45
-   ],
-   "yaw": 3.107,
-   "pv": 30,
-   "points": 15
-  },
-  {
-   "id": "CASSABLE_terrasse_26",
-   "type": "terrasse",
-   "pos": [
-    -29.42,
+    -29.58,
     0.15,
     -75.52
    ],
@@ -3370,14 +3346,38 @@
    "points": 15
   },
   {
+   "id": "CASSABLE_terrasse_25",
+   "type": "terrasse",
+   "pos": [
+    -24.61,
+    0.15,
+    -71.94
+   ],
+   "yaw": 1.571,
+   "pv": 30,
+   "points": 15
+  },
+  {
+   "id": "CASSABLE_terrasse_26",
+   "type": "terrasse",
+   "pos": [
+    -23.35,
+    0.15,
+    -72
+   ],
+   "yaw": 1.571,
+   "pv": 30,
+   "points": 15
+  },
+  {
    "id": "CASSABLE_terrasse_27",
    "type": "terrasse",
    "pos": [
-    -24.6,
+    29.13,
     0.15,
-    -71.99
+    -74.13
    ],
-   "yaw": 1.571,
+   "yaw": -2.923,
    "pv": 30,
    "points": 15
   },
@@ -3385,11 +3385,11 @@
    "id": "CASSABLE_terrasse_28",
    "type": "terrasse",
    "pos": [
-    -23.36,
+    27.54,
     0.15,
-    -72.04
+    -73.78
    ],
-   "yaw": 1.571,
+   "yaw": -2.923,
    "pv": 30,
    "points": 15
   },
@@ -3397,11 +3397,11 @@
    "id": "CASSABLE_terrasse_29",
    "type": "terrasse",
    "pos": [
-    29.2,
+    59.41,
     0.15,
-    -74.17
+    -71.22
    ],
-   "yaw": -2.923,
+   "yaw": 1.571,
    "pv": 30,
    "points": 15
   },
@@ -3409,11 +3409,11 @@
    "id": "CASSABLE_terrasse_30",
    "type": "terrasse",
    "pos": [
-    27.4,
+    59.41,
     0.15,
-    -73.76
+    -73.06
    ],
-   "yaw": -2.923,
+   "yaw": 1.571,
    "pv": 30,
    "points": 15
   },
@@ -3421,11 +3421,11 @@
    "id": "CASSABLE_terrasse_31",
    "type": "terrasse",
    "pos": [
-    59.38,
+    7.75,
     0.15,
-    -71.17
+    -53.65
    ],
-   "yaw": 1.571,
+   "yaw": -0.07,
    "pv": 30,
    "points": 15
   },
@@ -3433,11 +3433,11 @@
    "id": "CASSABLE_terrasse_32",
    "type": "terrasse",
    "pos": [
-    59.4,
+    9.36,
     0.15,
-    -73.14
+    -53.55
    ],
-   "yaw": 1.571,
+   "yaw": -0.07,
    "pv": 30,
    "points": 15
   },
@@ -3445,9 +3445,9 @@
    "id": "CASSABLE_terrasse_33",
    "type": "terrasse",
    "pos": [
-    7.71,
+    50.28,
     0.15,
-    -53.66
+    -50.68
    ],
    "yaw": -0.07,
    "pv": 30,
@@ -3457,9 +3457,9 @@
    "id": "CASSABLE_terrasse_34",
    "type": "terrasse",
    "pos": [
-    9.2,
+    52.02,
     0.15,
-    -53.55
+    -50.55
    ],
    "yaw": -0.07,
    "pv": 30,
@@ -3469,11 +3469,11 @@
    "id": "CASSABLE_terrasse_35",
    "type": "terrasse",
    "pos": [
-    50.21,
+    4.61,
     0.15,
-    -50.68
+    -59.87
    ],
-   "yaw": -0.07,
+   "yaw": -1.571,
    "pv": 30,
    "points": 15
   },
@@ -3481,19 +3481,7 @@
    "id": "CASSABLE_terrasse_36",
    "type": "terrasse",
    "pos": [
-    51.88,
-    0.15,
-    -50.55
-   ],
-   "yaw": -0.07,
-   "pv": 30,
-   "points": 15
-  },
-  {
-   "id": "CASSABLE_terrasse_37",
-   "type": "terrasse",
-   "pos": [
-    4.6,
+    3.33,
     0.15,
     -59.99
    ],
@@ -3502,14 +3490,26 @@
    "points": 15
   },
   {
+   "id": "CASSABLE_terrasse_37",
+   "type": "terrasse",
+   "pos": [
+    84.09,
+    0.15,
+    -48.34
+   ],
+   "yaw": -0.07,
+   "pv": 30,
+   "points": 15
+  },
+  {
    "id": "CASSABLE_terrasse_38",
    "type": "terrasse",
    "pos": [
-    3.34,
+    85.79,
     0.15,
-    -59.92
+    -48.19
    ],
-   "yaw": -1.571,
+   "yaw": -0.07,
    "pv": 30,
    "points": 15
   },
@@ -3517,7 +3517,31 @@
    "id": "CASSABLE_terrasse_39",
    "type": "terrasse",
    "pos": [
-    96.2,
+    87.29,
+    0.15,
+    -48.09
+   ],
+   "yaw": -0.07,
+   "pv": 30,
+   "points": 15
+  },
+  {
+   "id": "CASSABLE_terrasse_40",
+   "type": "terrasse",
+   "pos": [
+    88.88,
+    0.15,
+    -47.98
+   ],
+   "yaw": -0.07,
+   "pv": 30,
+   "points": 15
+  },
+  {
+   "id": "CASSABLE_terrasse_41",
+   "type": "terrasse",
+   "pos": [
+    96.16,
     0.15,
     -105.4
    ],
@@ -3526,38 +3550,14 @@
    "points": 15
   },
   {
-   "id": "CASSABLE_terrasse_40",
-   "type": "terrasse",
-   "pos": [
-    94.59,
-    0.15,
-    -105.39
-   ],
-   "yaw": 3.142,
-   "pv": 30,
-   "points": 15
-  },
-  {
-   "id": "CASSABLE_terrasse_41",
-   "type": "terrasse",
-   "pos": [
-    -84.87,
-    0.15,
-    -2.6
-   ],
-   "yaw": 0,
-   "pv": 30,
-   "points": 15
-  },
-  {
    "id": "CASSABLE_terrasse_42",
    "type": "terrasse",
    "pos": [
-    -83.2,
+    94.61,
     0.15,
-    -2.59
+    -105.41
    ],
-   "yaw": 0,
+   "yaw": 3.142,
    "pv": 30,
    "points": 15
   },
@@ -3565,9 +3565,9 @@
    "id": "CASSABLE_terrasse_43",
    "type": "terrasse",
    "pos": [
-    -84.89,
+    -84.85,
     0.15,
-    -1.36
+    -2.6
    ],
    "yaw": 0,
    "pv": 30,
@@ -3577,9 +3577,9 @@
    "id": "CASSABLE_terrasse_44",
    "type": "terrasse",
    "pos": [
-    -83.18,
+    -83.19,
     0.15,
-    -1.35
+    -2.62
    ],
    "yaw": 0,
    "pv": 30,
@@ -3589,11 +3589,11 @@
    "id": "CASSABLE_terrasse_45",
    "type": "terrasse",
    "pos": [
-    -71.8,
+    -84.84,
     0.15,
-    18.89
+    -1.34
    ],
-   "yaw": 1.67,
+   "yaw": 0,
    "pv": 30,
    "points": 15
   },
@@ -3601,11 +3601,11 @@
    "id": "CASSABLE_terrasse_46",
    "type": "terrasse",
    "pos": [
-    -71.99,
+    -83.19,
     0.15,
-    17.06
+    -1.33
    ],
-   "yaw": 1.67,
+   "yaw": 0,
    "pv": 30,
    "points": 15
   },
@@ -3613,9 +3613,9 @@
    "id": "CASSABLE_terrasse_47",
    "type": "terrasse",
    "pos": [
-    -70.58,
+    -71.8,
     0.15,
-    18.84
+    19.06
    ],
    "yaw": 1.67,
    "pv": 30,
@@ -3625,9 +3625,9 @@
    "id": "CASSABLE_terrasse_48",
    "type": "terrasse",
    "pos": [
-    -70.73,
+    -71.99,
     0.15,
-    17.06
+    17.01
    ],
    "yaw": 1.67,
    "pv": 30,
@@ -3637,11 +3637,11 @@
    "id": "CASSABLE_terrasse_49",
    "type": "terrasse",
    "pos": [
-    -38.05,
+    -70.55,
     0.15,
-    5.62
+    18.92
    ],
-   "yaw": 3.142,
+   "yaw": 1.67,
    "pv": 30,
    "points": 15
   },
@@ -3649,11 +3649,11 @@
    "id": "CASSABLE_terrasse_50",
    "type": "terrasse",
    "pos": [
-    -39.93,
+    -70.74,
     0.15,
-    5.58
+    16.93
    ],
-   "yaw": 3.142,
+   "yaw": 1.67,
    "pv": 30,
    "points": 15
   },
@@ -3661,9 +3661,9 @@
    "id": "CASSABLE_terrasse_51",
    "type": "terrasse",
    "pos": [
-    -38,
+    -37.99,
     0.15,
-    4.34
+    5.59
    ],
    "yaw": 3.142,
    "pv": 30,
@@ -3673,9 +3673,9 @@
    "id": "CASSABLE_terrasse_52",
    "type": "terrasse",
    "pos": [
-    -39.81,
+    -39.89,
     0.15,
-    4.34
+    5.62
    ],
    "yaw": 3.142,
    "pv": 30,
@@ -3685,11 +3685,11 @@
    "id": "CASSABLE_terrasse_53",
    "type": "terrasse",
    "pos": [
-    -53.31,
+    -38.01,
     0.15,
-    27.53
+    4.33
    ],
-   "yaw": -1.789,
+   "yaw": 3.142,
    "pv": 30,
    "points": 15
   },
@@ -3697,7 +3697,31 @@
    "id": "CASSABLE_terrasse_54",
    "type": "terrasse",
    "pos": [
-    -53.73,
+    -39.88,
+    0.15,
+    4.33
+   ],
+   "yaw": 3.142,
+   "pv": 30,
+   "points": 15
+  },
+  {
+   "id": "CASSABLE_terrasse_55",
+   "type": "terrasse",
+   "pos": [
+    -53.33,
+    0.15,
+    27.52
+   ],
+   "yaw": -1.789,
+   "pv": 30,
+   "points": 15
+  },
+  {
+   "id": "CASSABLE_terrasse_56",
+   "type": "terrasse",
+   "pos": [
+    -53.7,
     0.15,
     29.25
    ],
@@ -3706,36 +3730,12 @@
    "points": 15
   },
   {
-   "id": "CASSABLE_terrasse_55",
-   "type": "terrasse",
-   "pos": [
-    -50.51,
-    0.15,
-    16.27
-   ],
-   "yaw": -1.841,
-   "pv": 30,
-   "points": 15
-  },
-  {
-   "id": "CASSABLE_terrasse_56",
-   "type": "terrasse",
-   "pos": [
-    -50.94,
-    0.15,
-    17.85
-   ],
-   "yaw": -1.841,
-   "pv": 30,
-   "points": 15
-  },
-  {
    "id": "CASSABLE_terrasse_57",
    "type": "terrasse",
    "pos": [
-    -51.32,
+    -50.53,
     0.15,
-    19.41
+    16.4
    ],
    "yaw": -1.841,
    "pv": 30,
@@ -3745,9 +3745,9 @@
    "id": "CASSABLE_terrasse_58",
    "type": "terrasse",
    "pos": [
-    -51.78,
+    -50.93,
     0.15,
-    21
+    17.93
    ],
    "yaw": -1.841,
    "pv": 30,
@@ -3757,9 +3757,9 @@
    "id": "CASSABLE_terrasse_59",
    "type": "terrasse",
    "pos": [
-    -51.68,
+    -51.34,
     0.15,
-    15.94
+    19.47
    ],
    "yaw": -1.841,
    "pv": 30,
@@ -3769,9 +3769,9 @@
    "id": "CASSABLE_terrasse_60",
    "type": "terrasse",
    "pos": [
-    -52.11,
+    -51.81,
     0.15,
-    17.47
+    21.07
    ],
    "yaw": -1.841,
    "pv": 30,
@@ -3781,9 +3781,9 @@
    "id": "CASSABLE_terrasse_61",
    "type": "terrasse",
    "pos": [
-    -52.58,
+    -51.7,
     0.15,
-    19.18
+    16.06
    ],
    "yaw": -1.841,
    "pv": 30,
@@ -3793,9 +3793,9 @@
    "id": "CASSABLE_terrasse_62",
    "type": "terrasse",
    "pos": [
-    -53.03,
+    -52.15,
     0.15,
-    20.79
+    17.61
    ],
    "yaw": -1.841,
    "pv": 30,
@@ -3805,11 +3805,11 @@
    "id": "CASSABLE_terrasse_63",
    "type": "terrasse",
    "pos": [
-    49.55,
+    -52.58,
     0.15,
-    -17.58
+    19.2
    ],
-   "yaw": 1.633,
+   "yaw": -1.841,
    "pv": 30,
    "points": 15
   },
@@ -3817,11 +3817,11 @@
    "id": "CASSABLE_terrasse_64",
    "type": "terrasse",
    "pos": [
-    50.8,
+    -53.01,
     0.15,
-    -17.67
+    20.76
    ],
-   "yaw": 1.633,
+   "yaw": -1.841,
    "pv": 30,
    "points": 15
   },
@@ -3829,11 +3829,11 @@
    "id": "CASSABLE_terrasse_65",
    "type": "terrasse",
    "pos": [
-    56.75,
+    49.57,
     0.15,
-    18.66
+    -17.64
    ],
-   "yaw": 1.706,
+   "yaw": 1.633,
    "pv": 30,
    "points": 15
   },
@@ -3841,11 +3841,11 @@
    "id": "CASSABLE_terrasse_66",
    "type": "terrasse",
    "pos": [
-    56.53,
+    50.84,
     0.15,
-    16.89
+    -17.57
    ],
-   "yaw": 1.706,
+   "yaw": 1.633,
    "pv": 30,
    "points": 15
   },
@@ -3853,7 +3853,31 @@
    "id": "CASSABLE_terrasse_67",
    "type": "terrasse",
    "pos": [
-    51.23,
+    56.78,
+    0.15,
+    18.57
+   ],
+   "yaw": 1.706,
+   "pv": 30,
+   "points": 15
+  },
+  {
+   "id": "CASSABLE_terrasse_68",
+   "type": "terrasse",
+   "pos": [
+    56.54,
+    0.15,
+    16.86
+   ],
+   "yaw": 1.706,
+   "pv": 30,
+   "points": 15
+  },
+  {
+   "id": "CASSABLE_terrasse_69",
+   "type": "terrasse",
+   "pos": [
+    51.3,
     0.15,
     39.11
    ],
@@ -3862,38 +3886,14 @@
    "points": 15
   },
   {
-   "id": "CASSABLE_terrasse_68",
-   "type": "terrasse",
-   "pos": [
-    89.83,
-    0.15,
-    2.56
-   ],
-   "yaw": 3.142,
-   "pv": 30,
-   "points": 15
-  },
-  {
-   "id": "CASSABLE_terrasse_69",
-   "type": "terrasse",
-   "pos": [
-    89.98,
-    0.15,
-    1.36
-   ],
-   "yaw": 3.142,
-   "pv": 30,
-   "points": 15
-  },
-  {
    "id": "CASSABLE_terrasse_70",
    "type": "terrasse",
    "pos": [
-    64.9,
+    89.91,
     0.15,
-    11.84
+    2.6
    ],
-   "yaw": -1.433,
+   "yaw": 3.142,
    "pv": 30,
    "points": 15
   },
@@ -3901,11 +3901,11 @@
    "id": "CASSABLE_terrasse_71",
    "type": "terrasse",
    "pos": [
-    65.11,
+    89.96,
     0.15,
-    13.39
+    1.35
    ],
-   "yaw": -1.433,
+   "yaw": 3.142,
    "pv": 30,
    "points": 15
   },
@@ -3913,11 +3913,11 @@
    "id": "CASSABLE_terrasse_72",
    "type": "terrasse",
    "pos": [
-    68.13,
+    64.87,
     0.15,
-    8.51
+    11.82
    ],
-   "yaw": 3.092,
+   "yaw": -1.433,
    "pv": 30,
    "points": 15
   },
@@ -3925,7 +3925,31 @@
    "id": "CASSABLE_terrasse_73",
    "type": "terrasse",
    "pos": [
-    68.06,
+    65.09,
+    0.15,
+    13.41
+   ],
+   "yaw": -1.433,
+   "pv": 30,
+   "points": 15
+  },
+  {
+   "id": "CASSABLE_terrasse_74",
+   "type": "terrasse",
+   "pos": [
+    68,
+    0.15,
+    8.48
+   ],
+   "yaw": 3.092,
+   "pv": 30,
+   "points": 15
+  },
+  {
+   "id": "CASSABLE_terrasse_75",
+   "type": "terrasse",
+   "pos": [
+    68.09,
     0.15,
     7.25
    ],
@@ -3934,24 +3958,24 @@
    "points": 15
   },
   {
-   "id": "CASSABLE_terrasse_74",
+   "id": "CASSABLE_terrasse_76",
    "type": "terrasse",
    "pos": [
-    5.67,
+    5.73,
     0.15,
-    28.89
+    28.93
    ],
    "yaw": 2.356,
    "pv": 30,
    "points": 15
   },
   {
-   "id": "CASSABLE_terrasse_75",
+   "id": "CASSABLE_terrasse_77",
    "type": "terrasse",
    "pos": [
-    4.02,
+    4.11,
     0.15,
-    27.26
+    27.31
    ],
    "yaw": 2.356,
    "pv": 30,
@@ -3994,14 +4018,38 @@
    "points": 80
   },
   {
+   "id": "CASSABLE_poubelle_1",
+   "type": "poubelle",
+   "pos": [
+    -120.48,
+    0.15,
+    113.27
+   ],
+   "yaw": 3.142,
+   "pv": 20,
+   "points": 10
+  },
+  {
+   "id": "CASSABLE_poubelle_2",
+   "type": "poubelle",
+   "pos": [
+    58.99,
+    0.15,
+    25.03
+   ],
+   "yaw": 1.706,
+   "pv": 20,
+   "points": 10
+  },
+  {
    "id": "CASSABLE_conteneur_1",
    "type": "conteneur",
    "pos": [
-    112.3,
+    26.38,
     0.15,
-    -48.14
+    113.51
    ],
-   "yaw": -0.785,
+   "yaw": 3.142,
    "pv": 25,
    "points": 10
   },
@@ -4009,23 +4057,35 @@
    "id": "CASSABLE_conteneur_2",
    "type": "conteneur",
    "pos": [
-    113.73,
+    -60.49,
     0.15,
-    41.5
+    -68.01
    ],
-   "yaw": -0.785,
+   "yaw": -1.571,
    "pv": 25,
    "points": 10
   },
   {
-   "id": "CASSABLE_poubelle_1",
+   "id": "CASSABLE_poubelle_3",
    "type": "poubelle",
    "pos": [
-    68.37,
+    32.94,
     0.15,
-    -19.2
+    24.27
    ],
-   "yaw": -1.245,
+   "yaw": 3.142,
+   "pv": 20,
+   "points": 10
+  },
+  {
+   "id": "CASSABLE_poubelle_4",
+   "type": "poubelle",
+   "pos": [
+    -31.27,
+    0.15,
+    32.98
+   ],
+   "yaw": 1.571,
    "pv": 20,
    "points": 10
   },
@@ -4033,23 +4093,35 @@
    "id": "CASSABLE_conteneur_3",
    "type": "conteneur",
    "pos": [
-    97.72,
+    -68.84,
     0.15,
-    -87.21
+    -32.54
    ],
-   "yaw": 2.465,
+   "yaw": 2.216,
    "pv": 25,
+   "points": 10
+  },
+  {
+   "id": "CASSABLE_poubelle_5",
+   "type": "poubelle",
+   "pos": [
+    30.28,
+    0.15,
+    29.73
+   ],
+   "yaw": 0,
+   "pv": 20,
    "points": 10
   },
   {
    "id": "CASSABLE_conteneur_4",
    "type": "conteneur",
    "pos": [
-    109.51,
+    -7.17,
     0.15,
-    -78.07
+    -34.48
    ],
-   "yaw": -1.571,
+   "yaw": 2.362,
    "pv": 25,
    "points": 10
   },
@@ -4057,23 +4129,35 @@
    "id": "CASSABLE_conteneur_5",
    "type": "conteneur",
    "pos": [
-    -109.51,
+    69.44,
     0.15,
-    87.1
+    -29.05
    ],
-   "yaw": 1.571,
+   "yaw": -2.228,
    "pv": 25,
    "points": 10
   },
   {
-   "id": "CASSABLE_poubelle_2",
+   "id": "CASSABLE_poubelle_6",
    "type": "poubelle",
    "pos": [
-    -112.96,
+    -111.66,
     0.15,
-    104.63
+    -53.92
    ],
    "yaw": 0.785,
+   "pv": 20,
+   "points": 10
+  },
+  {
+   "id": "CASSABLE_poubelle_7",
+   "type": "poubelle",
+   "pos": [
+    -56.74,
+    0.15,
+    114.59
+   ],
+   "yaw": 2.356,
    "pv": 20,
    "points": 10
   },
@@ -4081,7 +4165,103 @@
    "id": "CASSABLE_conteneur_6",
    "type": "conteneur",
    "pos": [
-    -33.99,
+    109.51,
+    0.15,
+    66.2
+   ],
+   "yaw": -1.571,
+   "pv": 25,
+   "points": 10
+  },
+  {
+   "id": "CASSABLE_conteneur_7",
+   "type": "conteneur",
+   "pos": [
+    60.49,
+    0.15,
+    -60.67
+   ],
+   "yaw": 1.571,
+   "pv": 25,
+   "points": 10
+  },
+  {
+   "id": "CASSABLE_poubelle_8",
+   "type": "poubelle",
+   "pos": [
+    -109.27,
+    0.15,
+    -22.32
+   ],
+   "yaw": 1.571,
+   "pv": 20,
+   "points": 10
+  },
+  {
+   "id": "CASSABLE_conteneur_8",
+   "type": "conteneur",
+   "pos": [
+    98.33,
+    0.15,
+    -5.87
+   ],
+   "yaw": 0.763,
+   "pv": 25,
+   "points": 10
+  },
+  {
+   "id": "CASSABLE_conteneur_9",
+   "type": "conteneur",
+   "pos": [
+    97.62,
+    0.15,
+    52.51
+   ],
+   "yaw": 2.334,
+   "pv": 25,
+   "points": 10
+  },
+  {
+   "id": "CASSABLE_conteneur_10",
+   "type": "conteneur",
+   "pos": [
+    100.49,
+    0.15,
+    -104.33
+   ],
+   "yaw": 1.571,
+   "pv": 25,
+   "points": 10
+  },
+  {
+   "id": "CASSABLE_conteneur_11",
+   "type": "conteneur",
+   "pos": [
+    -41.29,
+    0.15,
+    70.97
+   ],
+   "yaw": -2.356,
+   "pv": 25,
+   "points": 10
+  },
+  {
+   "id": "CASSABLE_poubelle_9",
+   "type": "poubelle",
+   "pos": [
+    40.07,
+    0.15,
+    117.4
+   ],
+   "yaw": 2.356,
+   "pv": 20,
+   "points": 10
+  },
+  {
+   "id": "CASSABLE_conteneur_12",
+   "type": "conteneur",
+   "pos": [
+    33.13,
     0.15,
     106.49
    ],
@@ -4090,183 +4270,15 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_poubelle_3",
-   "type": "poubelle",
-   "pos": [
-    59.04,
-    0.15,
-    25.39
-   ],
-   "yaw": 1.706,
-   "pv": 20,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_conteneur_7",
+   "id": "CASSABLE_conteneur_13",
    "type": "conteneur",
    "pos": [
-    -109.51,
+    -113.88,
     0.15,
-    -76.43
+    -105.2
    ],
-   "yaw": 1.571,
+   "yaw": 2.356,
    "pv": 25,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_conteneur_8",
-   "type": "conteneur",
-   "pos": [
-    -98.2,
-    0.15,
-    23.68
-   ],
-   "yaw": -1.53,
-   "pv": 25,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_poubelle_4",
-   "type": "poubelle",
-   "pos": [
-    109.27,
-    0.15,
-    -66.25
-   ],
-   "yaw": -1.571,
-   "pv": 20,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_conteneur_9",
-   "type": "conteneur",
-   "pos": [
-    97.04,
-    0.15,
-    5.24
-   ],
-   "yaw": 2.334,
-   "pv": 25,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_poubelle_5",
-   "type": "poubelle",
-   "pos": [
-    97.15,
-    0.15,
-    104.52
-   ],
-   "yaw": 0.785,
-   "pv": 20,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_poubelle_6",
-   "type": "poubelle",
-   "pos": [
-    98.48,
-    0.15,
-    -49.65
-   ],
-   "yaw": 0.75,
-   "pv": 20,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_poubelle_7",
-   "type": "poubelle",
-   "pos": [
-    -58.3,
-    0.15,
-    -24.39
-   ],
-   "yaw": -1.298,
-   "pv": 20,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_conteneur_10",
-   "type": "conteneur",
-   "pos": [
-    29.22,
-    0.15,
-    104.54
-   ],
-   "yaw": -0.785,
-   "pv": 25,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_poubelle_8",
-   "type": "poubelle",
-   "pos": [
-    -34.61,
-    0.15,
-    -106.73
-   ],
-   "yaw": 3.142,
-   "pv": 20,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_conteneur_11",
-   "type": "conteneur",
-   "pos": [
-    -111.28,
-    0.15,
-    -54.64
-   ],
-   "yaw": 0.785,
-   "pv": 25,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_poubelle_9",
-   "type": "poubelle",
-   "pos": [
-    65.13,
-    0.15,
-    23.36
-   ],
-   "yaw": -1.433,
-   "pv": 20,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_poubelle_10",
-   "type": "poubelle",
-   "pos": [
-    76.63,
-    0.15,
-    -30.98
-   ],
-   "yaw": 3.072,
-   "pv": 20,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_conteneur_12",
-   "type": "conteneur",
-   "pos": [
-    54.59,
-    0.15,
-    -22.84
-   ],
-   "yaw": 0.762,
-   "pv": 25,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_poubelle_11",
-   "type": "poubelle",
-   "pos": [
-    57.3,
-    0.15,
-    12.58
-   ],
-   "yaw": 1.706,
-   "pv": 20,
    "points": 10
   },
   {
@@ -4527,7 +4539,7 @@
    "pos": [
     56,
     0.17,
-    -7.4
+    -7.38
    ],
    "yaw": 0,
    "pv": 60,
@@ -4539,7 +4551,7 @@
    "pos": [
     61,
     0.17,
-    -7.4
+    -7.38
    ],
    "yaw": 0,
    "pv": 60,
@@ -4551,7 +4563,7 @@
    "pos": [
     66,
     0.17,
-    -7.4
+    -7.38
    ],
    "yaw": 0,
    "pv": 60,
@@ -4563,7 +4575,7 @@
    "pos": [
     56,
     0.17,
-    -2.6
+    -2.58
    ],
    "yaw": 0,
    "pv": 60,
@@ -4575,7 +4587,7 @@
    "pos": [
     66,
     0.17,
-    -2.6
+    -2.58
    ],
    "yaw": 0,
    "pv": 60,
@@ -4957,7 +4969,7 @@
    "id": "CASSABLE_parasol_1",
    "type": "parasol",
    "pos": [
-    -17.05,
+    -16.92,
     9.2,
     86.38
    ],
@@ -4969,7 +4981,7 @@
    "id": "CASSABLE_parasol_2",
    "type": "parasol",
    "pos": [
-    -16.95,
+    -16.94,
     9.2,
     91.88
    ],
@@ -4981,9 +4993,9 @@
    "id": "CASSABLE_parasol_3",
    "type": "parasol",
    "pos": [
-    -11.39,
+    -11.43,
     9.2,
-    89.38
+    89.39
    ],
    "yaw": 0,
    "pv": 30,
@@ -4993,9 +5005,9 @@
    "id": "CASSABLE_parasol_4",
    "type": "parasol",
    "pos": [
-    16.9,
+    17.08,
     9.2,
-    86.41
+    86.38
    ],
    "yaw": 0,
    "pv": 30,
@@ -5005,9 +5017,9 @@
    "id": "CASSABLE_parasol_5",
    "type": "parasol",
    "pos": [
-    17.05,
+    17.01,
     9.2,
-    91.88
+    91.9
    ],
    "yaw": 0,
    "pv": 30,
@@ -5017,7 +5029,7 @@
    "id": "CASSABLE_parasol_6",
    "type": "parasol",
    "pos": [
-    11.56,
+    11.51,
     9.2,
     89.38
    ],
@@ -5170,7 +5182,7 @@
    "points": 40
   },
   {
-   "id": "CASSABLE_poubelle_12",
+   "id": "CASSABLE_poubelle_10",
    "type": "poubelle",
    "pos": [
     -79,
@@ -5182,7 +5194,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_poubelle_13",
+   "id": "CASSABLE_poubelle_11",
    "type": "poubelle",
    "pos": [
     -71,
@@ -5698,18 +5710,6 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_12",
-   "type": "potelet",
-   "pos": [
-    -68.03,
-    0.15,
-    -32.68
-   ],
-   "yaw": 0,
-   "pv": 30,
-   "points": 10
-  },
-  {
    "id": "CASSABLE_feu_4",
    "type": "feu",
    "pos": [
@@ -5722,7 +5722,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_13",
+   "id": "CASSABLE_potelet_12",
    "type": "potelet",
    "pos": [
     -15.08,
@@ -5734,7 +5734,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_14",
+   "id": "CASSABLE_potelet_13",
    "type": "potelet",
    "pos": [
     -16.28,
@@ -5746,7 +5746,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_15",
+   "id": "CASSABLE_potelet_14",
    "type": "potelet",
    "pos": [
     -6.5,
@@ -5758,7 +5758,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_16",
+   "id": "CASSABLE_potelet_15",
    "type": "potelet",
    "pos": [
     6.12,
@@ -5782,7 +5782,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_17",
+   "id": "CASSABLE_potelet_16",
    "type": "potelet",
    "pos": [
     59.5,
@@ -5794,7 +5794,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_18",
+   "id": "CASSABLE_potelet_17",
    "type": "potelet",
    "pos": [
     58.31,
@@ -5806,7 +5806,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_19",
+   "id": "CASSABLE_potelet_18",
    "type": "potelet",
    "pos": [
     68.08,
@@ -5818,7 +5818,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_20",
+   "id": "CASSABLE_potelet_19",
    "type": "potelet",
    "pos": [
     69.28,
@@ -5842,7 +5842,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_21",
+   "id": "CASSABLE_potelet_20",
    "type": "potelet",
    "pos": [
     59.12,
@@ -5854,7 +5854,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_22",
+   "id": "CASSABLE_potelet_21",
    "type": "potelet",
    "pos": [
     57.92,
@@ -5866,7 +5866,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_23",
+   "id": "CASSABLE_potelet_22",
    "type": "potelet",
    "pos": [
     56.72,
@@ -5878,7 +5878,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_24",
+   "id": "CASSABLE_potelet_23",
    "type": "potelet",
    "pos": [
     66.5,
@@ -5890,7 +5890,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_25",
+   "id": "CASSABLE_potelet_24",
    "type": "potelet",
    "pos": [
     67.69,
@@ -5914,7 +5914,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_26",
+   "id": "CASSABLE_potelet_25",
    "type": "potelet",
    "pos": [
     100.5,
@@ -5926,7 +5926,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_27",
+   "id": "CASSABLE_potelet_26",
    "type": "potelet",
    "pos": [
     99.31,
@@ -5938,7 +5938,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_28",
+   "id": "CASSABLE_potelet_27",
    "type": "potelet",
    "pos": [
     107.89,
@@ -5950,7 +5950,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_29",
+   "id": "CASSABLE_potelet_28",
    "type": "potelet",
    "pos": [
     109.08,
@@ -5962,7 +5962,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_30",
+   "id": "CASSABLE_potelet_29",
    "type": "potelet",
    "pos": [
     110.28,
@@ -5986,7 +5986,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_31",
+   "id": "CASSABLE_potelet_30",
    "type": "potelet",
    "pos": [
     100.11,
@@ -5998,7 +5998,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_32",
+   "id": "CASSABLE_potelet_31",
    "type": "potelet",
    "pos": [
     98.92,
@@ -6010,7 +6010,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_33",
+   "id": "CASSABLE_potelet_32",
    "type": "potelet",
    "pos": [
     97.72,
@@ -6022,7 +6022,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_34",
+   "id": "CASSABLE_potelet_33",
    "type": "potelet",
    "pos": [
     107.5,
@@ -6034,7 +6034,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_35",
+   "id": "CASSABLE_potelet_34",
    "type": "potelet",
    "pos": [
     108.69,
@@ -6094,7 +6094,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_36",
+   "id": "CASSABLE_potelet_35",
    "type": "potelet",
    "pos": [
     -64.19,
@@ -6106,7 +6106,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_37",
+   "id": "CASSABLE_potelet_36",
    "type": "potelet",
    "pos": [
     -65.39,
@@ -6118,7 +6118,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_38",
+   "id": "CASSABLE_potelet_37",
    "type": "potelet",
    "pos": [
     -56.79,
@@ -6130,7 +6130,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_39",
+   "id": "CASSABLE_potelet_38",
    "type": "potelet",
    "pos": [
     -55.59,
@@ -6142,7 +6142,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_40",
+   "id": "CASSABLE_potelet_39",
    "type": "potelet",
    "pos": [
     -54.39,
@@ -6166,7 +6166,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_41",
+   "id": "CASSABLE_potelet_40",
    "type": "potelet",
    "pos": [
     -40.81,
@@ -6178,7 +6178,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_42",
+   "id": "CASSABLE_potelet_41",
    "type": "potelet",
    "pos": [
     2.62,
@@ -6190,7 +6190,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_43",
+   "id": "CASSABLE_potelet_42",
    "type": "potelet",
    "pos": [
     3.82,
@@ -6202,7 +6202,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_44",
+   "id": "CASSABLE_potelet_43",
    "type": "potelet",
    "pos": [
     5.02,
@@ -6226,7 +6226,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_45",
+   "id": "CASSABLE_potelet_44",
    "type": "potelet",
    "pos": [
     4.44,
@@ -6238,7 +6238,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_46",
+   "id": "CASSABLE_potelet_45",
    "type": "potelet",
    "pos": [
     10.62,
@@ -6250,7 +6250,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_47",
+   "id": "CASSABLE_potelet_46",
    "type": "potelet",
    "pos": [
     11.82,
@@ -6262,7 +6262,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_48",
+   "id": "CASSABLE_potelet_47",
    "type": "potelet",
    "pos": [
     13.02,
@@ -6286,7 +6286,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_49",
+   "id": "CASSABLE_potelet_48",
    "type": "potelet",
    "pos": [
     41.61,
@@ -6298,7 +6298,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_50",
+   "id": "CASSABLE_potelet_49",
    "type": "potelet",
    "pos": [
     40.41,
@@ -6310,7 +6310,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_51",
+   "id": "CASSABLE_potelet_50",
    "type": "potelet",
    "pos": [
     49,
@@ -6334,7 +6334,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_52",
+   "id": "CASSABLE_potelet_51",
    "type": "potelet",
    "pos": [
     60,
@@ -6346,7 +6346,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_53",
+   "id": "CASSABLE_potelet_52",
    "type": "potelet",
    "pos": [
     58.8,
@@ -6358,7 +6358,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_54",
+   "id": "CASSABLE_potelet_53",
    "type": "potelet",
    "pos": [
     67.39,
@@ -6370,7 +6370,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_55",
+   "id": "CASSABLE_potelet_54",
    "type": "potelet",
    "pos": [
     68.59,
@@ -6382,7 +6382,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_56",
+   "id": "CASSABLE_potelet_55",
    "type": "potelet",
    "pos": [
     69.79,
@@ -6466,7 +6466,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_57",
+   "id": "CASSABLE_potelet_56",
    "type": "potelet",
    "pos": [
     -108.1,
@@ -6478,7 +6478,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_58",
+   "id": "CASSABLE_potelet_57",
    "type": "potelet",
    "pos": [
     -109.3,
@@ -6490,7 +6490,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_59",
+   "id": "CASSABLE_potelet_58",
    "type": "potelet",
    "pos": [
     -100.7,
@@ -6502,7 +6502,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_60",
+   "id": "CASSABLE_potelet_59",
    "type": "potelet",
    "pos": [
     -99.5,
@@ -6526,7 +6526,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_61",
+   "id": "CASSABLE_potelet_60",
    "type": "potelet",
    "pos": [
     101.9,
@@ -6538,19 +6538,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_62",
-   "type": "potelet",
-   "pos": [
-    100.7,
-    0.15,
-    -103.65
-   ],
-   "yaw": 0,
-   "pv": 30,
-   "points": 10
-  },
-  {
-   "id": "CASSABLE_potelet_63",
+   "id": "CASSABLE_potelet_61",
    "type": "potelet",
    "pos": [
     99.5,
@@ -6562,7 +6550,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_64",
+   "id": "CASSABLE_potelet_62",
    "type": "potelet",
    "pos": [
     109.3,
@@ -6574,7 +6562,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_65",
+   "id": "CASSABLE_potelet_63",
    "type": "potelet",
    "pos": [
     110.5,
@@ -6610,7 +6598,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_66",
+   "id": "CASSABLE_potelet_64",
    "type": "potelet",
    "pos": [
     -109.3,
@@ -6622,7 +6610,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_67",
+   "id": "CASSABLE_potelet_65",
    "type": "potelet",
    "pos": [
     -110.5,
@@ -6634,7 +6622,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_68",
+   "id": "CASSABLE_potelet_66",
    "type": "potelet",
    "pos": [
     -101.9,
@@ -6658,7 +6646,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_69",
+   "id": "CASSABLE_potelet_67",
    "type": "potelet",
    "pos": [
     -43.9,
@@ -6670,7 +6658,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_70",
+   "id": "CASSABLE_potelet_68",
    "type": "potelet",
    "pos": [
     -42.7,
@@ -6682,7 +6670,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_71",
+   "id": "CASSABLE_potelet_69",
    "type": "potelet",
    "pos": [
     -41.5,
@@ -6706,7 +6694,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_72",
+   "id": "CASSABLE_potelet_70",
    "type": "potelet",
    "pos": [
     -50.1,
@@ -6718,7 +6706,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_73",
+   "id": "CASSABLE_potelet_71",
    "type": "potelet",
    "pos": [
     -51.3,
@@ -6730,7 +6718,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_74",
+   "id": "CASSABLE_potelet_72",
    "type": "potelet",
    "pos": [
     -52.5,
@@ -6742,7 +6730,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_75",
+   "id": "CASSABLE_potelet_73",
    "type": "potelet",
    "pos": [
     -42.7,
@@ -6754,7 +6742,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_76",
+   "id": "CASSABLE_potelet_74",
    "type": "potelet",
    "pos": [
     -41.5,
@@ -6778,7 +6766,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_77",
+   "id": "CASSABLE_potelet_75",
    "type": "potelet",
    "pos": [
     42.7,
@@ -6790,7 +6778,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_78",
+   "id": "CASSABLE_potelet_76",
    "type": "potelet",
    "pos": [
     41.5,
@@ -6802,7 +6790,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_79",
+   "id": "CASSABLE_potelet_77",
    "type": "potelet",
    "pos": [
     50.1,
@@ -6814,7 +6802,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_80",
+   "id": "CASSABLE_potelet_78",
    "type": "potelet",
    "pos": [
     51.3,
@@ -6826,7 +6814,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_81",
+   "id": "CASSABLE_potelet_79",
    "type": "potelet",
    "pos": [
     52.5,
@@ -6850,7 +6838,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_82",
+   "id": "CASSABLE_potelet_80",
    "type": "potelet",
    "pos": [
     43.9,
@@ -6862,7 +6850,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_83",
+   "id": "CASSABLE_potelet_81",
    "type": "potelet",
    "pos": [
     42.7,
@@ -6874,7 +6862,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_84",
+   "id": "CASSABLE_potelet_82",
    "type": "potelet",
    "pos": [
     41.5,
@@ -6886,7 +6874,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_85",
+   "id": "CASSABLE_potelet_83",
    "type": "potelet",
    "pos": [
     51.3,
@@ -6898,7 +6886,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_86",
+   "id": "CASSABLE_potelet_84",
    "type": "potelet",
    "pos": [
     52.5,
@@ -6922,7 +6910,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_87",
+   "id": "CASSABLE_potelet_85",
    "type": "potelet",
    "pos": [
     100.7,
@@ -6934,7 +6922,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_88",
+   "id": "CASSABLE_potelet_86",
    "type": "potelet",
    "pos": [
     99.5,
@@ -6946,7 +6934,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_89",
+   "id": "CASSABLE_potelet_87",
    "type": "potelet",
    "pos": [
     108.1,
@@ -6958,7 +6946,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_90",
+   "id": "CASSABLE_potelet_88",
    "type": "potelet",
    "pos": [
     109.3,
@@ -6970,7 +6958,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_91",
+   "id": "CASSABLE_potelet_89",
    "type": "potelet",
    "pos": [
     110.5,
@@ -7030,7 +7018,7 @@
    "points": 20
   },
   {
-   "id": "CASSABLE_potelet_92",
+   "id": "CASSABLE_potelet_90",
    "type": "potelet",
    "pos": [
     -109.15,
@@ -7042,7 +7030,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_93",
+   "id": "CASSABLE_potelet_91",
    "type": "potelet",
    "pos": [
     -110.35,
@@ -7054,7 +7042,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_94",
+   "id": "CASSABLE_potelet_92",
    "type": "potelet",
    "pos": [
     -101.75,
@@ -7066,7 +7054,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_95",
+   "id": "CASSABLE_potelet_93",
    "type": "potelet",
    "pos": [
     -100.55,
@@ -7078,7 +7066,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_96",
+   "id": "CASSABLE_potelet_94",
    "type": "potelet",
    "pos": [
     -99.35,
@@ -7102,7 +7090,7 @@
    "points": 20
   },
   {
-   "id": "CASSABLE_potelet_97",
+   "id": "CASSABLE_potelet_95",
    "type": "potelet",
    "pos": [
     -108.25,
@@ -7114,7 +7102,19 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_98",
+   "id": "CASSABLE_potelet_96",
+   "type": "potelet",
+   "pos": [
+    -109.45,
+    0.15,
+    -75.98
+   ],
+   "yaw": 0,
+   "pv": 30,
+   "points": 10
+  },
+  {
+   "id": "CASSABLE_potelet_97",
    "type": "potelet",
    "pos": [
     -110.65,
@@ -7174,7 +7174,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_99",
+   "id": "CASSABLE_potelet_98",
    "type": "potelet",
    "pos": [
     60.56,
@@ -7186,7 +7186,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_100",
+   "id": "CASSABLE_potelet_99",
    "type": "potelet",
    "pos": [
     59.39,
@@ -7198,7 +7198,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_101",
+   "id": "CASSABLE_potelet_100",
    "type": "potelet",
    "pos": [
     58.22,
@@ -7210,7 +7210,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_102",
+   "id": "CASSABLE_potelet_101",
    "type": "potelet",
    "pos": [
     68.96,
@@ -7234,7 +7234,7 @@
    "points": 50
   },
   {
-   "id": "CASSABLE_potelet_103",
+   "id": "CASSABLE_potelet_102",
    "type": "potelet",
    "pos": [
     100.39,
@@ -7246,7 +7246,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_104",
+   "id": "CASSABLE_potelet_103",
    "type": "potelet",
    "pos": [
     99.22,
@@ -7258,7 +7258,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_105",
+   "id": "CASSABLE_potelet_104",
    "type": "potelet",
    "pos": [
     106.44,
@@ -7270,7 +7270,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_106",
+   "id": "CASSABLE_potelet_105",
    "type": "potelet",
    "pos": [
     107.61,
@@ -7282,7 +7282,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_107",
+   "id": "CASSABLE_potelet_106",
    "type": "potelet",
    "pos": [
     108.78,
@@ -7294,7 +7294,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_108",
+   "id": "CASSABLE_potelet_107",
    "type": "potelet",
    "pos": [
     103.56,
@@ -7306,7 +7306,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_109",
+   "id": "CASSABLE_potelet_108",
    "type": "potelet",
    "pos": [
     102.39,
@@ -7318,7 +7318,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_110",
+   "id": "CASSABLE_potelet_109",
    "type": "potelet",
    "pos": [
     101.22,
@@ -7330,7 +7330,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_potelet_111",
+   "id": "CASSABLE_potelet_110",
    "type": "potelet",
    "pos": [
     110.78,
@@ -7357,6 +7357,18 @@
    "id": "CASSABLE_panneau_19",
    "type": "panneau",
    "pos": [
+    -38.2,
+    0.15,
+    106.4
+   ],
+   "yaw": 3.142,
+   "pv": 40,
+   "points": 20
+  },
+  {
+   "id": "CASSABLE_panneau_20",
+   "type": "panneau",
+   "pos": [
     -58.5,
     0.17,
     5.5
@@ -7366,7 +7378,7 @@
    "points": 20
   },
   {
-   "id": "CASSABLE_panneau_20",
+   "id": "CASSABLE_panneau_21",
    "type": "panneau",
    "pos": [
     -26.5,
@@ -7395,7 +7407,7 @@
    "pos": [
     -54.4,
     0.17,
-    60.28
+    60.52
    ],
    "yaw": 1.571,
    "pv": 60,
@@ -7405,7 +7417,7 @@
    "id": "CASSABLE_velos_3",
    "type": "velos",
    "pos": [
-    -91.26,
+    -91.28,
     0.17,
     -55.6
    ],
@@ -7417,9 +7429,9 @@
    "id": "CASSABLE_velos_4",
    "type": "velos",
    "pos": [
-    33.22,
+    32.98,
     0.15,
-    10.78
+    10.8
    ],
    "yaw": 0.1,
    "pv": 60,
@@ -7429,7 +7441,7 @@
    "id": "CASSABLE_velos_5",
    "type": "velos",
    "pos": [
-    -35.76,
+    -35.78,
     4.6,
     57.2
    ],
@@ -7498,12 +7510,12 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_terrasse_76",
+   "id": "CASSABLE_terrasse_78",
    "type": "terrasse",
    "pos": [
-    -47.72,
+    -47.63,
     0.15,
-    -53.27
+    -53.26
    ],
    "yaw": 0.011,
    "pv": 30,
@@ -7570,12 +7582,12 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_terrasse_77",
+   "id": "CASSABLE_terrasse_79",
    "type": "terrasse",
    "pos": [
     -12.53,
     0.15,
-    -53.64
+    -53.65
    ],
    "yaw": 0.011,
    "pv": 30,
@@ -7921,6 +7933,22 @@
    "id": "CASSABLE_dab_10",
    "type": "dab",
    "pos": [
+    -51.91,
+    0.15,
+    -84.51
+   ],
+   "yaw": -0.028,
+   "pv": 200,
+   "points": 150,
+   "butin": {
+    "type": "billets",
+    "valeur": 2500
+   }
+  },
+  {
+   "id": "CASSABLE_dab_11",
+   "type": "dab",
+   "pos": [
     -36.85,
     0.15,
     -74.58
@@ -7934,7 +7962,7 @@
    }
   },
   {
-   "id": "CASSABLE_dab_11",
+   "id": "CASSABLE_dab_12",
    "type": "dab",
    "pos": [
     5.79,
@@ -7950,7 +7978,7 @@
    }
   },
   {
-   "id": "CASSABLE_dab_12",
+   "id": "CASSABLE_dab_13",
    "type": "dab",
    "pos": [
     48.52,
@@ -7966,7 +7994,7 @@
    }
   },
   {
-   "id": "CASSABLE_dab_13",
+   "id": "CASSABLE_dab_14",
    "type": "dab",
    "pos": [
     57.65,
@@ -7982,30 +8010,14 @@
    }
   },
   {
-   "id": "CASSABLE_dab_14",
-   "type": "dab",
-   "pos": [
-    70.71,
-    0.15,
-    50.87
-   ],
-   "yaw": 3.097,
-   "pv": 200,
-   "points": 150,
-   "butin": {
-    "type": "billets",
-    "valeur": 2500
-   }
-  },
-  {
    "id": "CASSABLE_parcmetre_1",
    "type": "parcmetre",
    "pos": [
-    -94.67,
+    -94.66,
     0.15,
     -34.34
    ],
-   "yaw": 0.028,
+   "yaw": 0.032,
    "pv": 50,
    "points": 30,
    "butin": {
@@ -8017,11 +8029,11 @@
    "id": "CASSABLE_parcmetre_2",
    "type": "parcmetre",
    "pos": [
-    -56.13,
+    -56.11,
     0.15,
     -35.91
    ],
-   "yaw": 0.053,
+   "yaw": 0.061,
    "pv": 50,
    "points": 30,
    "butin": {
@@ -8033,11 +8045,11 @@
    "id": "CASSABLE_parcmetre_3",
    "type": "parcmetre",
    "pos": [
-    -28.7,
+    -28.68,
     0.15,
     -37.04
    ],
-   "yaw": 0.011,
+   "yaw": 0.021,
    "pv": 50,
    "points": 30,
    "butin": {
@@ -8049,11 +8061,11 @@
    "id": "CASSABLE_parcmetre_4",
    "type": "parcmetre",
    "pos": [
-    43.13,
+    41.95,
     0.15,
-    -50.2
+    -33.04
    ],
-   "yaw": 3.057,
+   "yaw": -0.041,
    "pv": 50,
    "points": 30,
    "butin": {
@@ -8065,11 +8077,11 @@
    "id": "CASSABLE_parcmetre_5",
    "type": "parcmetre",
    "pos": [
-    69.38,
+    -34.82,
     0.15,
-    -31.13
+    43.77
    ],
-   "yaw": -0.08,
+   "yaw": 3.24,
    "pv": 50,
    "points": 30,
    "butin": {
@@ -8081,11 +8093,11 @@
    "id": "CASSABLE_parcmetre_6",
    "type": "parcmetre",
    "pos": [
-    -105.97,
+    -12.79,
     0.15,
-    43.05
+    42.2
    ],
-   "yaw": 3.143,
+   "yaw": 3.219,
    "pv": 50,
    "points": 30,
    "butin": {
@@ -8097,11 +8109,11 @@
    "id": "CASSABLE_parcmetre_7",
    "type": "parcmetre",
    "pos": [
-    -12.76,
+    37.17,
     0.15,
-    42.19
+    39.47
    ],
-   "yaw": 3.204,
+   "yaw": 3.096,
    "pv": 50,
    "points": 30,
    "butin": {
@@ -8113,11 +8125,11 @@
    "id": "CASSABLE_parcmetre_8",
    "type": "parcmetre",
    "pos": [
-    37.2,
+    92.19,
     0.15,
-    39.47
+    41.94
    ],
-   "yaw": 3.079,
+   "yaw": 3.085,
    "pv": 50,
    "points": 30,
    "butin": {
@@ -8129,11 +8141,11 @@
    "id": "CASSABLE_parcmetre_9",
    "type": "parcmetre",
    "pos": [
-    75.68,
+    53.54,
     0.15,
-    41.2
+    106.4
    ],
-   "yaw": 3.089,
+   "yaw": 3.12,
    "pv": 50,
    "points": 30,
    "butin": {
@@ -8145,11 +8157,11 @@
    "id": "CASSABLE_parcmetre_10",
    "type": "parcmetre",
    "pos": [
-    36.99,
+    75.49,
     0.15,
     106.4
    ],
-   "yaw": 3.144,
+   "yaw": 3.149,
    "pv": 50,
    "points": 30,
    "butin": {
@@ -8161,11 +8173,11 @@
    "id": "CASSABLE_parcmetre_11",
    "type": "parcmetre",
    "pos": [
-    64.53,
+    97.52,
     0.15,
     106.4
    ],
-   "yaw": 3.124,
+   "yaw": 3.128,
    "pv": 50,
    "points": 30,
    "butin": {
@@ -8177,11 +8189,11 @@
    "id": "CASSABLE_parcmetre_12",
    "type": "parcmetre",
    "pos": [
-    97.48,
+    48.02,
     0.15,
-    106.4
+    -79.16
    ],
-   "yaw": 3.154,
+   "yaw": 0.236,
    "pv": 50,
    "points": 30,
    "butin": {
@@ -8193,11 +8205,11 @@
    "id": "CASSABLE_parcmetre_13",
    "type": "parcmetre",
    "pos": [
-    73.55,
+    90.06,
     0.15,
-    -94.22
+    -97.86
    ],
-   "yaw": 3.337,
+   "yaw": 3.33,
    "pv": 50,
    "points": 30,
    "butin": {
@@ -8353,7 +8365,7 @@
    "id": "CASSABLE_bouquiniste_1",
    "type": "bouquiniste",
    "pos": [
-    -108.1,
+    -112.8,
     1.19,
     -121.59
    ],
@@ -8369,7 +8381,7 @@
    "id": "CASSABLE_bouquiniste_2",
    "type": "bouquiniste",
    "pos": [
-    -103.4,
+    -110.45,
     1.19,
     -121.59
    ],
@@ -8385,7 +8397,7 @@
    "id": "CASSABLE_bouquiniste_3",
    "type": "bouquiniste",
    "pos": [
-    -98.7,
+    -108.1,
     1.19,
     -121.59
    ],
@@ -8401,7 +8413,7 @@
    "id": "CASSABLE_bouquiniste_4",
    "type": "bouquiniste",
    "pos": [
-    -94,
+    -105.75,
     1.19,
     -121.59
    ],
@@ -8417,7 +8429,7 @@
    "id": "CASSABLE_bouquiniste_5",
    "type": "bouquiniste",
    "pos": [
-    -91.65,
+    -103.4,
     1.19,
     -121.59
    ],
@@ -8433,7 +8445,7 @@
    "id": "CASSABLE_bouquiniste_6",
    "type": "bouquiniste",
    "pos": [
-    -86.95,
+    -101.05,
     1.19,
     -121.59
    ],
@@ -8449,7 +8461,7 @@
    "id": "CASSABLE_bouquiniste_7",
    "type": "bouquiniste",
    "pos": [
-    -84.6,
+    -98.7,
     1.19,
     -121.59
    ],
@@ -8465,7 +8477,7 @@
    "id": "CASSABLE_bouquiniste_8",
    "type": "bouquiniste",
    "pos": [
-    -82.25,
+    -96.35,
     1.19,
     -121.59
    ],
@@ -8481,7 +8493,7 @@
    "id": "CASSABLE_bouquiniste_9",
    "type": "bouquiniste",
    "pos": [
-    -79.9,
+    -94,
     1.19,
     -121.59
    ],
@@ -8497,7 +8509,7 @@
    "id": "CASSABLE_bouquiniste_10",
    "type": "bouquiniste",
    "pos": [
-    -77.55,
+    -91.65,
     1.19,
     -121.59
    ],
@@ -8513,7 +8525,7 @@
    "id": "CASSABLE_bouquiniste_11",
    "type": "bouquiniste",
    "pos": [
-    -72.85,
+    -86.95,
     1.19,
     -121.59
    ],
@@ -8529,7 +8541,7 @@
    "id": "CASSABLE_bouquiniste_12",
    "type": "bouquiniste",
    "pos": [
-    -68.15,
+    -79.9,
     1.19,
     -121.59
    ],
@@ -8545,7 +8557,7 @@
    "id": "CASSABLE_bouquiniste_13",
    "type": "bouquiniste",
    "pos": [
-    -32.45,
+    -77.55,
     1.19,
     -121.59
    ],
@@ -8561,7 +8573,7 @@
    "id": "CASSABLE_bouquiniste_14",
    "type": "bouquiniste",
    "pos": [
-    -30.1,
+    -75.2,
     1.19,
     -121.59
    ],
@@ -8577,7 +8589,7 @@
    "id": "CASSABLE_bouquiniste_15",
    "type": "bouquiniste",
    "pos": [
-    -25.4,
+    -70.5,
     1.19,
     -121.59
    ],
@@ -8593,7 +8605,7 @@
    "id": "CASSABLE_bouquiniste_16",
    "type": "bouquiniste",
    "pos": [
-    -23.05,
+    -65.8,
     1.19,
     -121.59
    ],
@@ -8609,7 +8621,7 @@
    "id": "CASSABLE_bouquiniste_17",
    "type": "bouquiniste",
    "pos": [
-    -16,
+    -63.45,
     1.19,
     -121.59
    ],
@@ -8625,7 +8637,7 @@
    "id": "CASSABLE_bouquiniste_18",
    "type": "bouquiniste",
    "pos": [
-    17.55,
+    -34.8,
     1.19,
     -121.59
    ],
@@ -8641,7 +8653,7 @@
    "id": "CASSABLE_bouquiniste_19",
    "type": "bouquiniste",
    "pos": [
-    19.9,
+    -32.45,
     1.19,
     -121.59
    ],
@@ -8657,7 +8669,7 @@
    "id": "CASSABLE_bouquiniste_20",
    "type": "bouquiniste",
    "pos": [
-    22.25,
+    -27.75,
     1.19,
     -121.59
    ],
@@ -8673,7 +8685,7 @@
    "id": "CASSABLE_bouquiniste_21",
    "type": "bouquiniste",
    "pos": [
-    24.6,
+    -23.05,
     1.19,
     -121.59
    ],
@@ -8689,7 +8701,7 @@
    "id": "CASSABLE_bouquiniste_22",
    "type": "bouquiniste",
    "pos": [
-    26.95,
+    -20.7,
     1.19,
     -121.59
    ],
@@ -8705,7 +8717,7 @@
    "id": "CASSABLE_bouquiniste_23",
    "type": "bouquiniste",
    "pos": [
-    29.3,
+    -18.35,
     1.19,
     -121.59
    ],
@@ -8721,7 +8733,7 @@
    "id": "CASSABLE_bouquiniste_24",
    "type": "bouquiniste",
    "pos": [
-    34,
+    -16,
     1.19,
     -121.59
    ],
@@ -8737,7 +8749,7 @@
    "id": "CASSABLE_bouquiniste_25",
    "type": "bouquiniste",
    "pos": [
-    63.2,
+    15.2,
     1.19,
     -121.59
    ],
@@ -8753,7 +8765,7 @@
    "id": "CASSABLE_bouquiniste_26",
    "type": "bouquiniste",
    "pos": [
-    65.55,
+    19.9,
     1.19,
     -121.59
    ],
@@ -8769,7 +8781,7 @@
    "id": "CASSABLE_bouquiniste_27",
    "type": "bouquiniste",
    "pos": [
-    67.9,
+    22.25,
     1.19,
     -121.59
    ],
@@ -8785,7 +8797,7 @@
    "id": "CASSABLE_bouquiniste_28",
    "type": "bouquiniste",
    "pos": [
-    72.6,
+    24.6,
     1.19,
     -121.59
    ],
@@ -8801,7 +8813,7 @@
    "id": "CASSABLE_bouquiniste_29",
    "type": "bouquiniste",
    "pos": [
-    74.95,
+    26.95,
     1.19,
     -121.59
    ],
@@ -8817,7 +8829,7 @@
    "id": "CASSABLE_bouquiniste_30",
    "type": "bouquiniste",
    "pos": [
-    77.3,
+    29.3,
     1.19,
     -121.59
    ],
@@ -8833,7 +8845,7 @@
    "id": "CASSABLE_bouquiniste_31",
    "type": "bouquiniste",
    "pos": [
-    79.65,
+    31.65,
     1.19,
     -121.59
    ],
@@ -8849,7 +8861,7 @@
    "id": "CASSABLE_bouquiniste_32",
    "type": "bouquiniste",
    "pos": [
-    82,
+    34,
     1.19,
     -121.59
    ],
@@ -8865,7 +8877,7 @@
    "id": "CASSABLE_bouquiniste_33",
    "type": "bouquiniste",
    "pos": [
-    84.35,
+    65.55,
     1.19,
     -121.59
    ],
@@ -8881,7 +8893,7 @@
    "id": "CASSABLE_bouquiniste_34",
    "type": "bouquiniste",
    "pos": [
-    86.7,
+    67.9,
     1.19,
     -121.59
    ],
@@ -8897,7 +8909,7 @@
    "id": "CASSABLE_bouquiniste_35",
    "type": "bouquiniste",
    "pos": [
-    91.4,
+    70.25,
     1.19,
     -121.59
    ],
@@ -8913,7 +8925,7 @@
    "id": "CASSABLE_bouquiniste_36",
    "type": "bouquiniste",
    "pos": [
-    93.75,
+    74.95,
     1.19,
     -121.59
    ],
@@ -8929,7 +8941,7 @@
    "id": "CASSABLE_bouquiniste_37",
    "type": "bouquiniste",
    "pos": [
-    96.1,
+    77.3,
     1.19,
     -121.59
    ],
@@ -8945,7 +8957,7 @@
    "id": "CASSABLE_bouquiniste_38",
    "type": "bouquiniste",
    "pos": [
-    100.8,
+    79.65,
     1.19,
     -121.59
    ],
@@ -8961,7 +8973,7 @@
    "id": "CASSABLE_bouquiniste_39",
    "type": "bouquiniste",
    "pos": [
-    103.15,
+    82,
     1.19,
     -121.59
    ],
@@ -8977,7 +8989,7 @@
    "id": "CASSABLE_bouquiniste_40",
    "type": "bouquiniste",
    "pos": [
-    105.5,
+    84.35,
     1.19,
     -121.59
    ],
@@ -8993,7 +9005,7 @@
    "id": "CASSABLE_bouquiniste_41",
    "type": "bouquiniste",
    "pos": [
-    107.85,
+    86.7,
     1.19,
     -121.59
    ],
@@ -9009,7 +9021,103 @@
    "id": "CASSABLE_bouquiniste_42",
    "type": "bouquiniste",
    "pos": [
-    110.2,
+    89.05,
+    1.19,
+    -121.59
+   ],
+   "yaw": 0,
+   "pv": 60,
+   "points": 30,
+   "butin": {
+    "type": "livre_ancien",
+    "valeur": 300
+   }
+  },
+  {
+   "id": "CASSABLE_bouquiniste_43",
+   "type": "bouquiniste",
+   "pos": [
+    91.4,
+    1.19,
+    -121.59
+   ],
+   "yaw": 0,
+   "pv": 60,
+   "points": 30,
+   "butin": {
+    "type": "livre_ancien",
+    "valeur": 300
+   }
+  },
+  {
+   "id": "CASSABLE_bouquiniste_44",
+   "type": "bouquiniste",
+   "pos": [
+    93.75,
+    1.19,
+    -121.59
+   ],
+   "yaw": 0,
+   "pv": 60,
+   "points": 30,
+   "butin": {
+    "type": "livre_ancien",
+    "valeur": 300
+   }
+  },
+  {
+   "id": "CASSABLE_bouquiniste_45",
+   "type": "bouquiniste",
+   "pos": [
+    96.1,
+    1.19,
+    -121.59
+   ],
+   "yaw": 0,
+   "pv": 60,
+   "points": 30,
+   "butin": {
+    "type": "livre_ancien",
+    "valeur": 300
+   }
+  },
+  {
+   "id": "CASSABLE_bouquiniste_46",
+   "type": "bouquiniste",
+   "pos": [
+    98.45,
+    1.19,
+    -121.59
+   ],
+   "yaw": 0,
+   "pv": 60,
+   "points": 30,
+   "butin": {
+    "type": "livre_ancien",
+    "valeur": 300
+   }
+  },
+  {
+   "id": "CASSABLE_bouquiniste_47",
+   "type": "bouquiniste",
+   "pos": [
+    103.15,
+    1.19,
+    -121.59
+   ],
+   "yaw": 0,
+   "pv": 60,
+   "points": 30,
+   "butin": {
+    "type": "livre_ancien",
+    "valeur": 300
+   }
+  },
+  {
+   "id": "CASSABLE_bouquiniste_48",
+   "type": "bouquiniste",
+   "pos": [
+    112.55,
     1.19,
     -121.59
    ],
@@ -9054,7 +9162,7 @@
    }
   },
   {
-   "id": "CASSABLE_poubelle_14",
+   "id": "CASSABLE_poubelle_12",
    "type": "poubelle",
    "pos": [
     -91,
@@ -9066,7 +9174,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_poubelle_15",
+   "id": "CASSABLE_poubelle_13",
    "type": "poubelle",
    "pos": [
     -74,
@@ -9110,7 +9218,7 @@
    }
   },
   {
-   "id": "CASSABLE_poubelle_16",
+   "id": "CASSABLE_poubelle_14",
    "type": "poubelle",
    "pos": [
     74,
@@ -9122,7 +9230,7 @@
    "points": 10
   },
   {
-   "id": "CASSABLE_poubelle_17",
+   "id": "CASSABLE_poubelle_15",
    "type": "poubelle",
    "pos": [
     91,
@@ -9221,9 +9329,9 @@
    "id": "CASSABLE_barricade_1",
    "type": "barricade",
    "pos": [
-    101.99,
+    101.67,
     0,
-    -26.58
+    -26.4
    ],
    "yaw": 0.2,
    "pv": 150,
@@ -9233,9 +9341,9 @@
    "id": "CASSABLE_barricade_2",
    "type": "barricade",
    "pos": [
-    103.2,
+    103.21,
     0,
-    29.44
+    29.46
    ],
    "yaw": -0.15,
    "pv": 150,
@@ -9308,7 +9416,7 @@
    "x": -94.72,
    "z": -36.09,
    "y": 0,
-   "yaw": -1.5426,
+   "yaw": -1.5388,
    "gabarit": "voiture",
    "rue": "boulevard"
   },
@@ -9317,7 +9425,7 @@
    "x": -83.72,
    "z": -36.54,
    "y": 0,
-   "yaw": -1.5027,
+   "yaw": -1.5264,
    "gabarit": "utilitaire",
    "rue": "boulevard"
   },
@@ -9326,7 +9434,7 @@
    "x": -56.78,
    "z": -51.35,
    "y": 0,
-   "yaw": 1.6232,
+   "yaw": 1.6187,
    "gabarit": "voiture",
    "rue": "boulevard"
   },
@@ -9335,7 +9443,7 @@
    "x": -56.22,
    "z": -37.66,
    "y": 0,
-   "yaw": -1.5182,
+   "yaw": -1.5095,
    "gabarit": "voiture",
    "rue": "boulevard"
   },
@@ -9344,7 +9452,7 @@
    "x": -39.72,
    "z": -38.34,
    "y": 0,
-   "yaw": -1.5298,
+   "yaw": -1.5193,
    "gabarit": "voiture",
    "rue": "boulevard"
   },
@@ -9353,7 +9461,7 @@
    "x": -29.28,
    "z": -52.48,
    "y": 0,
-   "yaw": 1.5883,
+   "yaw": 1.6211,
    "gabarit": "voiture",
    "rue": "boulevard"
   },
@@ -9362,7 +9470,7 @@
    "x": -28.72,
    "z": -38.79,
    "y": 0,
-   "yaw": -1.5599,
+   "yaw": -1.5498,
    "gabarit": "voiture",
    "rue": "boulevard"
   },
@@ -9371,7 +9479,7 @@
    "x": 31.98,
    "z": -49.23,
    "y": 0,
-   "yaw": 1.4749,
+   "yaw": 1.5097,
    "gabarit": "voiture",
    "rue": "boulevard"
   },
@@ -9380,273 +9488,264 @@
    "x": 31.02,
    "z": -35.56,
    "y": 0,
-   "yaw": -1.6354,
+   "yaw": -1.6647,
    "gabarit": "voiture",
    "rue": "boulevard"
   },
   {
    "id": "P10",
-   "x": 42.98,
-   "z": -48.46,
+   "x": 42.02,
+   "z": -34.79,
    "y": 0,
-   "yaw": 1.4866,
+   "yaw": -1.612,
    "gabarit": "voiture",
    "rue": "boulevard"
   },
   {
    "id": "P11",
-   "x": 42.02,
-   "z": -34.79,
+   "x": 69.52,
+   "z": -32.87,
    "y": 0,
-   "yaw": -1.6176,
+   "yaw": -1.6206,
    "gabarit": "voiture",
    "rue": "boulevard"
   },
   {
    "id": "P12",
-   "x": 70.48,
-   "z": -46.53,
+   "x": 86.02,
+   "z": -31.71,
    "y": 0,
-   "yaw": 1.4784,
+   "yaw": -1.6672,
    "gabarit": "voiture",
    "rue": "boulevard"
   },
   {
    "id": "P13",
-   "x": 69.52,
-   "z": -32.87,
+   "x": -34.65,
+   "z": 45.51,
    "y": 0,
-   "yaw": -1.6511,
+   "yaw": 1.6694,
    "gabarit": "voiture",
-   "rue": "boulevard"
+   "rue": "rueSud"
   },
   {
    "id": "P14",
-   "x": 86.98,
-   "z": -45.38,
+   "x": -29.15,
+   "z": 45.12,
    "y": 0,
-   "yaw": 1.4798,
+   "yaw": 1.6297,
    "gabarit": "voiture",
-   "rue": "boulevard"
+   "rue": "rueSud"
   },
   {
    "id": "P15",
-   "x": 86.02,
-   "z": -31.71,
+   "x": -23.65,
+   "z": 44.73,
    "y": 0,
-   "yaw": -1.6489,
+   "yaw": 1.6311,
    "gabarit": "voiture",
-   "rue": "boulevard"
+   "rue": "rueSud"
   },
   {
    "id": "P16",
-   "x": -105.97,
-   "z": 44.8,
+   "x": -12.65,
+   "z": 43.94,
    "y": 0,
-   "yaw": 1.5723,
+   "yaw": 1.6482,
    "gabarit": "voiture",
    "rue": "rueSud"
   },
   {
    "id": "P17",
-   "x": -34.65,
-   "z": 45.51,
+   "x": 14.85,
+   "z": 41.98,
    "y": 0,
-   "yaw": 1.6241,
+   "yaw": 1.6632,
    "gabarit": "voiture",
    "rue": "rueSud"
   },
   {
    "id": "P18",
-   "x": -23.65,
-   "z": 44.73,
+   "x": 20.35,
+   "z": 41.58,
    "y": 0,
-   "yaw": 1.6229,
+   "yaw": 1.6299,
    "gabarit": "voiture",
    "rue": "rueSud"
   },
   {
    "id": "P19",
-   "x": -12.65,
-   "z": 43.94,
+   "x": 37.09,
+   "z": 41.22,
    "y": 0,
-   "yaw": 1.6332,
+   "yaw": 1.5248,
    "gabarit": "utilitaire",
    "rue": "rueSud"
   },
   {
    "id": "P20",
-   "x": 14.85,
-   "z": 41.98,
+   "x": 53.59,
+   "z": 41.96,
    "y": 0,
-   "yaw": 1.6564,
-   "gabarit": "voiture",
+   "yaw": 1.4985,
+   "gabarit": "utilitaire",
    "rue": "rueSud"
   },
   {
    "id": "P21",
-   "x": 20.35,
-   "z": 41.58,
+   "x": 70.09,
+   "z": 42.7,
    "y": 0,
-   "yaw": 1.6457,
+   "yaw": 1.5361,
    "gabarit": "voiture",
    "rue": "rueSud"
   },
   {
    "id": "P22",
-   "x": 37.09,
-   "z": 41.22,
+   "x": 92.09,
+   "z": 43.69,
    "y": 0,
-   "yaw": 1.5087,
-   "gabarit": "voiture",
+   "yaw": 1.5138,
+   "gabarit": "utilitaire",
    "rue": "rueSud"
   },
   {
    "id": "P23",
-   "x": 53.59,
-   "z": 41.96,
+   "x": 103.09,
+   "z": 44.19,
    "y": 0,
-   "yaw": 1.5033,
+   "yaw": 1.5187,
    "gabarit": "voiture",
    "rue": "rueSud"
   },
   {
    "id": "P24",
-   "x": 70.09,
-   "z": 42.7,
+   "x": 37,
+   "z": 108.15,
    "y": 0,
-   "yaw": 1.5153,
+   "yaw": 1.5414,
    "gabarit": "voiture",
-   "rue": "rueSud"
+   "rue": "rueSud2"
   },
   {
    "id": "P25",
-   "x": 75.59,
-   "z": 42.95,
+   "x": 53.5,
+   "z": 108.15,
    "y": 0,
-   "yaw": 1.518,
+   "yaw": 1.5491,
    "gabarit": "voiture",
-   "rue": "rueSud"
+   "rue": "rueSud2"
   },
   {
    "id": "P26",
-   "x": 97.59,
-   "z": 43.94,
+   "x": 59,
+   "z": 108.15,
    "y": 0,
-   "yaw": 1.553,
+   "yaw": 1.56,
    "gabarit": "voiture",
-   "rue": "rueSud"
+   "rue": "rueSud2"
   },
   {
    "id": "P27",
-   "x": -40,
+   "x": 64.5,
    "z": 108.15,
    "y": 0,
-   "yaw": 1.5529,
+   "yaw": 1.6004,
    "gabarit": "voiture",
    "rue": "rueSud2"
   },
   {
    "id": "P28",
-   "x": 37,
+   "x": 75.5,
    "z": 108.15,
    "y": 0,
-   "yaw": 1.5737,
+   "yaw": 1.5786,
    "gabarit": "voiture",
    "rue": "rueSud2"
   },
   {
    "id": "P29",
-   "x": 53.5,
+   "x": 81,
    "z": 108.15,
    "y": 0,
-   "yaw": 1.598,
-   "gabarit": "voiture",
+   "yaw": 1.5634,
+   "gabarit": "utilitaire",
    "rue": "rueSud2"
   },
   {
    "id": "P30",
-   "x": 59,
+   "x": 92,
    "z": 108.15,
    "y": 0,
-   "yaw": 1.5548,
+   "yaw": 1.5442,
    "gabarit": "utilitaire",
    "rue": "rueSud2"
   },
   {
    "id": "P31",
-   "x": 64.5,
+   "x": 97.5,
    "z": 108.15,
    "y": 0,
-   "yaw": 1.553,
-   "gabarit": "voiture",
+   "yaw": 1.5568,
+   "gabarit": "utilitaire",
    "rue": "rueSud2"
   },
   {
    "id": "P32",
-   "x": 75.5,
-   "z": 108.15,
+   "x": -54.48,
+   "z": -80.65,
    "y": 0,
-   "yaw": 1.5624,
+   "yaw": 1.5545,
    "gabarit": "voiture",
-   "rue": "rueSud2"
+   "rue": "stHonore"
   },
   {
    "id": "P33",
-   "x": 92,
-   "z": 108.15,
+   "x": 46.39,
+   "z": -86.42,
    "y": 0,
-   "yaw": 1.5561,
+   "yaw": 1.8173,
    "gabarit": "voiture",
-   "rue": "rueSud2"
+   "rue": "opera"
   },
   {
    "id": "P34",
-   "x": 97.5,
-   "z": 108.15,
+   "x": 47.61,
+   "z": -80.86,
    "y": 0,
-   "yaw": 1.583,
+   "yaw": -1.3345,
    "gabarit": "voiture",
-   "rue": "rueSud2"
+   "rue": "opera"
   },
   {
    "id": "P35",
-   "x": -43.48,
-   "z": -80.34,
+   "x": 84.89,
+   "z": -94.93,
    "y": 0,
-   "yaw": 1.534,
+   "yaw": 1.7902,
    "gabarit": "voiture",
-   "rue": "stHonore"
+   "rue": "opera"
   },
   {
    "id": "P36",
-   "x": -37.98,
-   "z": -80.18,
+   "x": 86.11,
+   "z": -89.36,
    "y": 0,
-   "yaw": 1.5581,
+   "yaw": -1.3376,
    "gabarit": "voiture",
-   "rue": "stHonore"
+   "rue": "opera"
   },
   {
    "id": "P37",
-   "x": 73.89,
-   "z": -92.5,
+   "x": 90.39,
+   "z": -96.14,
    "y": 0,
-   "yaw": 1.7661,
+   "yaw": 1.7588,
    "gabarit": "voiture",
    "rue": "opera"
   },
   {
    "id": "P38",
-   "x": 75.11,
-   "z": -86.93,
-   "y": 0,
-   "yaw": -1.36,
-   "gabarit": "voiture",
-   "rue": "opera"
-  },
-  {
-   "id": "P39",
    "x": -64.5,
    "z": -22,
    "y": 0,
@@ -9654,7 +9753,7 @@
    "gabarit": "utilitaire"
   },
   {
-   "id": "P40",
+   "id": "P39",
    "x": -61,
    "z": 30,
    "y": 0,
@@ -9662,7 +9761,7 @@
    "gabarit": "voiture"
   },
   {
-   "id": "P41",
+   "id": "P40",
    "x": 63,
    "z": -24,
    "y": 0,
@@ -9670,7 +9769,7 @@
    "gabarit": "utilitaire"
   },
   {
-   "id": "P42",
+   "id": "P41",
    "x": 63,
    "z": 28,
    "y": 0,
@@ -9678,7 +9777,7 @@
    "gabarit": "voiture"
   },
   {
-   "id": "P43",
+   "id": "P42",
    "x": -104,
    "z": -18,
    "y": 0,
@@ -9686,7 +9785,7 @@
    "gabarit": "voiture"
   },
   {
-   "id": "P44",
+   "id": "P43",
    "x": 104,
    "z": 22,
    "y": 0,
@@ -9694,7 +9793,7 @@
    "gabarit": "utilitaire"
   },
   {
-   "id": "P45",
+   "id": "P44",
    "x": -106,
    "z": -30,
    "y": 0,
@@ -9704,7 +9803,7 @@
    "role": "base"
   },
   {
-   "id": "P46",
+   "id": "P45",
    "x": -104.5,
    "z": 30,
    "y": 0,
@@ -9714,7 +9813,7 @@
    "role": "base"
   },
   {
-   "id": "P47",
+   "id": "P46",
    "x": 102,
    "z": -26,
    "y": 0,
@@ -9725,7 +9824,7 @@
    "renversee": true
   },
   {
-   "id": "P48",
+   "id": "P47",
    "x": 103,
    "z": 30,
    "y": 0,
@@ -17064,7 +17163,7 @@
    "hz": 0.9,
    "yaw": 0.735,
    "y0": 0,
-   "h": 9.97,
+   "h": 9.6,
    "tag": "arbre"
   },
   {
@@ -17073,9 +17172,9 @@
    "z": -32.681,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.11,
+   "yaw": 0.342,
    "y0": 0,
-   "h": 9.67,
+   "h": 9.83,
    "tag": "arbre"
   },
   {
@@ -17084,9 +17183,9 @@
    "z": -33.417,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.23,
+   "yaw": 5.684,
    "y0": 0,
-   "h": 9.54,
+   "h": 9.87,
    "tag": "arbre"
   },
   {
@@ -17095,9 +17194,9 @@
    "z": -33.785,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.28,
+   "yaw": 1.232,
    "y0": 0,
-   "h": 10.35,
+   "h": 9.72,
    "tag": "arbre"
   },
   {
@@ -17106,9 +17205,9 @@
    "z": -34.153,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.938,
+   "yaw": 1.937,
    "y0": 0,
-   "h": 9.29,
+   "h": 10.06,
    "tag": "arbre"
   },
   {
@@ -17117,9 +17216,9 @@
    "z": -34.521,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.074,
+   "yaw": 3.2,
    "y0": 0,
-   "h": 9.69,
+   "h": 10.4,
    "tag": "arbre"
   },
   {
@@ -17128,9 +17227,9 @@
    "z": -54.042,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.156,
+   "yaw": 4.696,
    "y0": 0,
-   "h": 10.81,
+   "h": 9.75,
    "tag": "arbre"
   },
   {
@@ -17139,9 +17238,9 @@
    "z": -35.258,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.007,
+   "yaw": 4.386,
    "y0": 0,
-   "h": 9.54,
+   "h": 9.66,
    "tag": "arbre"
   },
   {
@@ -17150,9 +17249,9 @@
    "z": -54.41,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.382,
+   "yaw": 2.457,
    "y0": 0,
-   "h": 9.35,
+   "h": 9.59,
    "tag": "arbre"
   },
   {
@@ -17161,9 +17260,9 @@
    "z": -35.626,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.377,
+   "yaw": 4.037,
    "y0": 0,
-   "h": 9.51,
+   "h": 10.07,
    "tag": "arbre"
   },
   {
@@ -17172,9 +17271,9 @@
    "z": -54.779,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.151,
+   "yaw": 0.67,
    "y0": 0,
-   "h": 9.94,
+   "h": 9.45,
    "tag": "arbre"
   },
   {
@@ -17183,9 +17282,9 @@
    "z": -35.994,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.201,
+   "yaw": 3.399,
    "y0": 0,
-   "h": 9.27,
+   "h": 9.94,
    "tag": "arbre"
   },
   {
@@ -17194,9 +17293,9 @@
    "z": -55.147,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.767,
+   "yaw": 3.827,
    "y0": 0,
-   "h": 10.19,
+   "h": 9.25,
    "tag": "arbre"
   },
   {
@@ -17205,9 +17304,9 @@
    "z": -36.362,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.082,
+   "yaw": 4.165,
    "y0": 0,
-   "h": 9.15,
+   "h": 9.73,
    "tag": "arbre"
   },
   {
@@ -17216,9 +17315,9 @@
    "z": -55.167,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.573,
+   "yaw": 1.617,
    "y0": 0,
-   "h": 10.03,
+   "h": 10.18,
    "tag": "arbre"
   },
   {
@@ -17227,9 +17326,9 @@
    "z": -36.413,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.607,
+   "yaw": 2.792,
    "y0": 0,
-   "h": 9.85,
+   "h": 9.92,
    "tag": "arbre"
   },
   {
@@ -17238,9 +17337,9 @@
    "z": -52.647,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.666,
+   "yaw": 1.379,
    "y0": 0,
-   "h": 9.1,
+   "h": 9.19,
    "tag": "arbre"
   },
   {
@@ -17249,9 +17348,9 @@
    "z": -33.893,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.754,
+   "yaw": 5.132,
    "y0": 0,
-   "h": 9.76,
+   "h": 9.94,
    "tag": "arbre"
   },
   {
@@ -17260,9 +17359,9 @@
    "z": -52.017,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.614,
+   "yaw": 4.096,
    "y0": 0,
-   "h": 10.11,
+   "h": 9.23,
    "tag": "arbre"
   },
   {
@@ -17271,9 +17370,9 @@
    "z": -33.263,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.41,
+   "yaw": 4.969,
    "y0": 0,
-   "h": 9.63,
+   "h": 10.23,
    "tag": "arbre"
   },
   {
@@ -17282,9 +17381,9 @@
    "z": -51.387,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.699,
+   "yaw": 4.182,
    "y0": 0,
-   "h": 9.99,
+   "h": 9.88,
    "tag": "arbre"
   },
   {
@@ -17293,9 +17392,9 @@
    "z": -32.633,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.907,
+   "yaw": 1.785,
    "y0": 0,
-   "h": 9.5,
+   "h": 9.7,
    "tag": "arbre"
   },
   {
@@ -17304,9 +17403,9 @@
    "z": -50.757,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.38,
+   "yaw": 0.072,
    "y0": 0,
-   "h": 10.28,
+   "h": 9.64,
    "tag": "arbre"
   },
   {
@@ -17315,9 +17414,9 @@
    "z": -32.003,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.816,
+   "yaw": 4.271,
    "y0": 0,
-   "h": 10.21,
+   "h": 10.13,
    "tag": "arbre"
   },
   {
@@ -17326,9 +17425,9 @@
    "z": -50.127,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.322,
+   "yaw": 1.214,
    "y0": 0,
-   "h": 9.34,
+   "h": 9.48,
    "tag": "arbre"
   },
   {
@@ -17337,9 +17436,9 @@
    "z": -31.373,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.786,
+   "yaw": 0.587,
    "y0": 0,
-   "h": 9.73,
+   "h": 9.99,
    "tag": "arbre"
   },
   {
@@ -17348,9 +17447,9 @@
    "z": -48.867,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.581,
+   "yaw": 3.752,
    "y0": 0,
-   "h": 10.16,
+   "h": 10.21,
    "tag": "arbre"
   },
   {
@@ -17359,9 +17458,9 @@
    "z": -30.113,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.133,
+   "yaw": 4.009,
    "y0": 0,
-   "h": 10.06,
+   "h": 9.92,
    "tag": "arbre"
   },
   {
@@ -17370,9 +17469,9 @@
    "z": -48.237,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.529,
+   "yaw": 2.881,
    "y0": 0,
-   "h": 9.85,
+   "h": 10.29,
    "tag": "arbre"
   },
   {
@@ -17381,9 +17480,9 @@
    "z": -29.483,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.228,
+   "yaw": 5.644,
    "y0": 0,
-   "h": 10.1,
+   "h": 9.25,
    "tag": "arbre"
   },
   {
@@ -17392,9 +17491,9 @@
    "z": -47.607,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.38,
+   "yaw": 1.065,
    "y0": 0,
-   "h": 9.64,
+   "h": 8.8,
    "tag": "arbre"
   },
   {
@@ -17403,9 +17502,9 @@
    "z": -28.853,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.587,
+   "yaw": 4.46,
    "y0": 0,
-   "h": 9.88,
+   "h": 10.03,
    "tag": "arbre"
   },
   {
@@ -17414,9 +17513,9 @@
    "z": -46.977,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.281,
+   "yaw": 2.943,
    "y0": 0,
-   "h": 9.84,
+   "h": 9.86,
    "tag": "arbre"
   },
   {
@@ -17425,9 +17524,9 @@
    "z": -28.223,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.212,
+   "yaw": 2.392,
    "y0": 0,
-   "h": 9.64,
+   "h": 8.65,
    "tag": "arbre"
   },
   {
@@ -17436,9 +17535,9 @@
    "z": -46.347,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.622,
+   "yaw": 4.387,
    "y0": 0,
-   "h": 10.35,
+   "h": 10.04,
    "tag": "arbre"
   },
   {
@@ -17447,9 +17546,9 @@
    "z": -27.593,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.341,
+   "yaw": 0.74,
    "y0": 0,
-   "h": 10.32,
+   "h": 9.18,
    "tag": "arbre"
   },
   {
@@ -17458,9 +17557,9 @@
    "z": -86.261,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.763,
+   "yaw": 2.652,
    "y0": 0,
-   "h": 10.08,
+   "h": 9.99,
    "tag": "arbre"
   },
   {
@@ -17469,9 +17568,9 @@
    "z": -75.716,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.921,
+   "yaw": 5.075,
    "y0": 0,
-   "h": 9.81,
+   "h": 9.35,
    "tag": "arbre"
   },
   {
@@ -17480,9 +17579,9 @@
    "z": -88.25,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.063,
+   "yaw": 3.666,
    "y0": 0,
-   "h": 10.15,
+   "h": 9.63,
    "tag": "arbre"
   },
   {
@@ -17491,9 +17590,9 @@
    "z": -77.704,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.243,
+   "yaw": 3.418,
    "y0": 0,
-   "h": 10.16,
+   "h": 9.79,
    "tag": "arbre"
   },
   {
@@ -17502,9 +17601,9 @@
    "z": -90.238,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.67,
+   "yaw": 0.036,
    "y0": 0,
-   "h": 9.58,
+   "h": 9.8,
    "tag": "arbre"
   },
   {
@@ -17513,9 +17612,9 @@
    "z": -79.692,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.365,
+   "yaw": 0.209,
    "y0": 0,
-   "h": 9.19,
+   "h": 10.04,
    "tag": "arbre"
   },
   {
@@ -17524,9 +17623,9 @@
    "z": -94.215,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.508,
+   "yaw": 4.872,
    "y0": 0,
-   "h": 10.47,
+   "h": 10.37,
    "tag": "arbre"
   },
   {
@@ -17535,9 +17634,9 @@
    "z": -83.669,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.195,
+   "yaw": 1.317,
    "y0": 0,
-   "h": 9.8,
+   "h": 9.9,
    "tag": "arbre"
   },
   {
@@ -17546,9 +17645,9 @@
    "z": -96.203,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.093,
+   "yaw": 3.319,
    "y0": 0,
-   "h": 9.79,
+   "h": 10.38,
    "tag": "arbre"
   },
   {
@@ -17557,9 +17656,9 @@
    "z": -85.657,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.053,
+   "yaw": 2.405,
    "y0": 0,
-   "h": 10.25,
+   "h": 10.36,
    "tag": "arbre"
   },
   {
@@ -17568,9 +17667,9 @@
    "z": -87.646,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.688,
+   "yaw": 1.067,
    "y0": 0,
-   "h": 10.21,
+   "h": 10.28,
    "tag": "arbre"
   },
   {
@@ -17579,9 +17678,9 @@
    "z": -89.634,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.399,
+   "yaw": 0.628,
    "y0": 0,
-   "h": 10.02,
+   "h": 10.17,
    "tag": "arbre"
   },
   {
@@ -19206,10 +19305,10 @@
   },
   {
    "type": "box",
-   "x": -12.857,
-   "z": 114.6,
-   "hx": 0.774,
-   "hz": 0.304,
+   "x": -12.996,
+   "z": 114.607,
+   "hx": 0.8,
+   "hz": 0.315,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19218,10 +19317,10 @@
   },
   {
    "type": "box",
-   "x": -14.636,
-   "z": 114.625,
-   "hx": 0.79,
-   "hz": 0.329,
+   "x": -14.59,
+   "z": 114.601,
+   "hx": 0.779,
+   "hz": 0.305,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19230,10 +19329,10 @@
   },
   {
    "type": "box",
-   "x": -7.293,
-   "z": 117.96,
+   "x": -7.219,
+   "z": 117.999,
    "hx": 0.798,
-   "hz": 0.328,
+   "hz": 0.327,
    "yaw": 2.356,
    "y0": 0.15,
    "h": 0.94,
@@ -19242,10 +19341,10 @@
   },
   {
    "type": "box",
-   "x": -8.995,
-   "z": 116.226,
-   "hx": 0.795,
-   "hz": 0.304,
+   "x": -8.953,
+   "z": 116.277,
+   "hx": 0.798,
+   "hz": 0.311,
    "yaw": 2.356,
    "y0": 0.15,
    "h": 0.94,
@@ -19254,10 +19353,10 @@
   },
   {
    "type": "box",
-   "x": 68.789,
-   "z": 114.6,
-   "hx": 0.793,
-   "hz": 0.304,
+   "x": 68.909,
+   "z": 114.586,
+   "hx": 0.778,
+   "hz": 0.318,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19266,10 +19365,10 @@
   },
   {
    "type": "box",
-   "x": 67.251,
-   "z": 114.62,
-   "hx": 0.802,
-   "hz": 0.324,
+   "x": 67.11,
+   "z": 114.61,
+   "hx": 0.784,
+   "hz": 0.314,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19279,8 +19378,8 @@
   {
    "type": "box",
    "x": -110.6,
-   "z": 66.909,
-   "hx": 0.807,
+   "z": 66.842,
+   "hx": 0.781,
    "hz": 0.304,
    "yaw": 1.571,
    "y0": 0.15,
@@ -19290,10 +19389,10 @@
   },
   {
    "type": "box",
-   "x": -110.584,
-   "z": 65.146,
-   "hx": 0.781,
-   "hz": 0.321,
+   "x": -110.6,
+   "z": 65.292,
+   "hx": 0.793,
+   "hz": 0.304,
    "yaw": 1.571,
    "y0": 0.15,
    "h": 0.94,
@@ -19302,10 +19401,10 @@
   },
   {
    "type": "box",
-   "x": 122.618,
-   "z": -6.886,
-   "hx": 0.799,
-   "hz": 0.322,
+   "x": 122.6,
+   "z": -6.902,
+   "hx": 0.805,
+   "hz": 0.304,
    "yaw": -1.571,
    "y0": 0.15,
    "h": 0.94,
@@ -19314,10 +19413,10 @@
   },
   {
    "type": "box",
-   "x": 122.626,
-   "z": -5.27,
-   "hx": 0.784,
-   "hz": 0.33,
+   "x": 122.6,
+   "z": -5.25,
+   "hx": 0.774,
+   "hz": 0.304,
    "yaw": -1.571,
    "y0": 0.15,
    "h": 0.94,
@@ -19326,10 +19425,10 @@
   },
   {
    "type": "box",
-   "x": 110.6,
-   "z": -24.177,
-   "hx": 0.777,
-   "hz": 0.304,
+   "x": 110.613,
+   "z": -24.354,
+   "hx": 0.779,
+   "hz": 0.318,
    "yaw": -1.571,
    "y0": 0.15,
    "h": 0.94,
@@ -19338,10 +19437,10 @@
   },
   {
    "type": "box",
-   "x": 110.61,
-   "z": -22.533,
-   "hx": 0.774,
-   "hz": 0.314,
+   "x": 110.617,
+   "z": -22.395,
+   "hx": 0.788,
+   "hz": 0.321,
    "yaw": -1.571,
    "y0": 0.15,
    "h": 0.94,
@@ -19350,10 +19449,10 @@
   },
   {
    "type": "box",
-   "x": -21.921,
-   "z": -105.396,
-   "hx": 0.8,
-   "hz": 0.362,
+   "x": -21.965,
+   "z": -105.383,
+   "hx": 0.791,
+   "hz": 0.321,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19362,10 +19461,10 @@
   },
   {
    "type": "box",
-   "x": -23.663,
-   "z": -105.4,
-   "hx": 0.787,
-   "hz": 0.304,
+   "x": -23.759,
+   "z": -105.386,
+   "hx": 0.789,
+   "hz": 0.318,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19374,10 +19473,10 @@
   },
   {
    "type": "box",
-   "x": -53.076,
-   "z": -105.364,
-   "hx": 0.796,
-   "hz": 0.34,
+   "x": -53.093,
+   "z": -105.4,
+   "hx": 0.782,
+   "hz": 0.304,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19386,10 +19485,10 @@
   },
   {
    "type": "box",
-   "x": -54.667,
-   "z": -105.368,
-   "hx": 0.811,
-   "hz": 0.337,
+   "x": -54.699,
+   "z": -105.415,
+   "hx": 0.787,
+   "hz": 0.319,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19398,10 +19497,10 @@
   },
   {
    "type": "box",
-   "x": -56.328,
-   "z": -105.4,
-   "hx": 0.78,
-   "hz": 0.304,
+   "x": -56.257,
+   "z": -105.398,
+   "hx": 0.765,
+   "hz": 0.306,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19410,10 +19509,10 @@
   },
   {
    "type": "box",
-   "x": -57.895,
-   "z": -105.419,
-   "hx": 0.795,
-   "hz": 0.323,
+   "x": -57.884,
+   "z": -105.391,
+   "hx": 0.789,
+   "hz": 0.313,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19422,10 +19521,10 @@
   },
   {
    "type": "box",
-   "x": -68.63,
-   "z": -105.416,
-   "hx": 0.79,
-   "hz": 0.32,
+   "x": -68.566,
+   "z": -105.4,
+   "hx": 0.769,
+   "hz": 0.304,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19434,10 +19533,10 @@
   },
   {
    "type": "box",
-   "x": -70.287,
-   "z": -105.427,
-   "hx": 0.805,
-   "hz": 0.331,
+   "x": -70.353,
+   "z": -105.4,
+   "hx": 0.784,
+   "hz": 0.304,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19446,9 +19545,9 @@
   },
   {
    "type": "box",
-   "x": -81.028,
+   "x": -80.988,
    "z": -105.4,
-   "hx": 0.783,
+   "hx": 0.801,
    "hz": 0.304,
    "yaw": 3.142,
    "y0": 0.15,
@@ -19458,10 +19557,10 @@
   },
   {
    "type": "box",
-   "x": -82.617,
-   "z": -105.4,
-   "hx": 0.786,
-   "hz": 0.304,
+   "x": -82.659,
+   "z": -105.418,
+   "hx": 0.778,
+   "hz": 0.322,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19470,11 +19569,11 @@
   },
   {
    "type": "box",
-   "x": -54.529,
-   "z": -83.407,
-   "hx": 0.79,
-   "hz": 0.326,
-   "yaw": -0.028,
+   "x": -27.721,
+   "z": -75.46,
+   "hx": 0.785,
+   "hz": 0.304,
+   "yaw": 3.107,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19482,11 +19581,11 @@
   },
   {
    "type": "box",
-   "x": -52.837,
-   "z": -83.364,
-   "hx": 0.808,
-   "hz": 0.323,
-   "yaw": -0.028,
+   "x": -29.578,
+   "z": -75.524,
+   "hx": 0.781,
+   "hz": 0.304,
+   "yaw": 3.107,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19494,11 +19593,11 @@
   },
   {
    "type": "box",
-   "x": -27.713,
-   "z": -75.446,
-   "hx": 0.773,
-   "hz": 0.318,
-   "yaw": 3.107,
+   "x": -24.606,
+   "z": -71.941,
+   "hx": 0.788,
+   "hz": 0.31,
+   "yaw": 1.571,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19506,11 +19605,11 @@
   },
   {
    "type": "box",
-   "x": -29.416,
-   "z": -75.52,
-   "hx": 0.773,
+   "x": -23.352,
+   "z": -71.995,
+   "hx": 0.786,
    "hz": 0.306,
-   "yaw": 3.107,
+   "yaw": 1.571,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19518,11 +19617,11 @@
   },
   {
    "type": "box",
-   "x": -24.6,
-   "z": -71.993,
-   "hx": 0.791,
-   "hz": 0.304,
-   "yaw": 1.571,
+   "x": 29.126,
+   "z": -74.134,
+   "hx": 0.765,
+   "hz": 0.311,
+   "yaw": -2.923,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19530,11 +19629,11 @@
   },
   {
    "type": "box",
-   "x": -23.36,
-   "z": -72.039,
-   "hx": 0.793,
-   "hz": 0.319,
-   "yaw": 1.571,
+   "x": 27.538,
+   "z": -73.775,
+   "hx": 0.761,
+   "hz": 0.304,
+   "yaw": -2.923,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19542,11 +19641,11 @@
   },
   {
    "type": "box",
-   "x": 29.203,
-   "z": -74.17,
-   "hx": 0.796,
-   "hz": 0.329,
-   "yaw": -2.923,
+   "x": 59.405,
+   "z": -71.225,
+   "hx": 0.779,
+   "hz": 0.309,
+   "yaw": 1.571,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19554,11 +19653,11 @@
   },
   {
    "type": "box",
-   "x": 27.397,
-   "z": -73.761,
-   "hx": 0.778,
-   "hz": 0.321,
-   "yaw": -2.923,
+   "x": 59.409,
+   "z": -73.057,
+   "hx": 0.784,
+   "hz": 0.313,
+   "yaw": 1.571,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19566,11 +19665,11 @@
   },
   {
    "type": "box",
-   "x": 59.378,
-   "z": -71.17,
-   "hx": 0.805,
-   "hz": 0.326,
-   "yaw": 1.571,
+   "x": 7.748,
+   "z": -53.653,
+   "hx": 0.792,
+   "hz": 0.306,
+   "yaw": -0.07,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19578,11 +19677,11 @@
   },
   {
    "type": "box",
-   "x": 59.4,
-   "z": -73.145,
-   "hx": 0.774,
-   "hz": 0.304,
-   "yaw": 1.571,
+   "x": 9.357,
+   "z": -53.546,
+   "hx": 0.789,
+   "hz": 0.309,
+   "yaw": -0.07,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19590,9 +19689,9 @@
   },
   {
    "type": "box",
-   "x": 7.709,
-   "z": -53.657,
-   "hx": 0.789,
+   "x": 50.28,
+   "z": -50.677,
+   "hx": 0.78,
    "hz": 0.304,
    "yaw": -0.07,
    "y0": 0.15,
@@ -19602,9 +19701,9 @@
   },
   {
    "type": "box",
-   "x": 9.201,
-   "z": -53.553,
-   "hx": 0.777,
+   "x": 52.016,
+   "z": -50.555,
+   "hx": 0.79,
    "hz": 0.304,
    "yaw": -0.07,
    "y0": 0.15,
@@ -19614,11 +19713,11 @@
   },
   {
    "type": "box",
-   "x": 50.209,
-   "z": -50.682,
-   "hx": 0.8,
-   "hz": 0.304,
-   "yaw": -0.07,
+   "x": 4.606,
+   "z": -59.866,
+   "hx": 0.797,
+   "hz": 0.311,
+   "yaw": -1.571,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19626,11 +19725,11 @@
   },
   {
    "type": "box",
-   "x": 51.881,
-   "z": -50.551,
-   "hx": 0.792,
-   "hz": 0.318,
-   "yaw": -0.07,
+   "x": 3.331,
+   "z": -59.992,
+   "hx": 0.801,
+   "hz": 0.324,
+   "yaw": -1.571,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19638,11 +19737,11 @@
   },
   {
    "type": "box",
-   "x": 4.6,
-   "z": -59.986,
-   "hx": 0.781,
-   "hz": 0.336,
-   "yaw": -1.571,
+   "x": 84.089,
+   "z": -48.335,
+   "hx": 0.791,
+   "hz": 0.329,
+   "yaw": -0.07,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19650,11 +19749,11 @@
   },
   {
    "type": "box",
-   "x": 3.342,
-   "z": -59.924,
-   "hx": 0.782,
-   "hz": 0.312,
-   "yaw": -1.571,
+   "x": 85.792,
+   "z": -48.191,
+   "hx": 0.773,
+   "hz": 0.304,
+   "yaw": -0.07,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19662,11 +19761,11 @@
   },
   {
    "type": "box",
-   "x": 96.199,
-   "z": -105.398,
-   "hx": 0.783,
-   "hz": 0.306,
-   "yaw": 3.142,
+   "x": 87.293,
+   "z": -48.086,
+   "hx": 0.787,
+   "hz": 0.304,
+   "yaw": -0.07,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19674,11 +19773,11 @@
   },
   {
    "type": "box",
-   "x": 94.594,
-   "z": -105.395,
-   "hx": 0.791,
-   "hz": 0.309,
-   "yaw": 3.142,
+   "x": 88.879,
+   "z": -47.975,
+   "hx": 0.792,
+   "hz": 0.304,
+   "yaw": -0.07,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19686,11 +19785,11 @@
   },
   {
    "type": "box",
-   "x": -84.869,
-   "z": -2.604,
-   "hx": 0.784,
-   "hz": 0.309,
-   "yaw": 0,
+   "x": 96.164,
+   "z": -105.4,
+   "hx": 0.771,
+   "hz": 0.304,
+   "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19698,11 +19797,11 @@
   },
   {
    "type": "box",
-   "x": -83.203,
-   "z": -2.591,
-   "hx": 0.812,
-   "hz": 0.341,
-   "yaw": 0,
+   "x": 94.615,
+   "z": -105.411,
+   "hx": 0.801,
+   "hz": 0.316,
+   "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19710,10 +19809,10 @@
   },
   {
    "type": "box",
-   "x": -84.893,
-   "z": -1.365,
-   "hx": 0.802,
-   "hz": 0.333,
+   "x": -84.85,
+   "z": -2.602,
+   "hx": 0.806,
+   "hz": 0.321,
    "yaw": 0,
    "y0": 0.15,
    "h": 0.94,
@@ -19722,10 +19821,10 @@
   },
   {
    "type": "box",
-   "x": -83.184,
-   "z": -1.35,
-   "hx": 0.786,
-   "hz": 0.304,
+   "x": -83.191,
+   "z": -2.624,
+   "hx": 0.804,
+   "hz": 0.328,
    "yaw": 0,
    "y0": 0.15,
    "h": 0.94,
@@ -19734,11 +19833,11 @@
   },
   {
    "type": "box",
-   "x": -71.804,
-   "z": 18.893,
-   "hx": 0.797,
-   "hz": 0.304,
-   "yaw": 1.671,
+   "x": -84.844,
+   "z": -1.337,
+   "hx": 0.802,
+   "hz": 0.317,
+   "yaw": 0,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19746,11 +19845,11 @@
   },
   {
    "type": "box",
-   "x": -71.987,
-   "z": 17.064,
-   "hx": 0.778,
-   "hz": 0.304,
-   "yaw": 1.671,
+   "x": -83.187,
+   "z": -1.332,
+   "hx": 0.808,
+   "hz": 0.322,
+   "yaw": 0,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19758,10 +19857,10 @@
   },
   {
    "type": "box",
-   "x": -70.575,
-   "z": 18.839,
-   "hx": 0.781,
-   "hz": 0.326,
+   "x": -71.802,
+   "z": 19.064,
+   "hx": 0.811,
+   "hz": 0.319,
    "yaw": 1.671,
    "y0": 0.15,
    "h": 0.94,
@@ -19770,10 +19869,10 @@
   },
   {
    "type": "box",
-   "x": -70.734,
-   "z": 17.056,
-   "hx": 0.788,
-   "hz": 0.308,
+   "x": -71.986,
+   "z": 17.013,
+   "hx": 0.795,
+   "hz": 0.349,
    "yaw": 1.671,
    "y0": 0.15,
    "h": 0.94,
@@ -19782,11 +19881,11 @@
   },
   {
    "type": "box",
-   "x": -38.048,
-   "z": 5.618,
-   "hx": 0.786,
-   "hz": 0.322,
-   "yaw": 3.142,
+   "x": -70.545,
+   "z": 18.917,
+   "hx": 0.783,
+   "hz": 0.304,
+   "yaw": 1.671,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19794,11 +19893,11 @@
   },
   {
    "type": "box",
-   "x": -39.928,
-   "z": 5.579,
-   "hx": 0.805,
-   "hz": 0.325,
-   "yaw": 3.142,
+   "x": -70.743,
+   "z": 16.934,
+   "hx": 0.792,
+   "hz": 0.305,
+   "yaw": 1.671,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19806,10 +19905,10 @@
   },
   {
    "type": "box",
-   "x": -38.002,
-   "z": 4.345,
-   "hx": 0.787,
-   "hz": 0.31,
+   "x": -37.99,
+   "z": 5.595,
+   "hx": 0.776,
+   "hz": 0.315,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19818,10 +19917,10 @@
   },
   {
    "type": "box",
-   "x": -39.808,
-   "z": 4.345,
-   "hx": 0.799,
-   "hz": 0.31,
+   "x": -39.89,
+   "z": 5.616,
+   "hx": 0.79,
+   "hz": 0.32,
    "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
@@ -19830,11 +19929,11 @@
   },
   {
    "type": "box",
-   "x": -53.307,
-   "z": 27.526,
-   "hx": 0.788,
-   "hz": 0.325,
-   "yaw": -1.79,
+   "x": -38.007,
+   "z": 4.335,
+   "hx": 0.791,
+   "hz": 0.319,
+   "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19842,11 +19941,11 @@
   },
   {
    "type": "box",
-   "x": -53.729,
-   "z": 29.245,
-   "hx": 0.785,
-   "hz": 0.322,
-   "yaw": -1.79,
+   "x": -39.878,
+   "z": 4.334,
+   "hx": 0.791,
+   "hz": 0.337,
+   "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19854,11 +19953,11 @@
   },
   {
    "type": "box",
-   "x": -50.508,
-   "z": 16.272,
-   "hx": 0.794,
-   "hz": 0.338,
-   "yaw": -1.841,
+   "x": -53.327,
+   "z": 27.518,
+   "hx": 0.766,
+   "hz": 0.304,
+   "yaw": -1.79,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19866,11 +19965,11 @@
   },
   {
    "type": "box",
-   "x": -50.941,
-   "z": 17.848,
-   "hx": 0.807,
-   "hz": 0.335,
-   "yaw": -1.841,
+   "x": -53.702,
+   "z": 29.255,
+   "hx": 0.787,
+   "hz": 0.315,
+   "yaw": -1.79,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19878,10 +19977,10 @@
   },
   {
    "type": "box",
-   "x": -51.317,
-   "z": 19.413,
-   "hx": 0.793,
-   "hz": 0.329,
+   "x": -50.529,
+   "z": 16.403,
+   "hx": 0.783,
+   "hz": 0.324,
    "yaw": -1.841,
    "y0": 0.15,
    "h": 0.94,
@@ -19890,10 +19989,10 @@
   },
   {
    "type": "box",
-   "x": -51.776,
-   "z": 21.004,
-   "hx": 0.78,
-   "hz": 0.311,
+   "x": -50.931,
+   "z": 17.934,
+   "hx": 0.771,
+   "hz": 0.307,
    "yaw": -1.841,
    "y0": 0.15,
    "h": 0.94,
@@ -19902,10 +20001,10 @@
   },
   {
    "type": "box",
-   "x": -51.678,
-   "z": 15.941,
-   "hx": 0.802,
-   "hz": 0.304,
+   "x": -51.338,
+   "z": 19.471,
+   "hx": 0.8,
+   "hz": 0.324,
    "yaw": -1.841,
    "y0": 0.15,
    "h": 0.94,
@@ -19914,10 +20013,10 @@
   },
   {
    "type": "box",
-   "x": -52.113,
-   "z": 17.467,
-   "hx": 0.788,
-   "hz": 0.316,
+   "x": -51.815,
+   "z": 21.07,
+   "hx": 0.789,
+   "hz": 0.317,
    "yaw": -1.841,
    "y0": 0.15,
    "h": 0.94,
@@ -19926,10 +20025,10 @@
   },
   {
    "type": "box",
-   "x": -52.576,
-   "z": 19.183,
-   "hx": 0.776,
-   "hz": 0.304,
+   "x": -51.695,
+   "z": 16.06,
+   "hx": 0.774,
+   "hz": 0.32,
    "yaw": -1.841,
    "y0": 0.15,
    "h": 0.94,
@@ -19938,10 +20037,10 @@
   },
   {
    "type": "box",
-   "x": -53.031,
-   "z": 20.792,
-   "hx": 0.794,
-   "hz": 0.314,
+   "x": -52.149,
+   "z": 17.612,
+   "hx": 0.797,
+   "hz": 0.312,
    "yaw": -1.841,
    "y0": 0.15,
    "h": 0.94,
@@ -19950,11 +20049,11 @@
   },
   {
    "type": "box",
-   "x": 49.554,
-   "z": -17.579,
-   "hx": 0.787,
+   "x": -52.582,
+   "z": 19.203,
+   "hx": 0.793,
    "hz": 0.304,
-   "yaw": 1.633,
+   "yaw": -1.841,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19962,11 +20061,11 @@
   },
   {
    "type": "box",
-   "x": 50.801,
-   "z": -17.672,
-   "hx": 0.779,
-   "hz": 0.304,
-   "yaw": 1.633,
+   "x": -53.007,
+   "z": 20.761,
+   "hx": 0.79,
+   "hz": 0.31,
+   "yaw": -1.841,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19974,11 +20073,11 @@
   },
   {
    "type": "box",
-   "x": 56.749,
-   "z": 18.661,
-   "hx": 0.788,
-   "hz": 0.336,
-   "yaw": 1.706,
+   "x": 49.569,
+   "z": -17.642,
+   "hx": 0.782,
+   "hz": 0.323,
+   "yaw": 1.633,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19986,11 +20085,11 @@
   },
   {
    "type": "box",
-   "x": 56.528,
-   "z": 16.893,
-   "hx": 0.784,
-   "hz": 0.317,
-   "yaw": 1.706,
+   "x": 50.843,
+   "z": -17.568,
+   "hx": 0.805,
+   "hz": 0.34,
+   "yaw": 1.633,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -19998,11 +20097,11 @@
   },
   {
    "type": "box",
-   "x": 51.225,
-   "z": 39.107,
-   "hx": 0.789,
-   "hz": 0.304,
-   "yaw": -0.045,
+   "x": 56.781,
+   "z": 18.571,
+   "hx": 0.779,
+   "hz": 0.317,
+   "yaw": 1.706,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -20010,11 +20109,11 @@
   },
   {
    "type": "box",
-   "x": 89.827,
-   "z": 2.561,
-   "hx": 0.797,
-   "hz": 0.343,
-   "yaw": 3.142,
+   "x": 56.539,
+   "z": 16.86,
+   "hx": 0.786,
+   "hz": 0.307,
+   "yaw": 1.706,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -20022,11 +20121,11 @@
   },
   {
    "type": "box",
-   "x": 89.985,
-   "z": 1.365,
-   "hx": 0.804,
-   "hz": 0.319,
-   "yaw": 3.142,
+   "x": 51.299,
+   "z": 39.11,
+   "hx": 0.784,
+   "hz": 0.304,
+   "yaw": -0.045,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -20034,11 +20133,11 @@
   },
   {
    "type": "box",
-   "x": 64.899,
-   "z": 11.838,
-   "hx": 0.804,
-   "hz": 0.333,
-   "yaw": -1.433,
+   "x": 89.908,
+   "z": 2.599,
+   "hx": 0.808,
+   "hz": 0.306,
+   "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -20046,11 +20145,11 @@
   },
   {
    "type": "box",
-   "x": 65.108,
-   "z": 13.393,
-   "hx": 0.792,
-   "hz": 0.334,
-   "yaw": -1.433,
+   "x": 89.962,
+   "z": 1.35,
+   "hx": 0.784,
+   "hz": 0.304,
+   "yaw": 3.142,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -20058,11 +20157,11 @@
   },
   {
    "type": "box",
-   "x": 68.131,
-   "z": 8.505,
-   "hx": 0.79,
+   "x": 64.867,
+   "z": 11.817,
+   "hx": 0.785,
    "hz": 0.304,
-   "yaw": 3.092,
+   "yaw": -1.433,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -20070,11 +20169,11 @@
   },
   {
    "type": "box",
-   "x": 68.063,
-   "z": 7.25,
-   "hx": 0.786,
+   "x": 65.089,
+   "z": 13.413,
+   "hx": 0.783,
    "hz": 0.304,
-   "yaw": 3.092,
+   "yaw": -1.433,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -20082,11 +20181,11 @@
   },
   {
    "type": "box",
-   "x": 5.674,
-   "z": 28.892,
-   "hx": 0.788,
-   "hz": 0.305,
-   "yaw": 2.356,
+   "x": 68.005,
+   "z": 8.478,
+   "hx": 0.785,
+   "hz": 0.325,
+   "yaw": 3.092,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
@@ -20094,15 +20193,39 @@
   },
   {
    "type": "box",
-   "x": 4.021,
-   "z": 27.264,
-   "hx": 0.802,
-   "hz": 0.32,
-   "yaw": 2.356,
+   "x": 68.094,
+   "z": 7.251,
+   "hx": 0.774,
+   "hz": 0.304,
+   "yaw": 3.092,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse_cafe",
    "cassable": "CASSABLE_terrasse_75"
+  },
+  {
+   "type": "box",
+   "x": 5.732,
+   "z": 28.933,
+   "hx": 0.786,
+   "hz": 0.318,
+   "yaw": 2.356,
+   "y0": 0.15,
+   "h": 0.94,
+   "tag": "terrasse_cafe",
+   "cassable": "CASSABLE_terrasse_76"
+  },
+  {
+   "type": "box",
+   "x": 4.107,
+   "z": 27.314,
+   "hx": 0.765,
+   "hz": 0.313,
+   "yaw": 2.356,
+   "y0": 0.15,
+   "h": 0.94,
+   "tag": "terrasse_cafe",
+   "cassable": "CASSABLE_terrasse_77"
   },
   {
    "type": "box",
@@ -20142,35 +20265,11 @@
   },
   {
    "type": "box",
-   "x": 112.302,
-   "z": -48.136,
-   "hx": 0.34,
-   "hz": 0.39,
-   "yaw": -0.785,
-   "y0": 0.15,
-   "h": 1.07,
-   "tag": "bac",
-   "cassable": "CASSABLE_conteneur_1"
-  },
-  {
-   "type": "box",
-   "x": 113.734,
-   "z": 41.496,
-   "hx": 0.34,
-   "hz": 0.39,
-   "yaw": -0.785,
-   "y0": 0.15,
-   "h": 1.07,
-   "tag": "bac",
-   "cassable": "CASSABLE_conteneur_2"
-  },
-  {
-   "type": "box",
-   "x": 68.372,
-   "z": -19.198,
+   "x": -120.48,
+   "z": 113.267,
    "hx": 0.25,
    "hz": 0.267,
-   "yaw": -1.245,
+   "yaw": 3.142,
    "y0": 0.15,
    "h": 0.86,
    "tag": "poubelle",
@@ -20178,47 +20277,11 @@
   },
   {
    "type": "box",
-   "x": 97.724,
-   "z": -87.214,
-   "hx": 0.34,
-   "hz": 0.39,
-   "yaw": 2.465,
-   "y0": 0.15,
-   "h": 1.07,
-   "tag": "bac",
-   "cassable": "CASSABLE_conteneur_3"
-  },
-  {
-   "type": "box",
-   "x": 109.51,
-   "z": -78.067,
-   "hx": 0.34,
-   "hz": 0.39,
-   "yaw": -1.571,
-   "y0": 0.15,
-   "h": 1.07,
-   "tag": "bac",
-   "cassable": "CASSABLE_conteneur_4"
-  },
-  {
-   "type": "box",
-   "x": -109.51,
-   "z": 87.1,
-   "hx": 0.34,
-   "hz": 0.39,
-   "yaw": 1.571,
-   "y0": 0.15,
-   "h": 1.07,
-   "tag": "bac",
-   "cassable": "CASSABLE_conteneur_5"
-  },
-  {
-   "type": "box",
-   "x": -112.962,
-   "z": 104.628,
+   "x": 58.993,
+   "z": 25.027,
    "hx": 0.25,
    "hz": 0.267,
-   "yaw": 0.785,
+   "yaw": 1.706,
    "y0": 0.15,
    "h": 0.86,
    "tag": "poubelle",
@@ -20226,23 +20289,35 @@
   },
   {
    "type": "box",
-   "x": -33.988,
-   "z": 106.49,
+   "x": 26.384,
+   "z": 113.51,
    "hx": 0.34,
    "hz": 0.39,
-   "yaw": 0,
+   "yaw": 3.142,
    "y0": 0.15,
    "h": 1.07,
    "tag": "bac",
-   "cassable": "CASSABLE_conteneur_6"
+   "cassable": "CASSABLE_conteneur_1"
   },
   {
    "type": "box",
-   "x": 59.042,
-   "z": 25.386,
+   "x": -60.49,
+   "z": -68.013,
+   "hx": 0.34,
+   "hz": 0.39,
+   "yaw": -1.571,
+   "y0": 0.15,
+   "h": 1.07,
+   "tag": "bac",
+   "cassable": "CASSABLE_conteneur_2"
+  },
+  {
+   "type": "box",
+   "x": 32.94,
+   "z": 24.267,
    "hx": 0.25,
    "hz": 0.267,
-   "yaw": 1.706,
+   "yaw": 3.142,
    "y0": 0.15,
    "h": 0.86,
    "tag": "poubelle",
@@ -20250,8 +20325,104 @@
   },
   {
    "type": "box",
-   "x": -109.51,
-   "z": -76.427,
+   "x": -31.267,
+   "z": 32.985,
+   "hx": 0.25,
+   "hz": 0.267,
+   "yaw": 1.571,
+   "y0": 0.15,
+   "h": 0.86,
+   "tag": "poubelle",
+   "cassable": "CASSABLE_poubelle_4"
+  },
+  {
+   "type": "box",
+   "x": -68.836,
+   "z": -32.544,
+   "hx": 0.34,
+   "hz": 0.39,
+   "yaw": 2.216,
+   "y0": 0.15,
+   "h": 1.07,
+   "tag": "bac",
+   "cassable": "CASSABLE_conteneur_3"
+  },
+  {
+   "type": "box",
+   "x": 30.278,
+   "z": 29.733,
+   "hx": 0.25,
+   "hz": 0.267,
+   "yaw": 0,
+   "y0": 0.15,
+   "h": 0.86,
+   "tag": "poubelle",
+   "cassable": "CASSABLE_poubelle_5"
+  },
+  {
+   "type": "box",
+   "x": -7.169,
+   "z": -34.478,
+   "hx": 0.34,
+   "hz": 0.39,
+   "yaw": 2.362,
+   "y0": 0.15,
+   "h": 1.07,
+   "tag": "bac",
+   "cassable": "CASSABLE_conteneur_4"
+  },
+  {
+   "type": "box",
+   "x": 69.436,
+   "z": -29.054,
+   "hx": 0.34,
+   "hz": 0.39,
+   "yaw": -2.228,
+   "y0": 0.15,
+   "h": 1.07,
+   "tag": "bac",
+   "cassable": "CASSABLE_conteneur_5"
+  },
+  {
+   "type": "box",
+   "x": -111.656,
+   "z": -53.919,
+   "hx": 0.25,
+   "hz": 0.267,
+   "yaw": 0.785,
+   "y0": 0.15,
+   "h": 0.86,
+   "tag": "poubelle",
+   "cassable": "CASSABLE_poubelle_6"
+  },
+  {
+   "type": "box",
+   "x": -56.742,
+   "z": 114.592,
+   "hx": 0.25,
+   "hz": 0.267,
+   "yaw": 2.356,
+   "y0": 0.15,
+   "h": 0.86,
+   "tag": "poubelle",
+   "cassable": "CASSABLE_poubelle_7"
+  },
+  {
+   "type": "box",
+   "x": 109.51,
+   "z": 66.203,
+   "hx": 0.34,
+   "hz": 0.39,
+   "yaw": -1.571,
+   "y0": 0.15,
+   "h": 1.07,
+   "tag": "bac",
+   "cassable": "CASSABLE_conteneur_6"
+  },
+  {
+   "type": "box",
+   "x": 60.49,
+   "z": -60.673,
    "hx": 0.34,
    "hz": 0.39,
    "yaw": 1.571,
@@ -20262,11 +20433,23 @@
   },
   {
    "type": "box",
-   "x": -98.2,
-   "z": 23.681,
+   "x": -109.267,
+   "z": -22.32,
+   "hx": 0.25,
+   "hz": 0.267,
+   "yaw": 1.571,
+   "y0": 0.15,
+   "h": 0.86,
+   "tag": "poubelle",
+   "cassable": "CASSABLE_poubelle_8"
+  },
+  {
+   "type": "box",
+   "x": 98.333,
+   "z": -5.872,
    "hx": 0.34,
    "hz": 0.39,
-   "yaw": -1.53,
+   "yaw": 0.763,
    "y0": 0.15,
    "h": 1.07,
    "tag": "bac",
@@ -20274,20 +20457,8 @@
   },
   {
    "type": "box",
-   "x": 109.267,
-   "z": -66.254,
-   "hx": 0.25,
-   "hz": 0.267,
-   "yaw": -1.571,
-   "y0": 0.15,
-   "h": 0.86,
-   "tag": "poubelle",
-   "cassable": "CASSABLE_poubelle_4"
-  },
-  {
-   "type": "box",
-   "x": 97.041,
-   "z": 5.241,
+   "x": 97.624,
+   "z": 52.513,
    "hx": 0.34,
    "hz": 0.39,
    "yaw": 2.334,
@@ -20298,47 +20469,11 @@
   },
   {
    "type": "box",
-   "x": 97.147,
-   "z": 104.518,
-   "hx": 0.25,
-   "hz": 0.267,
-   "yaw": 0.785,
-   "y0": 0.15,
-   "h": 0.86,
-   "tag": "poubelle",
-   "cassable": "CASSABLE_poubelle_5"
-  },
-  {
-   "type": "box",
-   "x": 98.481,
-   "z": -49.651,
-   "hx": 0.25,
-   "hz": 0.267,
-   "yaw": 0.75,
-   "y0": 0.15,
-   "h": 0.86,
-   "tag": "poubelle",
-   "cassable": "CASSABLE_poubelle_6"
-  },
-  {
-   "type": "box",
-   "x": -58.305,
-   "z": -24.395,
-   "hx": 0.25,
-   "hz": 0.267,
-   "yaw": -1.298,
-   "y0": 0.15,
-   "h": 0.86,
-   "tag": "poubelle",
-   "cassable": "CASSABLE_poubelle_7"
-  },
-  {
-   "type": "box",
-   "x": 29.223,
-   "z": 104.544,
+   "x": 100.49,
+   "z": -104.331,
    "hx": 0.34,
    "hz": 0.39,
-   "yaw": -0.785,
+   "yaw": 1.571,
    "y0": 0.15,
    "h": 1.07,
    "tag": "bac",
@@ -20346,23 +20481,11 @@
   },
   {
    "type": "box",
-   "x": -34.61,
-   "z": -106.733,
-   "hx": 0.25,
-   "hz": 0.267,
-   "yaw": 3.142,
-   "y0": 0.15,
-   "h": 0.86,
-   "tag": "poubelle",
-   "cassable": "CASSABLE_poubelle_8"
-  },
-  {
-   "type": "box",
-   "x": -111.277,
-   "z": -54.642,
+   "x": -41.288,
+   "z": 70.967,
    "hx": 0.34,
    "hz": 0.39,
-   "yaw": 0.785,
+   "yaw": -2.356,
    "y0": 0.15,
    "h": 1.07,
    "tag": "bac",
@@ -20370,11 +20493,11 @@
   },
   {
    "type": "box",
-   "x": 65.127,
-   "z": 23.36,
+   "x": 40.068,
+   "z": 117.403,
    "hx": 0.25,
    "hz": 0.267,
-   "yaw": -1.433,
+   "yaw": 2.356,
    "y0": 0.15,
    "h": 0.86,
    "tag": "poubelle",
@@ -20382,23 +20505,11 @@
   },
   {
    "type": "box",
-   "x": 76.627,
-   "z": -30.976,
-   "hx": 0.25,
-   "hz": 0.267,
-   "yaw": 3.072,
-   "y0": 0.15,
-   "h": 0.86,
-   "tag": "poubelle",
-   "cassable": "CASSABLE_poubelle_10"
-  },
-  {
-   "type": "box",
-   "x": 54.585,
-   "z": -22.841,
+   "x": 33.128,
+   "z": 106.49,
    "hx": 0.34,
    "hz": 0.39,
-   "yaw": 0.762,
+   "yaw": 0,
    "y0": 0.15,
    "h": 1.07,
    "tag": "bac",
@@ -20406,15 +20517,15 @@
   },
   {
    "type": "box",
-   "x": 57.3,
-   "z": 12.583,
-   "hx": 0.25,
-   "hz": 0.267,
-   "yaw": 1.706,
+   "x": -113.876,
+   "z": -105.198,
+   "hx": 0.34,
+   "hz": 0.39,
+   "yaw": 2.356,
    "y0": 0.15,
-   "h": 0.86,
-   "tag": "poubelle",
-   "cassable": "CASSABLE_poubelle_11"
+   "h": 1.07,
+   "tag": "bac",
+   "cassable": "CASSABLE_conteneur_13"
   },
   {
    "type": "circle",
@@ -20440,9 +20551,9 @@
    "z": -12,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.596,
+   "yaw": 2.147,
    "y0": 0.19,
-   "h": 9.91,
+   "h": 10.29,
    "tag": "arbre"
   },
   {
@@ -20451,9 +20562,9 @@
    "z": -17,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.282,
+   "yaw": 2.218,
    "y0": 0.19,
-   "h": 9.81,
+   "h": 10.34,
    "tag": "arbre"
   },
   {
@@ -20462,9 +20573,9 @@
    "z": -17,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.48,
+   "yaw": 1.545,
    "y0": 0.19,
-   "h": 9.7,
+   "h": 9.38,
    "tag": "arbre"
   },
   {
@@ -20473,9 +20584,9 @@
    "z": -12,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.453,
+   "yaw": 5.029,
    "y0": 0.19,
-   "h": 10.64,
+   "h": 10.29,
    "tag": "arbre"
   },
   {
@@ -20484,9 +20595,9 @@
    "z": 2,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.357,
+   "yaw": 3.899,
    "y0": 0.19,
-   "h": 9.87,
+   "h": 10.56,
    "tag": "arbre"
   },
   {
@@ -20495,9 +20606,9 @@
    "z": 2,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.789,
+   "yaw": 3.055,
    "y0": 0.19,
-   "h": 10.12,
+   "h": 10.07,
    "tag": "arbre"
   },
   {
@@ -20631,11 +20742,11 @@
    "type": "box",
    "x": -12,
    "z": 6.6,
-   "hx": 1.6,
-   "hz": 0.55,
+   "hx": 1.64,
+   "hz": 0.59,
    "yaw": 0,
    "y0": 0.17,
-   "h": 0.8,
+   "h": 0.93,
    "tag": "jardiniere",
    "cassable": "CASSABLE_jardiniere_1"
   },
@@ -20643,11 +20754,11 @@
    "type": "box",
    "x": 12,
    "z": 6.6,
-   "hx": 1.6,
-   "hz": 0.55,
+   "hx": 1.64,
+   "hz": 0.59,
    "yaw": 0,
    "y0": 0.17,
-   "h": 0.8,
+   "h": 0.93,
    "tag": "jardiniere",
    "cassable": "CASSABLE_jardiniere_2"
   },
@@ -20655,11 +20766,11 @@
    "type": "box",
    "x": -6,
    "z": -15,
-   "hx": 1.6,
-   "hz": 0.55,
+   "hx": 1.64,
+   "hz": 0.59,
    "yaw": 0.3,
    "y0": 0.17,
-   "h": 0.8,
+   "h": 0.93,
    "tag": "jardiniere",
    "cassable": "CASSABLE_jardiniere_3"
   },
@@ -20667,11 +20778,11 @@
    "type": "box",
    "x": 6,
    "z": -15,
-   "hx": 1.6,
-   "hz": 0.55,
+   "hx": 1.64,
+   "hz": 0.59,
    "yaw": -0.3,
    "y0": 0.17,
-   "h": 0.8,
+   "h": 0.93,
    "tag": "jardiniere",
    "cassable": "CASSABLE_jardiniere_4"
   },
@@ -20721,68 +20832,68 @@
   },
   {
    "type": "box",
-   "x": -10.996,
-   "z": 23.004,
-   "hx": 0.244,
-   "hz": 0.244,
-   "yaw": 5.457,
+   "x": -11,
+   "z": 23,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 1.21,
    "y0": 4.6,
-   "h": 8.75,
+   "h": 9.14,
    "tag": "arbre"
   },
   {
    "type": "box",
-   "x": 10.997,
-   "z": 22.995,
-   "hx": 0.244,
-   "hz": 0.244,
-   "yaw": 2.079,
+   "x": 11,
+   "z": 23,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 2.313,
    "y0": 4.6,
-   "h": 8.32,
+   "h": 8.5,
    "tag": "arbre"
   },
   {
    "type": "box",
-   "x": -25.506,
-   "z": 15.001,
-   "hx": 0.244,
-   "hz": 0.244,
-   "yaw": 3.35,
+   "x": -25.5,
+   "z": 15,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 1.057,
    "y0": 4.6,
-   "h": 8.83,
+   "h": 8.98,
    "tag": "arbre"
   },
   {
    "type": "box",
-   "x": 25.495,
-   "z": 14.998,
-   "hx": 0.244,
-   "hz": 0.244,
-   "yaw": 2.713,
+   "x": 25.5,
+   "z": 15,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 0.042,
    "y0": 4.6,
-   "h": 9.06,
+   "h": 9.11,
    "tag": "arbre"
   },
   {
    "type": "box",
-   "x": -25.495,
-   "z": 20.997,
-   "hx": 0.244,
-   "hz": 0.244,
-   "yaw": 0.61,
+   "x": -25.5,
+   "z": 21,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 4.053,
    "y0": 4.6,
-   "h": 8.83,
+   "h": 9.21,
    "tag": "arbre"
   },
   {
    "type": "box",
-   "x": 25.494,
-   "z": 20.998,
-   "hx": 0.244,
-   "hz": 0.244,
-   "yaw": 2.827,
+   "x": 25.5,
+   "z": 21,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 4.119,
    "y0": 4.6,
-   "h": 9.06,
+   "h": 8.93,
    "tag": "arbre"
   },
   {
@@ -20914,9 +21025,9 @@
    "z": 16,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.139,
+   "yaw": 0.312,
    "y0": 0.19,
-   "h": 10.86,
+   "h": 9.97,
    "tag": "arbre"
   },
   {
@@ -20925,9 +21036,9 @@
    "z": -8,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.308,
+   "yaw": 3.801,
    "y0": 0.19,
-   "h": 10.13,
+   "h": 10.54,
    "tag": "arbre"
   },
   {
@@ -20936,9 +21047,9 @@
    "z": 9,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.589,
+   "yaw": 3.773,
    "y0": 0.19,
-   "h": 10.23,
+   "h": 10.43,
    "tag": "arbre"
   },
   {
@@ -21303,60 +21414,60 @@
   {
    "type": "box",
    "x": 56,
-   "z": -7.4,
-   "hx": 1.9,
-   "hz": 0.879,
+   "z": -7.375,
+   "hx": 1.92,
+   "hz": 0.945,
    "yaw": 0,
    "y0": 0.17,
-   "h": 2.9,
+   "h": 2.92,
    "tag": "etal",
    "cassable": "CASSABLE_etal_1"
   },
   {
    "type": "box",
    "x": 61,
-   "z": -7.4,
-   "hx": 1.9,
-   "hz": 0.879,
+   "z": -7.375,
+   "hx": 1.92,
+   "hz": 0.945,
    "yaw": 0,
    "y0": 0.17,
-   "h": 2.9,
+   "h": 2.92,
    "tag": "etal",
    "cassable": "CASSABLE_etal_2"
   },
   {
    "type": "box",
    "x": 66,
-   "z": -7.4,
-   "hx": 1.9,
-   "hz": 0.879,
+   "z": -7.375,
+   "hx": 1.92,
+   "hz": 0.945,
    "yaw": 0,
    "y0": 0.17,
-   "h": 2.9,
+   "h": 2.92,
    "tag": "etal",
    "cassable": "CASSABLE_etal_3"
   },
   {
    "type": "box",
    "x": 56,
-   "z": -2.6,
-   "hx": 1.9,
-   "hz": 0.879,
+   "z": -2.575,
+   "hx": 1.92,
+   "hz": 0.945,
    "yaw": 0,
    "y0": 0.17,
-   "h": 2.9,
+   "h": 2.92,
    "tag": "etal",
    "cassable": "CASSABLE_etal_4"
   },
   {
    "type": "box",
    "x": 66,
-   "z": -2.6,
-   "hx": 1.9,
-   "hz": 0.879,
+   "z": -2.575,
+   "hx": 1.92,
+   "hz": 0.945,
    "yaw": 0,
    "y0": 0.17,
-   "h": 2.9,
+   "h": 2.92,
    "tag": "etal",
    "cassable": "CASSABLE_etal_5"
   },
@@ -21368,7 +21479,7 @@
    "hz": 0.43,
    "yaw": 0.3,
    "y0": 0.17,
-   "h": 0.87,
+   "h": 0.89,
    "tag": "cagettes",
    "cassable": "CASSABLE_cagettes_1"
   },
@@ -21380,7 +21491,7 @@
    "hz": 0.43,
    "yaw": -0.2,
    "y0": 0.17,
-   "h": 0.87,
+   "h": 0.85,
    "tag": "cagettes",
    "cassable": "CASSABLE_cagettes_2"
   },
@@ -21392,7 +21503,7 @@
    "hz": 0.43,
    "yaw": 0.1,
    "y0": 0.17,
-   "h": 0.87,
+   "h": 0.85,
    "tag": "cagettes",
    "cassable": "CASSABLE_cagettes_3"
   },
@@ -21569,9 +21680,9 @@
    "z": -88,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.211,
+   "yaw": 4.31,
    "y0": 0.19,
-   "h": 9.77,
+   "h": 9.93,
    "tag": "arbre"
   },
   {
@@ -21580,9 +21691,9 @@
    "z": -88,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.978,
+   "yaw": 2.176,
    "y0": 0.19,
-   "h": 9.68,
+   "h": 9.65,
    "tag": "arbre"
   },
   {
@@ -21591,9 +21702,9 @@
    "z": -72,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.672,
+   "yaw": 5.479,
    "y0": 0.19,
-   "h": 10.69,
+   "h": 9.39,
    "tag": "arbre"
   },
   {
@@ -21602,9 +21713,9 @@
    "z": -72,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.516,
+   "yaw": 3.951,
    "y0": 0.19,
-   "h": 9.09,
+   "h": 10.15,
    "tag": "arbre"
   },
   {
@@ -21613,9 +21724,9 @@
    "z": -94,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.229,
+   "yaw": 4.815,
    "y0": 0.19,
-   "h": 10.39,
+   "h": 9.77,
    "tag": "arbre"
   },
   {
@@ -21624,9 +21735,9 @@
    "z": -94,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.648,
+   "yaw": 4.17,
    "y0": 0.19,
-   "h": 10.18,
+   "h": 9.99,
    "tag": "arbre"
   },
   {
@@ -21635,9 +21746,9 @@
    "z": -66,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.25,
+   "yaw": 2.117,
    "y0": 0.19,
-   "h": 9.73,
+   "h": 10.38,
    "tag": "arbre"
   },
   {
@@ -21646,9 +21757,9 @@
    "z": -66,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.592,
+   "yaw": 5.94,
    "y0": 0.19,
-   "h": 10.09,
+   "h": 9.61,
    "tag": "arbre"
   },
   {
@@ -21756,11 +21867,11 @@
    "type": "box",
    "x": 10.163,
    "z": -75.79,
-   "hx": 1.6,
-   "hz": 0.55,
+   "hx": 1.64,
+   "hz": 0.59,
    "yaw": 1.178,
    "y0": 0.17,
-   "h": 0.8,
+   "h": 0.93,
    "tag": "jardiniere",
    "cassable": "CASSABLE_jardiniere_5"
   },
@@ -21768,11 +21879,11 @@
    "type": "box",
    "x": 4.21,
    "z": -69.837,
-   "hx": 1.6,
-   "hz": 0.55,
+   "hx": 1.64,
+   "hz": 0.59,
    "yaw": 0.393,
    "y0": 0.17,
-   "h": 0.8,
+   "h": 0.93,
    "tag": "jardiniere",
    "cassable": "CASSABLE_jardiniere_6"
   },
@@ -21780,11 +21891,11 @@
    "type": "box",
    "x": -4.21,
    "z": -69.837,
-   "hx": 1.6,
-   "hz": 0.55,
+   "hx": 1.64,
+   "hz": 0.59,
    "yaw": -0.393,
    "y0": 0.17,
-   "h": 0.8,
+   "h": 0.93,
    "tag": "jardiniere",
    "cassable": "CASSABLE_jardiniere_7"
   },
@@ -21792,11 +21903,11 @@
    "type": "box",
    "x": -10.163,
    "z": -75.79,
-   "hx": 1.6,
-   "hz": 0.55,
+   "hx": 1.64,
+   "hz": 0.59,
    "yaw": -1.178,
    "y0": 0.17,
-   "h": 0.8,
+   "h": 0.93,
    "tag": "jardiniere",
    "cassable": "CASSABLE_jardiniere_8"
   },
@@ -21804,11 +21915,11 @@
    "type": "box",
    "x": -10.163,
    "z": -84.21,
-   "hx": 1.6,
-   "hz": 0.55,
+   "hx": 1.64,
+   "hz": 0.59,
    "yaw": -1.964,
    "y0": 0.17,
-   "h": 0.8,
+   "h": 0.93,
    "tag": "jardiniere",
    "cassable": "CASSABLE_jardiniere_9"
   },
@@ -21816,11 +21927,11 @@
    "type": "box",
    "x": -4.21,
    "z": -90.163,
-   "hx": 1.6,
-   "hz": 0.55,
+   "hx": 1.64,
+   "hz": 0.59,
    "yaw": -2.749,
    "y0": 0.17,
-   "h": 0.8,
+   "h": 0.93,
    "tag": "jardiniere",
    "cassable": "CASSABLE_jardiniere_10"
   },
@@ -21828,11 +21939,11 @@
    "type": "box",
    "x": 4.21,
    "z": -90.163,
-   "hx": 1.6,
-   "hz": 0.55,
+   "hx": 1.64,
+   "hz": 0.59,
    "yaw": -3.534,
    "y0": 0.17,
-   "h": 0.8,
+   "h": 0.93,
    "tag": "jardiniere",
    "cassable": "CASSABLE_jardiniere_11"
   },
@@ -21840,11 +21951,11 @@
    "type": "box",
    "x": 10.163,
    "z": -84.21,
-   "hx": 1.6,
-   "hz": 0.55,
+   "hx": 1.64,
+   "hz": 0.59,
    "yaw": -4.32,
    "y0": 0.17,
-   "h": 0.8,
+   "h": 0.93,
    "tag": "jardiniere",
    "cassable": "CASSABLE_jardiniere_12"
   },
@@ -21977,57 +22088,57 @@
   },
   {
    "type": "box",
-   "x": -37.006,
-   "z": 57.999,
-   "hx": 0.244,
-   "hz": 0.244,
-   "yaw": 3.02,
+   "x": -37,
+   "z": 58,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 2.608,
    "y0": 4.6,
-   "h": 9.2,
+   "h": 8.75,
    "tag": "arbre"
   },
   {
    "type": "box",
-   "x": 36.996,
-   "z": 57.996,
-   "hx": 0.244,
-   "hz": 0.244,
-   "yaw": 2.31,
+   "x": 37,
+   "z": 58,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 1.974,
    "y0": 4.6,
-   "h": 8.42,
+   "h": 8.75,
    "tag": "arbre"
   },
   {
    "type": "box",
-   "x": -24.994,
-   "z": 66.498,
-   "hx": 0.244,
-   "hz": 0.244,
-   "yaw": 0.313,
+   "x": -25,
+   "z": 66.5,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 1.736,
    "y0": 4.6,
-   "h": 8.8,
+   "h": 9.05,
    "tag": "arbre"
   },
   {
    "type": "box",
-   "x": 24.997,
-   "z": 66.505,
-   "hx": 0.244,
-   "hz": 0.244,
-   "yaw": 4.129,
+   "x": 25,
+   "z": 66.5,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 0.55,
    "y0": 4.6,
-   "h": 9.08,
+   "h": 8.9,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -12,
    "z": 62,
-   "hx": 1.6,
-   "hz": 0.55,
+   "hx": 1.64,
+   "hz": 0.59,
    "yaw": 0.2,
    "y0": 4.6,
-   "h": 0.8,
+   "h": 0.94,
    "tag": "jardiniere",
    "cassable": "CASSABLE_jardiniere_13"
   },
@@ -22035,11 +22146,11 @@
    "type": "box",
    "x": 12,
    "z": 62,
-   "hx": 1.6,
-   "hz": 0.55,
+   "hx": 1.64,
+   "hz": 0.59,
    "yaw": -0.2,
    "y0": 4.6,
-   "h": 0.8,
+   "h": 0.94,
    "tag": "jardiniere",
    "cassable": "CASSABLE_jardiniere_14"
   },
@@ -22049,9 +22160,9 @@
    "z": 84,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.607,
+   "yaw": 5.477,
    "y0": 9.2,
-   "h": 9.49,
+   "h": 9.46,
    "tag": "arbre"
   },
   {
@@ -22060,9 +22171,9 @@
    "z": 92,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.207,
+   "yaw": 5.594,
    "y0": 9.2,
-   "h": 9.68,
+   "h": 8.92,
    "tag": "arbre"
   },
   {
@@ -22071,9 +22182,9 @@
    "z": 84,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.081,
+   "yaw": 4.428,
    "y0": 9.2,
-   "h": 9.07,
+   "h": 9.44,
    "tag": "arbre"
   },
   {
@@ -22082,9 +22193,9 @@
    "z": 92,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.396,
+   "yaw": 1.899,
    "y0": 9.2,
-   "h": 9.47,
+   "h": 9.48,
    "tag": "arbre"
   },
   {
@@ -22093,9 +22204,9 @@
    "z": 94,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.826,
+   "yaw": 0.459,
    "y0": 9.2,
-   "h": 8.86,
+   "h": 9.6,
    "tag": "arbre"
   },
   {
@@ -22104,9 +22215,9 @@
    "z": 94,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.093,
+   "yaw": 1.205,
    "y0": 9.2,
-   "h": 9.36,
+   "h": 8.86,
    "tag": "arbre"
   },
   {
@@ -22115,9 +22226,9 @@
    "z": 83,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.783,
+   "yaw": 0.612,
    "y0": 9.2,
-   "h": 8.8,
+   "h": 9.34,
    "tag": "arbre"
   },
   {
@@ -22126,9 +22237,9 @@
    "z": 83,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.696,
+   "yaw": 4.082,
    "y0": 9.2,
-   "h": 9.29,
+   "h": 9.12,
    "tag": "arbre"
   },
   {
@@ -22205,10 +22316,10 @@
   },
   {
    "type": "box",
-   "x": -17.053,
-   "z": 86.382,
-   "hx": 0.775,
-   "hz": 0.632,
+   "x": -16.923,
+   "z": 86.377,
+   "hx": 0.808,
+   "hz": 0.627,
    "yaw": 0,
    "y0": 9.2,
    "h": 2.65,
@@ -22217,9 +22328,9 @@
   },
   {
    "type": "box",
-   "x": -16.947,
+   "x": -16.943,
    "z": 91.877,
-   "hx": 0.8,
+   "hx": 0.766,
    "hz": 0.627,
    "yaw": 0,
    "y0": 9.2,
@@ -22229,10 +22340,10 @@
   },
   {
    "type": "box",
-   "x": -11.391,
-   "z": 89.377,
-   "hx": 0.795,
-   "hz": 0.627,
+   "x": -11.427,
+   "z": 89.394,
+   "hx": 0.807,
+   "hz": 0.644,
    "yaw": 0,
    "y0": 9.2,
    "h": 2.65,
@@ -22241,10 +22352,10 @@
   },
   {
    "type": "box",
-   "x": 16.9,
-   "z": 86.411,
-   "hx": 0.788,
-   "hz": 0.661,
+   "x": 17.078,
+   "z": 86.377,
+   "hx": 0.776,
+   "hz": 0.627,
    "yaw": 0,
    "y0": 9.2,
    "h": 2.65,
@@ -22253,10 +22364,10 @@
   },
   {
    "type": "box",
-   "x": 17.051,
-   "z": 91.877,
-   "hx": 0.77,
-   "hz": 0.627,
+   "x": 17.012,
+   "z": 91.896,
+   "hx": 0.783,
+   "hz": 0.646,
    "yaw": 0,
    "y0": 9.2,
    "h": 2.65,
@@ -22265,10 +22376,10 @@
   },
   {
    "type": "box",
-   "x": 11.563,
-   "z": 89.381,
-   "hx": 0.787,
-   "hz": 0.631,
+   "x": 11.511,
+   "z": 89.377,
+   "hx": 0.784,
+   "hz": 0.627,
    "yaw": 0,
    "y0": 9.2,
    "h": 2.65,
@@ -22556,44 +22667,44 @@
    "type": "box",
    "x": -91,
    "z": -66,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 1.294,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 4.706,
    "y0": 0.19,
-   "h": 10.86,
+   "h": 10.52,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -73,
    "z": -66,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 3.978,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 1.069,
    "y0": 0.19,
-   "h": 10.16,
+   "h": 10.52,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -86,
    "z": -71,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 5.201,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 1.364,
    "y0": 0.19,
-   "h": 10.65,
+   "h": 10.93,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -78,
    "z": -59,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 2.994,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 4.831,
    "y0": 0.19,
-   "h": 10.09,
+   "h": 10.16,
    "tag": "arbre"
   },
   {
@@ -22881,132 +22992,132 @@
    "type": "box",
    "x": -91,
    "z": 64,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 5.778,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 3.1,
    "y0": 0.2,
-   "h": 10.76,
+   "h": 11.7,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -84,
    "z": 70,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 1.589,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 4.556,
    "y0": 0.2,
-   "h": 11.72,
+   "h": 11.8,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -66,
    "z": 63,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 1.822,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 5.806,
    "y0": 0.2,
-   "h": 11.49,
+   "h": 11.45,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -59,
    "z": 70,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 4.326,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 4.887,
    "y0": 0.2,
-   "h": 11.13,
+   "h": 12.49,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -91,
    "z": 97,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 0.916,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 3.15,
    "y0": 0.2,
-   "h": 11.95,
+   "h": 11.15,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -84,
    "z": 90,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 0.532,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 3.438,
    "y0": 0.2,
-   "h": 11.5,
+   "h": 11.16,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -66,
    "z": 97,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 1.801,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 0.941,
    "y0": 0.2,
-   "h": 11.92,
+   "h": 12.03,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -61,
    "z": 90,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 5.937,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 4.655,
    "y0": 0.2,
-   "h": 10.97,
+   "h": 11.31,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -96,
    "z": 80.5,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 1.431,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 1.103,
    "y0": 0.2,
-   "h": 11.02,
+   "h": 11.04,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -55,
    "z": 79,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 4.898,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 2.632,
    "y0": 0.2,
-   "h": 10.5,
+   "h": 11.02,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -80,
    "z": 55.5,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 1.439,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 0.545,
    "y0": 0.2,
-   "h": 11.27,
+   "h": 12.07,
    "tag": "arbre"
   },
   {
    "type": "box",
    "x": -70,
    "z": 104.5,
-   "hx": 0.9,
-   "hz": 0.9,
-   "yaw": 2.248,
+   "hx": 0.365,
+   "hz": 0.347,
+   "yaw": 0.948,
    "y0": 0.2,
-   "h": 11.26,
+   "h": 12.23,
    "tag": "arbre"
   },
   {
@@ -23166,7 +23277,7 @@
    "y0": 0.17,
    "h": 0.86,
    "tag": "poubelle",
-   "cassable": "CASSABLE_poubelle_12"
+   "cassable": "CASSABLE_poubelle_10"
   },
   {
    "type": "box",
@@ -23178,7 +23289,7 @@
    "y0": 0.17,
    "h": 0.86,
    "tag": "poubelle",
-   "cassable": "CASSABLE_poubelle_13"
+   "cassable": "CASSABLE_poubelle_11"
   },
   {
    "type": "box",
@@ -23186,9 +23297,9 @@
    "z": 104,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.297,
+   "yaw": 4.183,
    "y0": 0.19,
-   "h": 9.38,
+   "h": 9.69,
    "tag": "arbre"
   },
   {
@@ -23197,9 +23308,9 @@
    "z": 104,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.173,
+   "yaw": 3.85,
    "y0": 0.19,
-   "h": 10.07,
+   "h": 9.52,
    "tag": "arbre"
   },
   {
@@ -23208,9 +23319,9 @@
    "z": 104,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.877,
+   "yaw": 4.722,
    "y0": 0.19,
-   "h": 9.72,
+   "h": 9.5,
    "tag": "arbre"
   },
   {
@@ -23219,9 +23330,9 @@
    "z": 104,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.566,
+   "yaw": 2.945,
    "y0": 0.19,
-   "h": 9.81,
+   "h": 10.24,
    "tag": "arbre"
   },
   {
@@ -23359,8 +23470,8 @@
   },
   {
    "type": "circle",
-   "x": -33.681,
-   "z": -275.237,
+   "x": -31.624,
+   "z": -276.908,
    "r": 0.3,
    "y0": 0.17,
    "h": 6,
@@ -23368,8 +23479,8 @@
   },
   {
    "type": "circle",
-   "x": -30.132,
-   "z": -283.919,
+   "x": -22.648,
+   "z": -279.214,
    "r": 0.3,
    "y0": 0.17,
    "h": 6,
@@ -23388,8 +23499,8 @@
   },
   {
    "type": "circle",
-   "x": -34.505,
-   "z": -262.996,
+   "x": -27.778,
+   "z": -259.027,
    "r": 0.3,
    "y0": 0.17,
    "h": 6,
@@ -23408,8 +23519,8 @@
   },
   {
    "type": "circle",
-   "x": -54.806,
-   "z": -267.802,
+   "x": -54.933,
+   "z": -275.355,
    "r": 0.3,
    "y0": 0.17,
    "h": 6,
@@ -23417,8 +23528,8 @@
   },
   {
    "type": "circle",
-   "x": -54.629,
-   "z": -283.609,
+   "x": -61.825,
+   "z": -281.314,
    "r": 0.3,
    "y0": 0.17,
    "h": 6,
@@ -23437,8 +23548,17 @@
   },
   {
    "type": "circle",
-   "x": -63.124,
-   "z": -237.517,
+   "x": -48.484,
+   "z": -242.689,
+   "r": 0.3,
+   "y0": 0.17,
+   "h": 6,
+   "tag": "arbre"
+  },
+  {
+   "type": "circle",
+   "x": -51.465,
+   "z": -234.811,
    "r": 0.3,
    "y0": 0.17,
    "h": 6,
@@ -23457,8 +23577,8 @@
   },
   {
    "type": "circle",
-   "x": -68.688,
-   "z": -208.899,
+   "x": -47.982,
+   "z": -206.951,
    "r": 0.3,
    "y0": 0.17,
    "h": 6,
@@ -23660,8 +23780,8 @@
   },
   {
    "type": "circle",
-   "x": 21.695,
-   "z": -280.129,
+   "x": 36.418,
+   "z": -281.942,
    "r": 0.3,
    "y0": 0.17,
    "h": 6,
@@ -23669,8 +23789,8 @@
   },
   {
    "type": "circle",
-   "x": 35.898,
-   "z": -279.897,
+   "x": 22.079,
+   "z": -280.863,
    "r": 0.3,
    "y0": 0.17,
    "h": 6,
@@ -23689,17 +23809,8 @@
   },
   {
    "type": "circle",
-   "x": 35.276,
-   "z": -259.862,
-   "r": 0.3,
-   "y0": 0.17,
-   "h": 6,
-   "tag": "arbre"
-  },
-  {
-   "type": "circle",
-   "x": 23.78,
-   "z": -263.852,
+   "x": 32.873,
+   "z": -259.026,
    "r": 0.3,
    "y0": 0.17,
    "h": 6,
@@ -23718,17 +23829,8 @@
   },
   {
    "type": "circle",
-   "x": 55.247,
-   "z": -266.151,
-   "r": 0.3,
-   "y0": 0.17,
-   "h": 6,
-   "tag": "arbre"
-  },
-  {
-   "type": "circle",
-   "x": 51.232,
-   "z": -276.09,
+   "x": 63.456,
+   "z": -275.361,
    "r": 0.3,
    "y0": 0.17,
    "h": 6,
@@ -23747,17 +23849,8 @@
   },
   {
    "type": "circle",
-   "x": 57.983,
-   "z": -231.503,
-   "r": 0.3,
-   "y0": 0.17,
-   "h": 6,
-   "tag": "arbre"
-  },
-  {
-   "type": "circle",
-   "x": 48.248,
-   "z": -242.493,
+   "x": 58.064,
+   "z": -241.668,
    "r": 0.3,
    "y0": 0.17,
    "h": 6,
@@ -23776,8 +23869,8 @@
   },
   {
    "type": "circle",
-   "x": 68.912,
-   "z": -207.732,
+   "x": 63.592,
+   "z": -206.046,
    "r": 0.3,
    "y0": 0.17,
    "h": 6,
@@ -24478,18 +24571,6 @@
   },
   {
    "type": "box",
-   "x": -68.031,
-   "z": -32.676,
-   "hx": 0.085,
-   "hz": 0.085,
-   "yaw": 0,
-   "y0": 0.15,
-   "h": 0.95,
-   "tag": "potelet",
-   "cassable": "CASSABLE_potelet_12"
-  },
-  {
-   "type": "box",
    "x": -7.965,
    "z": -33.479,
    "hx": 0.08,
@@ -24510,7 +24591,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_13"
+   "cassable": "CASSABLE_potelet_12"
   },
   {
    "type": "box",
@@ -24522,7 +24603,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_14"
+   "cassable": "CASSABLE_potelet_13"
   },
   {
    "type": "box",
@@ -24534,7 +24615,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_15"
+   "cassable": "CASSABLE_potelet_14"
   },
   {
    "type": "box",
@@ -24546,7 +24627,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_16"
+   "cassable": "CASSABLE_potelet_15"
   },
   {
    "type": "box",
@@ -24570,7 +24651,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_17"
+   "cassable": "CASSABLE_potelet_16"
   },
   {
    "type": "box",
@@ -24582,7 +24663,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_18"
+   "cassable": "CASSABLE_potelet_17"
   },
   {
    "type": "box",
@@ -24594,7 +24675,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_19"
+   "cassable": "CASSABLE_potelet_18"
   },
   {
    "type": "box",
@@ -24606,7 +24687,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_20"
+   "cassable": "CASSABLE_potelet_19"
   },
   {
    "type": "box",
@@ -24630,7 +24711,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_21"
+   "cassable": "CASSABLE_potelet_20"
   },
   {
    "type": "box",
@@ -24642,7 +24723,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_22"
+   "cassable": "CASSABLE_potelet_21"
   },
   {
    "type": "box",
@@ -24654,7 +24735,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_23"
+   "cassable": "CASSABLE_potelet_22"
   },
   {
    "type": "box",
@@ -24666,7 +24747,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_24"
+   "cassable": "CASSABLE_potelet_23"
   },
   {
    "type": "box",
@@ -24678,7 +24759,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_25"
+   "cassable": "CASSABLE_potelet_24"
   },
   {
    "type": "box",
@@ -24702,7 +24783,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_26"
+   "cassable": "CASSABLE_potelet_25"
   },
   {
    "type": "box",
@@ -24714,7 +24795,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_27"
+   "cassable": "CASSABLE_potelet_26"
   },
   {
    "type": "box",
@@ -24726,7 +24807,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_28"
+   "cassable": "CASSABLE_potelet_27"
   },
   {
    "type": "box",
@@ -24738,7 +24819,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_29"
+   "cassable": "CASSABLE_potelet_28"
   },
   {
    "type": "box",
@@ -24750,7 +24831,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_30"
+   "cassable": "CASSABLE_potelet_29"
   },
   {
    "type": "box",
@@ -24774,7 +24855,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_31"
+   "cassable": "CASSABLE_potelet_30"
   },
   {
    "type": "box",
@@ -24786,7 +24867,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_32"
+   "cassable": "CASSABLE_potelet_31"
   },
   {
    "type": "box",
@@ -24798,7 +24879,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_33"
+   "cassable": "CASSABLE_potelet_32"
   },
   {
    "type": "box",
@@ -24810,7 +24891,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_34"
+   "cassable": "CASSABLE_potelet_33"
   },
   {
    "type": "box",
@@ -24822,7 +24903,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_35"
+   "cassable": "CASSABLE_potelet_34"
   },
   {
    "type": "box",
@@ -24846,7 +24927,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_36"
+   "cassable": "CASSABLE_potelet_35"
   },
   {
    "type": "box",
@@ -24858,7 +24939,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_37"
+   "cassable": "CASSABLE_potelet_36"
   },
   {
    "type": "box",
@@ -24870,7 +24951,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_38"
+   "cassable": "CASSABLE_potelet_37"
   },
   {
    "type": "box",
@@ -24882,7 +24963,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_39"
+   "cassable": "CASSABLE_potelet_38"
   },
   {
    "type": "box",
@@ -24894,7 +24975,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_40"
+   "cassable": "CASSABLE_potelet_39"
   },
   {
    "type": "box",
@@ -24918,7 +24999,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_41"
+   "cassable": "CASSABLE_potelet_40"
   },
   {
    "type": "box",
@@ -24930,7 +25011,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_42"
+   "cassable": "CASSABLE_potelet_41"
   },
   {
    "type": "box",
@@ -24942,7 +25023,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_43"
+   "cassable": "CASSABLE_potelet_42"
   },
   {
    "type": "box",
@@ -24954,7 +25035,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_44"
+   "cassable": "CASSABLE_potelet_43"
   },
   {
    "type": "box",
@@ -24978,7 +25059,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_45"
+   "cassable": "CASSABLE_potelet_44"
   },
   {
    "type": "box",
@@ -24990,7 +25071,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_46"
+   "cassable": "CASSABLE_potelet_45"
   },
   {
    "type": "box",
@@ -25002,7 +25083,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_47"
+   "cassable": "CASSABLE_potelet_46"
   },
   {
    "type": "box",
@@ -25014,7 +25095,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_48"
+   "cassable": "CASSABLE_potelet_47"
   },
   {
    "type": "box",
@@ -25038,7 +25119,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_49"
+   "cassable": "CASSABLE_potelet_48"
   },
   {
    "type": "box",
@@ -25050,7 +25131,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_50"
+   "cassable": "CASSABLE_potelet_49"
   },
   {
    "type": "box",
@@ -25062,7 +25143,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_51"
+   "cassable": "CASSABLE_potelet_50"
   },
   {
    "type": "box",
@@ -25086,7 +25167,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_52"
+   "cassable": "CASSABLE_potelet_51"
   },
   {
    "type": "box",
@@ -25098,7 +25179,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_53"
+   "cassable": "CASSABLE_potelet_52"
   },
   {
    "type": "box",
@@ -25110,7 +25191,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_54"
+   "cassable": "CASSABLE_potelet_53"
   },
   {
    "type": "box",
@@ -25122,7 +25203,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_55"
+   "cassable": "CASSABLE_potelet_54"
   },
   {
    "type": "box",
@@ -25134,7 +25215,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_56"
+   "cassable": "CASSABLE_potelet_55"
   },
   {
    "type": "box",
@@ -25158,7 +25239,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_57"
+   "cassable": "CASSABLE_potelet_56"
   },
   {
    "type": "box",
@@ -25170,7 +25251,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_58"
+   "cassable": "CASSABLE_potelet_57"
   },
   {
    "type": "box",
@@ -25182,7 +25263,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_59"
+   "cassable": "CASSABLE_potelet_58"
   },
   {
    "type": "box",
@@ -25194,7 +25275,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_60"
+   "cassable": "CASSABLE_potelet_59"
   },
   {
    "type": "box",
@@ -25218,19 +25299,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_61"
-  },
-  {
-   "type": "box",
-   "x": 100.7,
-   "z": -103.65,
-   "hx": 0.085,
-   "hz": 0.085,
-   "yaw": 0,
-   "y0": 0.15,
-   "h": 0.95,
-   "tag": "potelet",
-   "cassable": "CASSABLE_potelet_62"
+   "cassable": "CASSABLE_potelet_60"
   },
   {
    "type": "box",
@@ -25242,7 +25311,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_63"
+   "cassable": "CASSABLE_potelet_61"
   },
   {
    "type": "box",
@@ -25254,7 +25323,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_64"
+   "cassable": "CASSABLE_potelet_62"
   },
   {
    "type": "box",
@@ -25266,7 +25335,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_65"
+   "cassable": "CASSABLE_potelet_63"
   },
   {
    "type": "box",
@@ -25290,7 +25359,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_66"
+   "cassable": "CASSABLE_potelet_64"
   },
   {
    "type": "box",
@@ -25302,7 +25371,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_67"
+   "cassable": "CASSABLE_potelet_65"
   },
   {
    "type": "box",
@@ -25314,7 +25383,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_68"
+   "cassable": "CASSABLE_potelet_66"
   },
   {
    "type": "box",
@@ -25338,7 +25407,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_69"
+   "cassable": "CASSABLE_potelet_67"
   },
   {
    "type": "box",
@@ -25350,7 +25419,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_70"
+   "cassable": "CASSABLE_potelet_68"
   },
   {
    "type": "box",
@@ -25362,7 +25431,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_71"
+   "cassable": "CASSABLE_potelet_69"
   },
   {
    "type": "box",
@@ -25386,7 +25455,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_72"
+   "cassable": "CASSABLE_potelet_70"
   },
   {
    "type": "box",
@@ -25398,7 +25467,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_73"
+   "cassable": "CASSABLE_potelet_71"
   },
   {
    "type": "box",
@@ -25410,7 +25479,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_74"
+   "cassable": "CASSABLE_potelet_72"
   },
   {
    "type": "box",
@@ -25422,7 +25491,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_75"
+   "cassable": "CASSABLE_potelet_73"
   },
   {
    "type": "box",
@@ -25434,7 +25503,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_76"
+   "cassable": "CASSABLE_potelet_74"
   },
   {
    "type": "box",
@@ -25458,7 +25527,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_77"
+   "cassable": "CASSABLE_potelet_75"
   },
   {
    "type": "box",
@@ -25470,7 +25539,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_78"
+   "cassable": "CASSABLE_potelet_76"
   },
   {
    "type": "box",
@@ -25482,7 +25551,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_79"
+   "cassable": "CASSABLE_potelet_77"
   },
   {
    "type": "box",
@@ -25494,7 +25563,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_80"
+   "cassable": "CASSABLE_potelet_78"
   },
   {
    "type": "box",
@@ -25506,7 +25575,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_81"
+   "cassable": "CASSABLE_potelet_79"
   },
   {
    "type": "box",
@@ -25530,7 +25599,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_82"
+   "cassable": "CASSABLE_potelet_80"
   },
   {
    "type": "box",
@@ -25542,7 +25611,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_83"
+   "cassable": "CASSABLE_potelet_81"
   },
   {
    "type": "box",
@@ -25554,7 +25623,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_84"
+   "cassable": "CASSABLE_potelet_82"
   },
   {
    "type": "box",
@@ -25566,7 +25635,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_85"
+   "cassable": "CASSABLE_potelet_83"
   },
   {
    "type": "box",
@@ -25578,7 +25647,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_86"
+   "cassable": "CASSABLE_potelet_84"
   },
   {
    "type": "box",
@@ -25602,7 +25671,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_87"
+   "cassable": "CASSABLE_potelet_85"
   },
   {
    "type": "box",
@@ -25614,7 +25683,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_88"
+   "cassable": "CASSABLE_potelet_86"
   },
   {
    "type": "box",
@@ -25626,7 +25695,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_89"
+   "cassable": "CASSABLE_potelet_87"
   },
   {
    "type": "box",
@@ -25638,7 +25707,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_90"
+   "cassable": "CASSABLE_potelet_88"
   },
   {
    "type": "box",
@@ -25650,7 +25719,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_91"
+   "cassable": "CASSABLE_potelet_89"
   },
   {
    "type": "box",
@@ -25662,7 +25731,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_92"
+   "cassable": "CASSABLE_potelet_90"
   },
   {
    "type": "box",
@@ -25674,7 +25743,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_93"
+   "cassable": "CASSABLE_potelet_91"
   },
   {
    "type": "box",
@@ -25686,7 +25755,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_94"
+   "cassable": "CASSABLE_potelet_92"
   },
   {
    "type": "box",
@@ -25698,7 +25767,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_95"
+   "cassable": "CASSABLE_potelet_93"
   },
   {
    "type": "box",
@@ -25710,7 +25779,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_96"
+   "cassable": "CASSABLE_potelet_94"
   },
   {
    "type": "box",
@@ -25722,7 +25791,19 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_97"
+   "cassable": "CASSABLE_potelet_95"
+  },
+  {
+   "type": "box",
+   "x": -109.448,
+   "z": -75.977,
+   "hx": 0.085,
+   "hz": 0.085,
+   "yaw": 0,
+   "y0": 0.15,
+   "h": 0.95,
+   "tag": "potelet",
+   "cassable": "CASSABLE_potelet_96"
   },
   {
    "type": "box",
@@ -25734,7 +25815,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_98"
+   "cassable": "CASSABLE_potelet_97"
   },
   {
    "type": "box",
@@ -25758,7 +25839,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_99"
+   "cassable": "CASSABLE_potelet_98"
   },
   {
    "type": "box",
@@ -25770,7 +25851,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_100"
+   "cassable": "CASSABLE_potelet_99"
   },
   {
    "type": "box",
@@ -25782,7 +25863,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_101"
+   "cassable": "CASSABLE_potelet_100"
   },
   {
    "type": "box",
@@ -25794,7 +25875,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_102"
+   "cassable": "CASSABLE_potelet_101"
   },
   {
    "type": "box",
@@ -25818,7 +25899,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_103"
+   "cassable": "CASSABLE_potelet_102"
   },
   {
    "type": "box",
@@ -25830,7 +25911,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_104"
+   "cassable": "CASSABLE_potelet_103"
   },
   {
    "type": "box",
@@ -25842,7 +25923,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_105"
+   "cassable": "CASSABLE_potelet_104"
   },
   {
    "type": "box",
@@ -25854,7 +25935,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_106"
+   "cassable": "CASSABLE_potelet_105"
   },
   {
    "type": "box",
@@ -25866,7 +25947,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_107"
+   "cassable": "CASSABLE_potelet_106"
   },
   {
    "type": "box",
@@ -25878,7 +25959,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_108"
+   "cassable": "CASSABLE_potelet_107"
   },
   {
    "type": "box",
@@ -25890,7 +25971,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_109"
+   "cassable": "CASSABLE_potelet_108"
   },
   {
    "type": "box",
@@ -25902,7 +25983,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_110"
+   "cassable": "CASSABLE_potelet_109"
   },
   {
    "type": "box",
@@ -25914,7 +25995,7 @@
    "y0": 0.15,
    "h": 0.95,
    "tag": "potelet",
-   "cassable": "CASSABLE_potelet_111"
+   "cassable": "CASSABLE_potelet_110"
   },
   {
    "type": "box",
@@ -25931,8 +26012,8 @@
   {
    "type": "box",
    "x": -54.4,
-   "z": 60.28,
-   "hx": 1.88,
+   "z": 60.517,
+   "hx": 1.642,
    "hz": 0.843,
    "yaw": 1.571,
    "y0": 0.17,
@@ -25942,9 +26023,9 @@
   },
   {
    "type": "box",
-   "x": -91.263,
+   "x": -91.28,
    "z": -55.6,
-   "hx": 1.862,
+   "hx": 1.88,
    "hz": 0.843,
    "yaw": 0,
    "y0": 0.17,
@@ -25954,9 +26035,9 @@
   },
   {
    "type": "box",
-   "x": 33.219,
-   "z": 10.778,
-   "hx": 2.28,
+   "x": 32.983,
+   "z": 10.802,
+   "hx": 2.043,
    "hz": 0.843,
    "yaw": 0.1,
    "y0": 0.15,
@@ -25966,9 +26047,9 @@
   },
   {
    "type": "box",
-   "x": -35.763,
+   "x": -35.78,
    "z": 57.2,
-   "hx": 1.463,
+   "hx": 1.48,
    "hz": 0.843,
    "yaw": 0,
    "y0": 4.6,
@@ -26038,15 +26119,15 @@
   },
   {
    "type": "box",
-   "x": -47.723,
-   "z": -53.27,
-   "hx": 0.773,
-   "hz": 0.311,
+   "x": -47.625,
+   "z": -53.264,
+   "hx": 0.782,
+   "hz": 0.304,
    "yaw": 0.011,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse",
-   "cassable": "CASSABLE_terrasse_76"
+   "cassable": "CASSABLE_terrasse_78"
   },
   {
    "type": "box",
@@ -26098,15 +26179,15 @@
   },
   {
    "type": "box",
-   "x": -12.533,
-   "z": -53.637,
-   "hx": 0.794,
-   "hz": 0.315,
+   "x": -12.532,
+   "z": -53.648,
+   "hx": 0.787,
+   "hz": 0.304,
    "yaw": 0.011,
    "y0": 0.15,
    "h": 0.94,
    "tag": "terrasse",
-   "cassable": "CASSABLE_terrasse_77"
+   "cassable": "CASSABLE_terrasse_79"
   },
   {
    "type": "box",
@@ -26398,6 +26479,18 @@
   },
   {
    "type": "box",
+   "x": -51.915,
+   "z": -84.51,
+   "hx": 0.42,
+   "hz": 0.21,
+   "yaw": -0.028,
+   "y0": 0.15,
+   "h": 1.95,
+   "tag": "dab",
+   "cassable": "CASSABLE_dab_10"
+  },
+  {
+   "type": "box",
    "x": -36.851,
    "z": -74.583,
    "hx": 0.42,
@@ -26406,7 +26499,7 @@
    "y0": 0.15,
    "h": 1.95,
    "tag": "dab",
-   "cassable": "CASSABLE_dab_10"
+   "cassable": "CASSABLE_dab_11"
   },
   {
    "type": "box",
@@ -26418,7 +26511,7 @@
    "y0": 0.17,
    "h": 1.95,
    "tag": "dab",
-   "cassable": "CASSABLE_dab_11"
+   "cassable": "CASSABLE_dab_12"
   },
   {
    "type": "box",
@@ -26430,7 +26523,7 @@
    "y0": 0.15,
    "h": 1.95,
    "tag": "dab",
-   "cassable": "CASSABLE_dab_12"
+   "cassable": "CASSABLE_dab_13"
   },
   {
    "type": "box",
@@ -26442,27 +26535,15 @@
    "y0": 0.15,
    "h": 1.95,
    "tag": "dab",
-   "cassable": "CASSABLE_dab_13"
-  },
-  {
-   "type": "box",
-   "x": 70.714,
-   "z": 50.872,
-   "hx": 0.42,
-   "hz": 0.21,
-   "yaw": 3.097,
-   "y0": 0.15,
-   "h": 1.95,
-   "tag": "dab",
    "cassable": "CASSABLE_dab_14"
   },
   {
    "type": "box",
-   "x": -94.671,
+   "x": -94.664,
    "z": -34.341,
    "hx": 0.19,
    "hz": 0.15,
-   "yaw": 0.028,
+   "yaw": 0.032,
    "y0": 0.15,
    "h": 1.6,
    "tag": "parcmetre",
@@ -26470,11 +26551,11 @@
   },
   {
    "type": "box",
-   "x": -56.128,
-   "z": -35.912,
+   "x": -56.113,
+   "z": -35.913,
    "hx": 0.19,
    "hz": 0.15,
-   "yaw": 0.053,
+   "yaw": 0.061,
    "y0": 0.15,
    "h": 1.6,
    "tag": "parcmetre",
@@ -26482,11 +26563,11 @@
   },
   {
    "type": "box",
-   "x": -28.701,
+   "x": -28.683,
    "z": -37.04,
    "hx": 0.19,
    "hz": 0.15,
-   "yaw": 0.011,
+   "yaw": 0.021,
    "y0": 0.15,
    "h": 1.6,
    "tag": "parcmetre",
@@ -26494,11 +26575,11 @@
   },
   {
    "type": "box",
-   "x": 43.127,
-   "z": -50.204,
+   "x": 41.948,
+   "z": -33.041,
    "hx": 0.19,
    "hz": 0.15,
-   "yaw": 3.057,
+   "yaw": -0.041,
    "y0": 0.15,
    "h": 1.6,
    "tag": "parcmetre",
@@ -26506,11 +26587,11 @@
   },
   {
    "type": "box",
-   "x": 69.38,
-   "z": -31.126,
+   "x": -34.822,
+   "z": 43.769,
    "hx": 0.19,
    "hz": 0.15,
-   "yaw": -0.08,
+   "yaw": 3.24,
    "y0": 0.15,
    "h": 1.6,
    "tag": "parcmetre",
@@ -26518,11 +26599,11 @@
   },
   {
    "type": "box",
-   "x": -105.973,
-   "z": 43.05,
+   "x": -12.785,
+   "z": 42.195,
    "hx": 0.19,
    "hz": 0.15,
-   "yaw": 3.143,
+   "yaw": 3.219,
    "y0": 0.15,
    "h": 1.6,
    "tag": "parcmetre",
@@ -26530,11 +26611,11 @@
   },
   {
    "type": "box",
-   "x": -12.759,
-   "z": 42.193,
+   "x": 37.17,
+   "z": 39.472,
    "hx": 0.19,
    "hz": 0.15,
-   "yaw": 3.204,
+   "yaw": 3.096,
    "y0": 0.15,
    "h": 1.6,
    "tag": "parcmetre",
@@ -26542,11 +26623,11 @@
   },
   {
    "type": "box",
-   "x": 37.199,
-   "z": 39.473,
+   "x": 92.19,
+   "z": 41.943,
    "hx": 0.19,
    "hz": 0.15,
-   "yaw": 3.079,
+   "yaw": 3.085,
    "y0": 0.15,
    "h": 1.6,
    "tag": "parcmetre",
@@ -26554,11 +26635,11 @@
   },
   {
    "type": "box",
-   "x": 75.682,
-   "z": 41.202,
+   "x": 53.538,
+   "z": 106.4,
    "hx": 0.19,
    "hz": 0.15,
-   "yaw": 3.089,
+   "yaw": 3.12,
    "y0": 0.15,
    "h": 1.6,
    "tag": "parcmetre",
@@ -26566,11 +26647,11 @@
   },
   {
    "type": "box",
-   "x": 36.995,
+   "x": 75.486,
    "z": 106.4,
    "hx": 0.19,
    "hz": 0.15,
-   "yaw": 3.144,
+   "yaw": 3.149,
    "y0": 0.15,
    "h": 1.6,
    "tag": "parcmetre",
@@ -26578,11 +26659,11 @@
   },
   {
    "type": "box",
-   "x": 64.531,
+   "x": 97.524,
    "z": 106.4,
    "hx": 0.19,
    "hz": 0.15,
-   "yaw": 3.124,
+   "yaw": 3.128,
    "y0": 0.15,
    "h": 1.6,
    "tag": "parcmetre",
@@ -26590,11 +26671,11 @@
   },
   {
    "type": "box",
-   "x": 97.479,
-   "z": 106.4,
+   "x": 48.02,
+   "z": -79.159,
    "hx": 0.19,
    "hz": 0.15,
-   "yaw": 3.154,
+   "yaw": 0.236,
    "y0": 0.15,
    "h": 1.6,
    "tag": "parcmetre",
@@ -26602,11 +26683,11 @@
   },
   {
    "type": "box",
-   "x": 73.55,
-   "z": -94.217,
+   "x": 90.063,
+   "z": -97.859,
    "hx": 0.19,
    "hz": 0.15,
-   "yaw": 3.337,
+   "yaw": 3.33,
    "y0": 0.15,
    "h": 1.6,
    "tag": "parcmetre",
@@ -26618,9 +26699,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 3.242,
+   "yaw": 4.99,
    "y0": 0,
-   "h": 10.15,
+   "h": 9.36,
    "tag": "arbre"
   },
   {
@@ -26629,9 +26710,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.314,
+   "yaw": 4.226,
    "y0": 0,
-   "h": 9.43,
+   "h": 9.92,
    "tag": "arbre"
   },
   {
@@ -26640,9 +26721,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.222,
+   "yaw": 4.029,
    "y0": 0,
-   "h": 10.17,
+   "h": 9.56,
    "tag": "arbre"
   },
   {
@@ -26651,9 +26732,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 5.073,
+   "yaw": 2.283,
    "y0": 0,
-   "h": 10.75,
+   "h": 10.4,
    "tag": "arbre"
   },
   {
@@ -26662,9 +26743,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.627,
+   "yaw": 4.309,
    "y0": 0,
-   "h": 10.09,
+   "h": 10.69,
    "tag": "arbre"
   },
   {
@@ -26673,9 +26754,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.281,
+   "yaw": 0.356,
    "y0": 0,
-   "h": 9.52,
+   "h": 9.9,
    "tag": "arbre"
   },
   {
@@ -26684,9 +26765,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.331,
+   "yaw": 2.133,
    "y0": 0,
-   "h": 9.75,
+   "h": 9.46,
    "tag": "arbre"
   },
   {
@@ -26695,9 +26776,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.17,
+   "yaw": 0.891,
    "y0": 0,
-   "h": 10.52,
+   "h": 9.7,
    "tag": "arbre"
   },
   {
@@ -26706,9 +26787,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.689,
+   "yaw": 1.967,
    "y0": 0,
-   "h": 9.9,
+   "h": 9.85,
    "tag": "arbre"
   },
   {
@@ -26717,9 +26798,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.543,
+   "yaw": 2.5,
    "y0": 0,
-   "h": 10.33,
+   "h": 9.52,
    "tag": "arbre"
   },
   {
@@ -26728,9 +26809,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.873,
+   "yaw": 2.779,
    "y0": 0,
-   "h": 9.73,
+   "h": 9.98,
    "tag": "arbre"
   },
   {
@@ -26739,9 +26820,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.529,
+   "yaw": 0.117,
    "y0": 0,
-   "h": 10.11,
+   "h": 9.97,
    "tag": "arbre"
   },
   {
@@ -26750,9 +26831,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.109,
+   "yaw": 4.854,
    "y0": 0,
-   "h": 10.16,
+   "h": 9.91,
    "tag": "arbre"
   },
   {
@@ -26761,9 +26842,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.023,
+   "yaw": 2.833,
    "y0": 0,
-   "h": 10.33,
+   "h": 10.06,
    "tag": "arbre"
   },
   {
@@ -26772,9 +26853,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 0.521,
+   "yaw": 1.199,
    "y0": 0,
-   "h": 10.39,
+   "h": 9.54,
    "tag": "arbre"
   },
   {
@@ -26783,9 +26864,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.672,
+   "yaw": 4.364,
    "y0": 0,
-   "h": 10.14,
+   "h": 10.06,
    "tag": "arbre"
   },
   {
@@ -26794,9 +26875,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.21,
+   "yaw": 5.509,
    "y0": 0,
-   "h": 10.3,
+   "h": 10.47,
    "tag": "arbre"
   },
   {
@@ -26805,9 +26886,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 4.958,
+   "yaw": 5.337,
    "y0": 0,
-   "h": 9.95,
+   "h": 9.76,
    "tag": "arbre"
   },
   {
@@ -26816,9 +26897,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 2.441,
+   "yaw": 4.474,
    "y0": 0,
-   "h": 9.83,
+   "h": 10.28,
    "tag": "arbre"
   },
   {
@@ -26827,9 +26908,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.273,
+   "yaw": 1.001,
    "y0": 0,
-   "h": 9.88,
+   "h": 10.15,
    "tag": "arbre"
   },
   {
@@ -26838,9 +26919,9 @@
    "z": -118.6,
    "hx": 0.9,
    "hz": 0.9,
-   "yaw": 1.453,
+   "yaw": 2.615,
    "y0": 0,
-   "h": 9.87,
+   "h": 9.16,
    "tag": "arbre"
   },
   {
@@ -27022,7 +27103,7 @@
   },
   {
    "type": "box",
-   "x": -108.1,
+   "x": -112.8,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27034,7 +27115,7 @@
   },
   {
    "type": "box",
-   "x": -103.4,
+   "x": -110.45,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27046,7 +27127,7 @@
   },
   {
    "type": "box",
-   "x": -98.7,
+   "x": -108.1,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27058,7 +27139,7 @@
   },
   {
    "type": "box",
-   "x": -94,
+   "x": -105.75,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27070,7 +27151,7 @@
   },
   {
    "type": "box",
-   "x": -91.65,
+   "x": -103.4,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27082,7 +27163,7 @@
   },
   {
    "type": "box",
-   "x": -86.95,
+   "x": -101.05,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27094,7 +27175,7 @@
   },
   {
    "type": "box",
-   "x": -84.6,
+   "x": -98.7,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27106,7 +27187,7 @@
   },
   {
    "type": "box",
-   "x": -82.25,
+   "x": -96.35,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27118,7 +27199,7 @@
   },
   {
    "type": "box",
-   "x": -79.9,
+   "x": -94,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27130,7 +27211,7 @@
   },
   {
    "type": "box",
-   "x": -77.55,
+   "x": -91.65,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27142,7 +27223,7 @@
   },
   {
    "type": "box",
-   "x": -72.85,
+   "x": -86.95,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27154,7 +27235,7 @@
   },
   {
    "type": "box",
-   "x": -68.15,
+   "x": -79.9,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27166,7 +27247,7 @@
   },
   {
    "type": "box",
-   "x": -32.45,
+   "x": -77.55,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27178,7 +27259,7 @@
   },
   {
    "type": "box",
-   "x": -30.1,
+   "x": -75.2,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27190,7 +27271,7 @@
   },
   {
    "type": "box",
-   "x": -25.4,
+   "x": -70.5,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27202,7 +27283,7 @@
   },
   {
    "type": "box",
-   "x": -23.05,
+   "x": -65.8,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27214,7 +27295,7 @@
   },
   {
    "type": "box",
-   "x": -16,
+   "x": -63.45,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27226,7 +27307,7 @@
   },
   {
    "type": "box",
-   "x": 17.55,
+   "x": -34.8,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27238,7 +27319,7 @@
   },
   {
    "type": "box",
-   "x": 19.9,
+   "x": -32.45,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27250,7 +27331,7 @@
   },
   {
    "type": "box",
-   "x": 22.25,
+   "x": -27.75,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27262,7 +27343,7 @@
   },
   {
    "type": "box",
-   "x": 24.6,
+   "x": -23.05,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27274,7 +27355,7 @@
   },
   {
    "type": "box",
-   "x": 26.95,
+   "x": -20.7,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27286,7 +27367,7 @@
   },
   {
    "type": "box",
-   "x": 29.3,
+   "x": -18.35,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27298,7 +27379,7 @@
   },
   {
    "type": "box",
-   "x": 34,
+   "x": -16,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27310,7 +27391,7 @@
   },
   {
    "type": "box",
-   "x": 63.2,
+   "x": 15.2,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27322,7 +27403,7 @@
   },
   {
    "type": "box",
-   "x": 65.55,
+   "x": 19.9,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27334,7 +27415,7 @@
   },
   {
    "type": "box",
-   "x": 67.9,
+   "x": 22.25,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27346,7 +27427,7 @@
   },
   {
    "type": "box",
-   "x": 72.6,
+   "x": 24.6,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27358,7 +27439,7 @@
   },
   {
    "type": "box",
-   "x": 74.95,
+   "x": 26.95,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27370,7 +27451,7 @@
   },
   {
    "type": "box",
-   "x": 77.3,
+   "x": 29.3,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27382,7 +27463,7 @@
   },
   {
    "type": "box",
-   "x": 79.65,
+   "x": 31.65,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27394,7 +27475,7 @@
   },
   {
    "type": "box",
-   "x": 82,
+   "x": 34,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27406,7 +27487,7 @@
   },
   {
    "type": "box",
-   "x": 84.35,
+   "x": 65.55,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27418,7 +27499,7 @@
   },
   {
    "type": "box",
-   "x": 86.7,
+   "x": 67.9,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27430,7 +27511,7 @@
   },
   {
    "type": "box",
-   "x": 91.4,
+   "x": 70.25,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27442,7 +27523,7 @@
   },
   {
    "type": "box",
-   "x": 93.75,
+   "x": 74.95,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27454,7 +27535,7 @@
   },
   {
    "type": "box",
-   "x": 96.1,
+   "x": 77.3,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27466,7 +27547,7 @@
   },
   {
    "type": "box",
-   "x": 100.8,
+   "x": 79.65,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27478,7 +27559,7 @@
   },
   {
    "type": "box",
-   "x": 103.15,
+   "x": 82,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27490,7 +27571,7 @@
   },
   {
    "type": "box",
-   "x": 105.5,
+   "x": 84.35,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27502,7 +27583,7 @@
   },
   {
    "type": "box",
-   "x": 107.85,
+   "x": 86.7,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27514,7 +27595,7 @@
   },
   {
    "type": "box",
-   "x": 110.2,
+   "x": 89.05,
    "z": -121.595,
    "hx": 1.04,
    "hz": 0.595,
@@ -27523,6 +27604,78 @@
    "h": 1.55,
    "tag": "bouquiniste",
    "cassable": "CASSABLE_bouquiniste_42"
+  },
+  {
+   "type": "box",
+   "x": 91.4,
+   "z": -121.595,
+   "hx": 1.04,
+   "hz": 0.595,
+   "yaw": 0,
+   "y0": 1.19,
+   "h": 1.55,
+   "tag": "bouquiniste",
+   "cassable": "CASSABLE_bouquiniste_43"
+  },
+  {
+   "type": "box",
+   "x": 93.75,
+   "z": -121.595,
+   "hx": 1.04,
+   "hz": 0.595,
+   "yaw": 0,
+   "y0": 1.19,
+   "h": 1.55,
+   "tag": "bouquiniste",
+   "cassable": "CASSABLE_bouquiniste_44"
+  },
+  {
+   "type": "box",
+   "x": 96.1,
+   "z": -121.595,
+   "hx": 1.04,
+   "hz": 0.595,
+   "yaw": 0,
+   "y0": 1.19,
+   "h": 1.55,
+   "tag": "bouquiniste",
+   "cassable": "CASSABLE_bouquiniste_45"
+  },
+  {
+   "type": "box",
+   "x": 98.45,
+   "z": -121.595,
+   "hx": 1.04,
+   "hz": 0.595,
+   "yaw": 0,
+   "y0": 1.19,
+   "h": 1.55,
+   "tag": "bouquiniste",
+   "cassable": "CASSABLE_bouquiniste_46"
+  },
+  {
+   "type": "box",
+   "x": 103.15,
+   "z": -121.595,
+   "hx": 1.04,
+   "hz": 0.595,
+   "yaw": 0,
+   "y0": 1.19,
+   "h": 1.55,
+   "tag": "bouquiniste",
+   "cassable": "CASSABLE_bouquiniste_47"
+  },
+  {
+   "type": "box",
+   "x": 112.55,
+   "z": -121.595,
+   "hx": 1.04,
+   "hz": 0.595,
+   "yaw": 0,
+   "y0": 1.19,
+   "h": 1.55,
+   "tag": "bouquiniste",
+   "cassable": "CASSABLE_bouquiniste_48"
   },
   {
    "type": "box",
@@ -27558,7 +27711,7 @@
    "y0": -8,
    "h": 0.86,
    "tag": "poubelle",
-   "cassable": "CASSABLE_poubelle_14"
+   "cassable": "CASSABLE_poubelle_12"
   },
   {
    "type": "box",
@@ -27570,7 +27723,7 @@
    "y0": -8,
    "h": 0.86,
    "tag": "poubelle",
-   "cassable": "CASSABLE_poubelle_15"
+   "cassable": "CASSABLE_poubelle_13"
   },
   {
    "type": "box",
@@ -27606,7 +27759,7 @@
    "y0": -8,
    "h": 0.86,
    "tag": "poubelle",
-   "cassable": "CASSABLE_poubelle_16"
+   "cassable": "CASSABLE_poubelle_14"
   },
   {
    "type": "box",
@@ -27618,7 +27771,7 @@
    "y0": -8,
    "h": 0.86,
    "tag": "poubelle",
-   "cassable": "CASSABLE_poubelle_17"
+   "cassable": "CASSABLE_poubelle_15"
   },
   {
    "type": "box",
@@ -27694,10 +27847,10 @@
   },
   {
    "type": "box",
-   "x": 101.993,
-   "z": -26.581,
-   "hx": 2.139,
-   "hz": 4.029,
+   "x": 101.675,
+   "z": -26.403,
+   "hx": 2.488,
+   "hz": 4.14,
    "yaw": 0.2,
    "y0": 0,
    "h": 1.07,
@@ -27706,10 +27859,10 @@
   },
   {
    "type": "box",
-   "x": 103.202,
-   "z": 29.438,
-   "hx": 2.114,
-   "hz": 4.015,
+   "x": 103.21,
+   "z": 29.456,
+   "hx": 2.122,
+   "hz": 4.031,
    "yaw": -0.15,
    "y0": 0,
    "h": 1.07,
@@ -33772,5 +33925,5 @@
    }
   }
  ],
- "triangles": 1629268
+ "triangles": 1716744
 }
