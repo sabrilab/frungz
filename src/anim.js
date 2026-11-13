@@ -321,7 +321,8 @@ export function layers(game, a, dt, near) {
   settle(R);
   // esquive : une ruée basse sur les allures de course (plus de roulade tête en bas)
   R.roll += ((a.rollT > 0 ? 1 : 0) - R.roll) * (1 - Math.exp(-dt * 14));
-  const rw = R.roll < 0.01 ? 0 : ease(R.roll); // esquive basse : le bassin descend encore un peu, le buste plonge vers l'avant (voir plus bas)
+  R.rollK = (R.rollK ?? 1) + ((game.time - (a.lastShot || -9) < 0.5 || (a === game.player && game.aiming) ? 0.45 : 1) - (R.rollK ?? 1)) * (1 - Math.exp(-dt * 12)); // en tirant, l'esquive reste plus redressée : l'arme garde sa ligne
+  const rw = R.roll < 0.01 ? 0 : ease(R.roll) * R.rollK; // esquive basse : le bassin descend encore un peu, le buste plonge vers l'avant (voir plus bas)
   for (const g of R.legs) { ankle(body, g, g.T); if (!g.free) g.fq.copy(_q2).multiply(g.F.quaternion); } // (_q2 = orientation du tibia) orientation du pied à garder
   // ---- 2. bassin et colonne
   const br = Math.sin(R.breath) * (0.006 + 0.022 * R.effort);
@@ -343,11 +344,14 @@ export function layers(game, a, dt, near) {
   const k = ch.model.scale.x, rb = _zero, ground = a.onGround && (!calm || sliding) && !a.inCar;
   const still = ground && sp < 0.3 && a.anim === 'LOCO' && Math.abs(R.yawRate) < 6;
   R.plantW = clamp(R.plantW + dt * (still ? 6 : -9), 0, 1); if (R.plantW <= 0) for (const g of R.legs) g.lock = g.step = null;
+  const wp = ground && sp > 0.5 && a.anim === 'LOCO' ? ((a.loco?.warp || 1) - 1) * W : 0; let mvx = 0, mvz = 1; if (wp) { mvx = (a.vel.x * cs - a.vel.z * sn) / sp; mvz = (a.vel.x * sn + a.vel.z * cs) / sp; }
   let low = 0, stepping = R.legs[0].step || R.legs[1].step, worst = null, worstE = 0;
   for (let i = 0; i < 2; i++) {
     const g = R.legs[i], T = g.T;
     // glissade : jambe gauche tendue devant, talon au sol ; jambe droite repliée dessous, genou ouvert
     if (sw) { if (i === 0) { T.x += (0.13 - T.x) * sw; T.y += (g.restY + 0.05 - T.y) * sw; T.z += (0.8 - T.z) * sw; } else { T.x += (-0.2 - T.x) * sw; T.y += (g.restY + 0.02 - T.y) * sw; T.z += (0.3 - T.z) * sw; } }
+    // foulée allongée : les appuis s'écartent le long du déplacement (voir game.locomotion), le pied d'appui recule alors à la vitesse du sol au lieu de patiner
+    if (wp) { const al = T.x * mvx + T.z * mvz; T.x += mvx * al * wp; T.z += mvz * al * wp; }
     // position monde du pied animé (xz) et hauteur du sol dessous
     const lx0 = (T.x + rb.x) * k, lz0 = (T.z + rb.z) * k; let wx = a.pos.x + lx0 * cs + lz0 * sn, wz = a.pos.z - lx0 * sn + lz0 * cs, fyaw = 0;
     if (R.plantW > 0) {

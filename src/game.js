@@ -948,12 +948,12 @@ export class Game {
     if (I.keys.has('WheelUp') || I.keys.has('WheelDown')) {}
     if (this.thr || I.pressed('grenade')) this.updateThrowAim(a, I, dt);
     if (I.pressed('reload') && !this.thr) this.startReload(a);
-    this.aiming = !this.thr && (I.down('aim') || I.st.triggerL > 0.3) && !a.climb && a.rollT <= 0 && !a.bail;
+    this.aiming = !this.thr && (I.down('aim') || I.st.triggerL > 0.3) && !a.climb && !a.bail; // (on peut viser et tirer pendant l'esquive et la glissade : on esquive en plein combat sans lâcher sa cible)
     this.updateScope(dt, I, a);
     const W = this.weapon(a), D = WEAPONS[W.id];
     const wantFire = (D.burst && a.burstLeft > 0) || (D.auto ? (I.down('fire') || I.st.triggerR > 0.4) : (I.pressed('fire') || (I.st.triggerR > 0.4 && !this._trigWas)));
     this._trigWas = I.st.triggerR > 0.4;
-    if (wantFire && !a.bail && !this.thr && !a.carryTurret && (this._thrJust = Math.max(0, (this._thrJust || 0) - dt)) <= 0 && a.slideT <= 0.5 && !a.climb && a.rollT <= 0 && !a.channel) {
+    if (wantFire && !a.bail && !this.thr && !a.carryTurret && (this._thrJust = Math.max(0, (this._thrJust || 0) - dt)) <= 0 && !a.climb && !a.channel) {
       if (!I.st.locked && !I.st.usingPad && !I.st.usingTouch) { this.renderer.domElement.requestPointerLock?.(); }
       else {
         const o = this.camera.position.clone(); const d = V(); this.camera.getWorldDirection(d);
@@ -1101,7 +1101,7 @@ export class Game {
     const load = a.bag.length ? 1 - 0.18 * (1 - 0.2 * (a.bot ? 0 : this.save.upgrades.sac || 0)) : 1; // porter un objet ralentit
     const slow = 1 - (a.inGas || 0) * 0.2;
     const K = classOf(a.team, a.cls), mob = (K.speed || 1) * (WEAPONS[this.weapon(a)?.id]?.mob || 1);
-    let top = (sprint ? 6.6 + a.momentum * (civ ? 3.2 : 1.8) * (a.perk?.sprint || 1) : 4.4) * load * slow * mob; if (this.aiming && !a.bot) top *= 0.6; a.crouchK = lerp(a.crouchK || 0, a.crouch ? 1 : 0, 1 - Math.exp(-dt * 12)); if (a.crouch) top *= 0.5;
+    let top = (sprint ? 6.2 + a.momentum * (civ ? 2.1 : 1.3) * (a.perk?.sprint || 1) : 4.1) * load * slow * mob; if (this.aiming && !a.bot) top *= 0.6; a.crouchK = lerp(a.crouchK || 0, a.crouch ? 1 : 0, 1 - Math.exp(-dt * 12)); if (a.crouch) top *= 0.5;
     if (!sprint) top *= fwdK >= 0 ? lerp(0.88, 1, fwdK) : lerp(0.88, 0.74, -fwdK);
     a.landK = Math.max(0, (a.landK || 0) - dt); if (a.landK > 0) top *= 1 - 0.4 * Math.min(1, a.landK / 0.25); // réception : on encaisse avant de repartir
     a.jumpFat = Math.max(0, (a.jumpFat || 0) - dt * 0.7);
@@ -1118,7 +1118,7 @@ export class Game {
     else {
       // poids : départ franc puis l'accélération s'essouffle près de la vitesse de pointe ; freiner ou repartir à contresens prend un instant
       const spd = Math.hypot(a.vel.x, a.vel.z), along = wl > 0.1 && spd > 0.5 ? (a.vel.x * wish.x + a.vel.z * wish.z) / (spd * wl) : 1;
-      const acc = !a.onGround ? 6 : wl > 0.1 ? (along < 0 ? 26 : lerp(30, 17, clamp(spd / 8, 0, 1))) : 17 + spd * 1.3;
+      const acc = !a.onGround ? 6 : wl > 0.1 ? (along < 0 ? 20 : lerp(17, 6, clamp(spd / 7, 0, 1))) : 13 + spd * 1.2; // (un corps a une masse : une demi-seconde pour se lancer, la pointe se gagne ensuite avec l'élan)
       const dvx = target.x - a.vel.x, dvz = target.z - a.vel.z, dl = Math.hypot(dvx, dvz), mx = acc * dt;
       if (dl > mx) { a.vel.x += dvx / dl * mx; a.vel.z += dvz / dl * mx; } else { a.vel.x = target.x; a.vel.z = target.z; }
     }
@@ -1227,14 +1227,16 @@ export class Game {
     const ck = a.slideT > 0 || a.rollT > 0 || a.climb ? 0 : (a.crouchK || 0);
     ch.model.position.y = lerp(ch.model.position.y, (a.slideT > 0 ? (ch.actions.MX_Slide ? 0 : ch.actions.MX_Idle ? 0.05 : 0.35) : 0) - (ch.actions.MX_CrouchIdle ? 0 : ck * 0.42) + (-chars[a.skin].minY * chars[a.skin].k), 1 - Math.exp(-dt * 14));
     if (ck > 0.02 && !far && !ch.actions.MX_CrouchIdle) this.crouchPose(a, ck);
+    // lancer vu de l'extérieur : l'arme est rangée le temps du geste (la main lance à vide, sinon elle jetterait la grenade avec le fusil en main)
+    { const thr = !!a.overs?.some((o) => o.name === 'U_Throw' && o.t < o.dur - 0.1); if (thr !== !!a.thr) { a.thr = thr; if (ch.gun) ch.gun.visible = !thr; } }
     // armes longues : crosse ramenée dans le creux de l'épaule, tête dégagée (src/hold.js), avant les couches qui posent la main gauche
     { const wid = this.weapon(a)?.id, on = wid && ch.gun && a.alive && !far && !a.lodHidden && !a.climb && !a.inCar && !a.swim && !a.thr && !a.celebrate && !a.channel && (a === this.player || a.pos.distanceToSquared(this.camera.position) < 1600);
       a.holdW = lerp(a.holdW || 0, on ? 1 : 0, 1 - Math.exp(-dt * 10)); if (on && a.holdW > 0.02) shoulderGun(ch, wid, a.holdW); }
     // couches écrites à la main (src/anim.js) : pieds, poids, inertie, souffle ; complètes près de la caméra, pieds seuls au loin
     const rigPost = Anim.layers(this, a, dt, !far && !a.lodHidden && (a === this.player || a.pos.distanceToSquared(this.camera.position) < 1600));
     // le buste oriente l'arme vers le point visé (réticule pour le joueur, cible pour les bots)
-    const busy = a.climb || (a.rollT > 0 && !MX) || a.slideT > 0 || a.landT > 0 || a.stopT > 0 || a.celebrate || a.channel || a.inCar || !a.alive || (a.reloadT > 0 && a.relAuth) || a.overs?.some((o) => o.busy && o.t < o.dur - 0.12);
-    const pointing = MX ? (name === 'LOCO' && (aimingNow || sp < 2.8 || a.locoRunF < 0.5)) || name === 'MX_CrouchIdle' || (/MXP?_(Jump|Fall)/.test(name) && aimingNow) : name === 'Idle_Gun_Pointing' || name === 'Run_Shoot' || (/^Run_(Left|Right|Back)$/.test(name) && aimingNow);
+    const busy = a.climb || ((a.rollT > 0 || a.slideT > 0) && !MX) || a.landT > 0 || a.stopT > 0 || a.celebrate || a.channel || a.inCar || !a.alive || (a.reloadT > 0 && a.relAuth) || a.overs?.some((o) => o.busy && o.t < o.dur - 0.12);
+    const pointing = MX ? (name === 'LOCO' && (aimingNow || sp < 2.8 || a.locoRunF < 0.5)) || name === 'MX_CrouchIdle' || name === 'MXP_CrouchIdle' || (/MXP?_(Jump|Fall)/.test(name) && aimingNow) : name === 'Idle_Gun_Pointing' || name === 'Run_Shoot' || (/^Run_(Left|Right|Back)$/.test(name) && aimingNow);
     // correction seulement quand l'animation tient l'arme pointée (sinon le buste se cambrerait pour relever une arme baissée)
     const wantW = busy || !pointing ? 0 : 1;
     a.aimW = lerp(a.aimW ?? 0, wantW, 1 - Math.exp(-dt * 14));
@@ -1268,7 +1270,11 @@ export class Game {
       for (let i = 0; i < 4; i++) { const k = move * dirs[i] / tot; add(W[i], k * (1 - run), STRIDE[W[i]] || 1.4); add(Rn[i], k * run, STRIDE[Rn[i]] || 2); }
       a.locoRunF = run * dirs[0] / tot * (aiming || P ? 0 : 1);
     }
-    if (Wsum > 0) L.phase = (L.phase + dt * sp / (D / Wsum)) % 1;
+    // cadence humaine : au-delà de ce que les jambes peuvent tourner, c'est la foulée qui s'allonge (anim.js écarte les appuis d'autant), pas les pas qui s'emballent
+    // (avant : 7,5 pas par seconde en sprint, les pieds patinaient ; un sprinteur en fait 4 à 4,5)
+    if (Wsum > 0) { const D0 = D / Wsum, cad = 0.72 + 0.183 * Math.min(sp, 4) + 0.15 * Math.max(0, sp - 4), warp = clamp(sp / (cad * D0), 0.85, 1.55);
+      L.warp = lerp(L.warp || 1, warp, 1 - Math.exp(-dt * 8)); L.phase = (L.phase + dt * sp / (D0 * L.warp)) % 1; L.cad = sp / (D0 * L.warp); }
+    else { L.warp = lerp(L.warp || 1, 1, 1 - Math.exp(-dt * 8)); L.cad = 0; }
     for (const n of Object.keys(want)) L.acts.add(n);
     for (const n of L.acts) {
       const act = A[n], w = (want[n] || 0) * L.w;
@@ -1623,7 +1629,7 @@ export class Game {
     C.kickP *= Math.exp(-dt * 9); C.kickY *= Math.exp(-dt * 9); C.dip *= Math.exp(-dt * 7);
     const sp = a.alive && !a.inCar ? this.feetSpeed(a) : 0; const fps = (C.fps || !!this.sc?.was) && !a.inCar && a.alive;
     const k = fps ? 1 : 0.55; // balancement plus fort en vue subjective
-    if (a.onGround && sp > 0.5) C.bob += dt * sp * 1.25;
+    if (a.onGround && sp > 0.5) C.bob += dt * (a.loco?.cad ? a.loco.cad * 2 * Math.PI : sp * 1.25); // un balancement par pas du perso : la vue subjective et la vue extérieure marchent au même rythme
     const bobA = Math.min(1, sp / 7) * (a.slideT > 0 || a.rollT > 0 ? 0 : 1);
     const bobY = Math.abs(Math.sin(C.bob)) * 0.055 * bobA * k * (1 + a.momentum * 0.6), bobX = Math.cos(C.bob) * 0.035 * bobA * k;
     // inclinaison : glissade, roulade, vitesse latérale
@@ -1771,7 +1777,9 @@ export class Game {
     // main gauche : paume sous le garde-main, doigts qui remontent de l'autre côté (fusils) ; plaquée à gauche de la poignée, doigts par-dessus ceux de la main droite (pistolets)
     const [lp, lq] = A.pistol ? place(A.hands.L, dir(0.15, -0.35, -0.9), dir(1, 0, 0.15), V(-0.032, A.gb + 0.025, A.front - 0.022), 1, 0) : A.fore ? place(A.hands.L, dir(0.2, -0.25, -0.95), dir(1, 0, 0.1), A.support.clone().add(V(-0.03, 0, -0.02)), 1, 0) /* poignée avant verticale : main refermée autour */
       : place(A.hands.L, dir(0.5, -0.5, -0.7), dir(0.72, 0.68, 0.1), A.support.clone().add(V(-0.012, 0.004, 0)), 0.62, 0.014); /* paume contre l'arête basse gauche du garde-main : on voit le dos de la main et le pouce, les doigts passent dessous */
-    { const O = this.vhand; if (O) { /* maniement : pompe (la main suit le fût), chargeur, verrou */ if (O.Ls.lengthSq() > 0) lp.add(O.Ls.clone().applyQuaternion(vq)); if (O.Lw > 0) lp.lerp(this.vgun.localToWorld(O.L.clone()), O.Lw); if (O.Rw > 0) rp.lerp(this.vgun.localToWorld(O.R.clone()), O.Rw); } }
+    { const O = this.vhand; if (O) { /* maniement : pompe (la main suit le fût), chargeur, verrou */ if (O.Ls.lengthSq() > 0) lp.add(O.Ls.clone().applyQuaternion(vq)); if (O.Lw > 0) lp.lerp(this.vgun.localToWorld(O.L.clone()), O.Lw); if (O.Rw > 0) rp.lerp(this.vgun.localToWorld(O.R.clone()), O.Rw);
+      /* lancer : la main droite quitte l'arme et tient l'objet, placée dans le repère de la caméra */
+      if (O.Tw > 0) { const [tp, tq] = place(A.hands.R, cdir(O.Tf.x, O.Tf.y, O.Tf.z), cdir(O.Tn.x, O.Tn.y, O.Tn.z), this.vgun.worldToLocal(cam.localToWorld(O.Tp.clone())), 0, 0); rp.lerp(tp, O.Tw); rq.slerp(tq, O.Tw); } } }
     const down = V(0, -1, 0).applyQuaternion(vq), right = V(1, 0, 0).applyQuaternion(vq);
     /* On ne montre que les mains et le départ de l'avant-bras : le haut du bras n'est pas dessiné, donc le coude se place librement.
        L'avant-bras part de la main vers le bas de l'écran et sort vite du cadre (jamais de gros bras en travers de l'image) ; l'épaule est posée derrière le coude, hors champ. */
