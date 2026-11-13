@@ -942,12 +942,12 @@ export class Game {
     if (I.keys.has('WheelUp') || I.keys.has('WheelDown')) {}
     if (this.thr || I.pressed('grenade')) this.updateThrowAim(a, I, dt);
     if (I.pressed('reload') && !this.thr) this.startReload(a);
-    this.aiming = !this.thr && (I.down('aim') || I.st.triggerL > 0.3) && !a.climb && a.rollT <= 0;
+    this.aiming = !this.thr && (I.down('aim') || I.st.triggerL > 0.3) && !a.climb; // (on peut viser et tirer pendant l'esquive et la glissade : on esquive en plein combat sans lâcher sa cible)
     this.updateScope(dt, I, a);
     const W = this.weapon(a), D = WEAPONS[W.id];
     const wantFire = (D.burst && a.burstLeft > 0) || (D.auto ? (I.down('fire') || I.st.triggerR > 0.4) : (I.pressed('fire') || (I.st.triggerR > 0.4 && !this._trigWas)));
     this._trigWas = I.st.triggerR > 0.4;
-    if (wantFire && !this.thr && !a.carryTurret && (this._thrJust = Math.max(0, (this._thrJust || 0) - dt)) <= 0 && a.slideT <= 0.5 && !a.climb && a.rollT <= 0 && !a.channel) {
+    if (wantFire && !this.thr && !a.carryTurret && (this._thrJust = Math.max(0, (this._thrJust || 0) - dt)) <= 0 && !a.climb && !a.channel) {
       if (!I.st.locked && !I.st.usingPad && !I.st.usingTouch) { this.renderer.domElement.requestPointerLock?.(); }
       else {
         const o = this.camera.position.clone(); const d = V(); this.camera.getWorldDirection(d);
@@ -1227,8 +1227,8 @@ export class Game {
     // couches écrites à la main (src/anim.js) : pieds, poids, inertie, souffle ; complètes près de la caméra, pieds seuls au loin
     const rigPost = Anim.layers(this, a, dt, !far && !a.lodHidden && (a === this.player || a.pos.distanceToSquared(this.camera.position) < 1600));
     // le buste oriente l'arme vers le point visé (réticule pour le joueur, cible pour les bots)
-    const busy = a.climb || (a.rollT > 0 && !MX) || a.slideT > 0 || a.landT > 0 || a.stopT > 0 || a.celebrate || a.channel || a.inCar || !a.alive || (a.reloadT > 0 && a.relAuth) || a.overs?.some((o) => o.busy && o.t < o.dur - 0.12);
-    const pointing = MX ? (name === 'LOCO' && (aimingNow || sp < 2.8 || a.locoRunF < 0.5)) || name === 'MX_CrouchIdle' || (/MXP?_(Jump|Fall)/.test(name) && aimingNow) : name === 'Idle_Gun_Pointing' || name === 'Run_Shoot' || (/^Run_(Left|Right|Back)$/.test(name) && aimingNow);
+    const busy = a.climb || ((a.rollT > 0 || a.slideT > 0) && !MX) || a.landT > 0 || a.stopT > 0 || a.celebrate || a.channel || a.inCar || !a.alive || (a.reloadT > 0 && a.relAuth) || a.overs?.some((o) => o.busy && o.t < o.dur - 0.12);
+    const pointing = MX ? (name === 'LOCO' && (aimingNow || sp < 2.8 || a.locoRunF < 0.5)) || name === 'MX_CrouchIdle' || name === 'MXP_CrouchIdle' || (/MXP?_(Jump|Fall)/.test(name) && aimingNow) : name === 'Idle_Gun_Pointing' || name === 'Run_Shoot' || (/^Run_(Left|Right|Back)$/.test(name) && aimingNow);
     // correction seulement quand l'animation tient l'arme pointée (sinon le buste se cambrerait pour relever une arme baissée)
     const wantW = busy || !pointing ? 0 : 1;
     a.aimW = lerp(a.aimW ?? 0, wantW, 1 - Math.exp(-dt * 14));
