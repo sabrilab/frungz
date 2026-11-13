@@ -321,7 +321,8 @@ export function layers(game, a, dt, near) {
   settle(R);
   // esquive : une ruée basse sur les allures de course (plus de roulade tête en bas)
   R.roll += ((a.rollT > 0 ? 1 : 0) - R.roll) * (1 - Math.exp(-dt * 14));
-  const rw = R.roll < 0.01 ? 0 : ease(R.roll); // esquive basse : le bassin descend encore un peu, le buste plonge vers l'avant (voir plus bas)
+  R.rollK = (R.rollK ?? 1) + ((game.time - (a.lastShot || -9) < 0.5 || (a === game.player && game.aiming) ? 0.45 : 1) - (R.rollK ?? 1)) * (1 - Math.exp(-dt * 12)); // en tirant, l'esquive reste plus redressée : l'arme garde sa ligne
+  const rw = R.roll < 0.01 ? 0 : ease(R.roll) * R.rollK; // esquive basse : le bassin descend encore un peu, le buste plonge vers l'avant (voir plus bas)
   for (const g of R.legs) { ankle(body, g, g.T); if (!g.free) g.fq.copy(_q2).multiply(g.F.quaternion); } // (_q2 = orientation du tibia) orientation du pied à garder
   // ---- 2. bassin et colonne
   const br = Math.sin(R.breath) * (0.006 + 0.022 * R.effort);
