@@ -16,6 +16,7 @@ import { installSeries } from './series.js';
 import { installNotoriete } from './notoriete.js';
 import { installRegie } from './regie.js';
 import { installElimination } from './elimination.js';
+import { installReplay } from './replay.js';
 import { installConvois } from './convois.js';
 import { installBarricades, TIERS, tierInfo, fmtG } from './barricades.js';
 import { installLanceurs } from './lanceurs.js';
@@ -2056,4 +2057,5 @@ installTurrets(Game); // après les barricades : enrobe blast, wallPrompt, place
 installNotoriete(Game); // presque en dernier : enrobe addGalons, kill, multiKill, addStreak, captureZone, killFeed, drawRank, update, build
 installElimination(Game); // retour visuel des éliminations (src/elimination.js)
 installEntrainement(Game); // mode entraînement (carte La Salle, src/entrainement.js) : n'agit que si opts.training
+installReplay(Game); // kill-cam : ralenti en plusieurs plans, de temps en temps (src/replay.js)
 installRegie(Game); // tout dernier : met en scène annonces, bandeau, gains, fil, flashs (src/regie.js)
