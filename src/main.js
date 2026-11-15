@@ -234,7 +234,7 @@ window.__view = setView;
 $('tabSalon').addEventListener('click', () => setView('salon')); $('tabCasier').addEventListener('click', () => setView('casier'));
 $('loadoutBtn').addEventListener('click', () => setView('casier')); $('backSalon').addEventListener('click', () => setView('salon'));
 $('mapBtn').addEventListener('click', (e) => { const b = e.target.closest('[data-map]'); if (!b || b.dataset.map === MAP_ID) return; if (net.guest) { $('inviteNote').textContent = 'En ligne, c\'est le chef qui choisit la carte.'; return; } audio.init(); audio.play('uiSelect'); switchMap(b.dataset.map, net.online ? net.room : null); });
-$('modeBtn')?.addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (!b || MAP.training || b.dataset.mode === modeId()) return; if (net.guest) { $('inviteNote').textContent = 'En ligne, c\'est le chef qui choisit le mode.'; return; } save.settings.mode = b.dataset.mode; persist(); audio.init(); audio.play('uiSelect'); renderMenu(); if (save.settings.mode === 'zombie') loadZombies().catch(() => {}); });
+$('modeBtn')?.addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (!b || MAP.training || b.dataset.mode === modeId()) return; if (net.guest) { $('inviteNote').textContent = 'En ligne, c\'est le chef qui choisit le mode.'; return; } save.settings.mode = b.dataset.mode; persist(); audio.init(); audio.play('uiSelect'); renderMenu(); net.update(netMeta()); renderNet(); if (save.settings.mode === 'zombie') loadZombies().catch(() => {}); });
 $('nightBtn').addEventListener('click', () => { save.settings.night = !save.settings.night; persist(); night?.set(save.settings.night); renderMenu(); audio.init(); audio.play('uiTick'); });
 $('closeShop').addEventListener('click', () => closeShop());
 $('again').addEventListener('click', () => { $('end').classList.add('hidden'); $('menu').classList.remove('hidden'); lobby?.show(true); renderMenu(); });
@@ -249,7 +249,7 @@ persist();
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const net = createNet({ local: Q.get('net') === 'local' ? true : /^wss?:\/\//.test(Q.get('net') || '') ? Q.get('net') : false });
 const myGun = () => { const T = save.team, K = classOf(T, save.cls[T]); return kitOf(save, T, K).p; };
-const netMeta = () => ({ map: MAP_ID, pseudo: save.pseudo || 'Joueur', skin: save.skin, team: save.team, cls: classOf(save.team, save.cls[save.team]).id, gun: myGun() });
+const netMeta = () => ({ map: MAP_ID, mode: modeId(), pseudo: save.pseudo || 'Joueur', skin: save.skin, team: save.team, cls: classOf(save.team, save.cls[save.team]).id, gun: myGun() });
 // amis connectés, sous la forme attendue par le salon 3D (tenue ramenée au camp de l'équipe)
 function onlineFriends() {
   if (!net.online) return []; const T = save.team, skins = TEAMS[T].skins;
@@ -286,6 +286,9 @@ function renderNet() {
   if (net.status === 'joining' && net.tries > 0) note.textContent = 'Connexion perdue, reconnexion au salon…';
   else if (net.status === 'joining') note.textContent = 'Connexion au salon…';
   else if (net.status === 'error') note.textContent = 'Le salon en ligne ne répond pas. Nouvel essai automatique toutes les 10 secondes (vérifie ta connexion).';
+  // le mode Zombies se joue seul pour l'instant : on le dit au chef et à ses amis plutôt que de les laisser attendre
+  else if (net.guest && host?.mode === 'zombie') note.textContent = `${host.pseudo} a choisi le mode Zombies, qui se joue seul pour l'instant. Demande-lui de repasser en Domination pour jouer ensemble.`;
+  else if (!net.guest && nf && modeId() === 'zombie') note.textContent = `${nf} ami${nf > 1 ? 's' : ''} dans ton salon, mais le mode Zombies se joue seul pour l'instant : repasse en Domination pour jouer avec eux.`;
   else if (net.guest) note.textContent = host ? `Tu es dans l'équipe ${net.room} de ${host.pseudo}. ${host.ingame ? 'Une partie est en cours : tu entreras à la suivante.' : 'Le chef lance la partie quand tout le monde est là.'}` : `Salon ${net.room} : en attente du chef d'équipe (il doit ouvrir son salon)…`;
   else if (net.online) note.textContent = nf ? `Salon ouvert · ${nf} ami${nf > 1 ? 's' : ''} connecté${nf > 1 ? 's' : ''}. Lance la partie quand vous êtes prêts.` : 'Salon ouvert : envoie le lien à tes amis. Ils apparaîtront ici dès qu\'ils l\'ouvrent.';
   else note.textContent = 'Ouvre ton salon pour inviter des amis, ou complète ton équipe avec des équipiers IA.';
