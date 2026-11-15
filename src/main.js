@@ -21,6 +21,7 @@ import { buildCar, CAR_LIST } from './voitures.js';
 import { TEAMS, WEAPONS, WEAPON_CATS, CLASSES, classOf, classWeapons, kitOf, UPGRADES, SKIN_NAMES } from './data.js';
 import { svg } from './icons.js';
 import { createNet, ONLINE_MAX_TEAM } from './net.js';
+import { loadZombies, zombiesReady } from './zombie.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Math.round(n).toLocaleString('fr-FR');
@@ -43,6 +44,12 @@ const MAPS = {
 };
 const MAP_ID = MAPS[Q.get('map')] ? Q.get('map') : MAPS[save.settings.map] ? save.settings.map : 'paris';
 const MAP = MAPS[MAP_ID]; window.__map = MAP_ID;
+// ---------- modes ----------
+// Domination (par défaut) ou Zombies : survie par vagues, hérité par toutes les cartes au format glb + gameplay.json (src/zombie.js)
+const MODES = { domination: { nom: 'Domination' }, zombie: { nom: 'Zombies' } };
+if (MODES[Q.get('mode')]) save.settings.mode = Q.get('mode');
+const modeId = () => (MAP.training ? 'entrainement' : MODES[save.settings.mode] ? save.settings.mode : 'domination');
+const ZMAX = { bas: 14, mobile: 16, moyen: 22, haut: 28 };
 // change de carte : mémorisée, puis rechargement (en ligne, l'invité garde son salon : ?equipe=)
 function switchMap(id, room) {
   if (!MAPS[id] || id === MAP_ID) return; save.settings.map = id; persist();
@@ -181,6 +188,7 @@ async function loadAll() {
   // ton salon s'ouvre tout seul : un ami qui ouvre ton lien te rejoint même si tu n'as pas cliqué sur « Inviter »
   if (!net.room && !Q.get('equipe')) goOnline(save.teamCode, true, true);
   window.__loaded = true;
+  if (modeId() === 'zombie') loadZombies().catch((e) => console.warn(e)); // mode Zombies choisi : on charge la horde en avance
 }
 
 // ---------- menu ----------
@@ -201,7 +209,9 @@ function renderMenu() {
   $('bank').textContent = fmt(save.bank); $('lvl').textContent = save.lvl || 1;
   { const l = save.lvl || 1, a = 100 * (l - 1) ** 2, b = 100 * l ** 2; $('xpbar').style.width = Math.max(4, Math.min(100, ((save.xp || 0) - a) / (b - a) * 100)).toFixed(0) + '%'; }
   $('menu').classList.toggle('t-ordre', save.team === 'ordre'); $('invite').classList.toggle('t-ordre', save.team === 'ordre');
-  $('modeLine').textContent = MAP.training ? `Entraînement · bots à la demande${save.settings.night ? ' · de nuit' : ''}` : `Domination · ${save.settings.teamSize} contre ${save.settings.teamSize}${save.settings.night ? ' · de nuit' : ''}`;
+  document.querySelectorAll('#modeBtn [data-mode]').forEach((b) => { b.classList.toggle('on', b.dataset.mode === modeId()); b.disabled = !!MAP.training; });
+  { const zb = save.zBest?.[MAP_ID]; const r = $('zRecord'); if (r) r.textContent = zb ? `record : vague ${zb}` : 'survie par vagues'; }
+  $('modeLine').textContent = MAP.training ? `Entraînement · bots à la demande${save.settings.night ? ' · de nuit' : ''}` : modeId() === 'zombie' ? `Zombies · 4 survivants contre la horde${save.settings.night ? ' · de nuit' : ''}` : `Domination · ${save.settings.teamSize} contre ${save.settings.teamSize}${save.settings.night ? ' · de nuit' : ''}`;
   net.update(netMeta()); renderParty();
 }
 document.querySelectorAll('.side').forEach((b) => b.addEventListener('click', () => { if (net.guest) { $('inviteNote').textContent = 'En ligne, c\'est le chef qui choisit le camp de l\'équipe.'; return; } save.team = b.dataset.team; persist(); renderMenu(); audio.init(); audio.play('uiSelect'); }));
@@ -224,6 +234,7 @@ window.__view = setView;
 $('tabSalon').addEventListener('click', () => setView('salon')); $('tabCasier').addEventListener('click', () => setView('casier'));
 $('loadoutBtn').addEventListener('click', () => setView('casier')); $('backSalon').addEventListener('click', () => setView('salon'));
 $('mapBtn').addEventListener('click', (e) => { const b = e.target.closest('[data-map]'); if (!b || b.dataset.map === MAP_ID) return; if (net.guest) { $('inviteNote').textContent = 'En ligne, c\'est le chef qui choisit la carte.'; return; } audio.init(); audio.play('uiSelect'); switchMap(b.dataset.map, net.online ? net.room : null); });
+$('modeBtn')?.addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (!b || MAP.training || b.dataset.mode === modeId()) return; if (net.guest) { $('inviteNote').textContent = 'En ligne, c\'est le chef qui choisit le mode.'; return; } save.settings.mode = b.dataset.mode; persist(); audio.init(); audio.play('uiSelect'); renderMenu(); if (save.settings.mode === 'zombie') loadZombies().catch(() => {}); });
 $('nightBtn').addEventListener('click', () => { save.settings.night = !save.settings.night; persist(); night?.set(save.settings.night); renderMenu(); audio.init(); audio.play('uiTick'); });
 $('closeShop').addEventListener('click', () => closeShop());
 $('again').addEventListener('click', () => { $('end').classList.add('hidden'); $('menu').classList.remove('hidden'); lobby?.show(true); renderMenu(); });
@@ -532,12 +543,21 @@ renderer.domElement.addEventListener('click', () => { if (game && !game.paused) 
 let game = null;
 function start() {
   audio.init(); persist();
+  // mode Zombies : modèles chargés à la demande (≈ 11 Mo), on attend qu'ils soient là
+  if (modeId() === 'zombie' && !net.guest && !zombiesReady()) {
+    const pb = $('play'), sp = pb.querySelector('span'), txt = sp.textContent; pb.disabled = true; sp.textContent = 'ZOMBIES…';
+    loadZombies((k) => { sp.textContent = `ZOMBIES ${Math.round(k * 100)} %`; }).then(() => { pb.disabled = false; sp.textContent = txt; start(); })
+      .catch((e) => { pb.disabled = false; sp.textContent = txt; $('loadtxt').textContent = 'Zombies indisponibles : ' + e.message; console.error(e); });
+    return;
+  }
+  game?.zm?.dispose();
   $('menu').classList.add('hidden'); $('hud').classList.remove('hidden'); lobby?.show(false);
   if (game) { scene.remove(game.root); world.dynamic.length = 0; }
   if (net.guest) return; // un invité attend que son chef lance
-  const online = !MAP.training && net.online && net.friends().length > 0, friends = online ? net.friends().slice(0, 3) : [];
+  const zombie = modeId() === 'zombie';
+  const online = !MAP.training && !zombie && net.online && net.friends().length > 0, friends = online ? net.friends().slice(0, 3) : [];
   let teamSize = +(Q.get('n') || save.settings.teamSize); if (online) teamSize = Math.max(friends.length + 1, Math.min(teamSize, ONLINE_MAX_TEAM));
-  game = new Game({ mapRoot, renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts: { squad: window.__squad(), friends, net: online ? net : null, pseudo: save.pseudo, teamSize, botSkill: 1, cars: carDefs, lod: QS.lod, lodShadow: QS.lodShadow, training: !!MAP.training } });
+  game = new Game({ mapRoot, renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts: { squad: window.__squad(), friends, net: online ? net : null, pseudo: save.pseudo, teamSize, botSkill: 1, cars: carDefs, lod: QS.lod, lodShadow: QS.lodShadow, training: !!MAP.training, mode: zombie ? 'zombie' : 'domination', zmax: ZMAX[QN] || 22 } });
   game.onShop = openShop; game.onPause = openPause; game.onEnd = (r) => endGame(r);
   game.build(); window.__game = game; if (online) net.attach(game);
   renderer.domElement.requestPointerLock?.();
@@ -561,6 +581,10 @@ function startGuest() {
 function endGame(r) {
   if (game?.net) { if (!r && net.host && !game.over) net.send('back'); net.detach(); }
   document.exitPointerLock?.(); $('hud').classList.add('hidden'); audio.engine(false); renderer.domElement.style.filter = '';
+  game?.zm?.dispose();
+  if (r?.zombie) { const Z = r.zombie; $('endTitle').textContent = Z.reached ? `${Z.reached} VAGUE${Z.reached > 1 ? 'S' : ''} TENUE${Z.reached > 1 ? 'S' : ''}` : 'SUBMERGÉS';
+    $('endStats').innerHTML = `<div>${Z.wave}<br><span>vague atteinte</span></div><div>${Math.max(0, Z.reached ?? Z.wave - 1)}<br><span>vagues tenues</span></div><div>${Z.best}<br><span>record ${Z.where}</span></div><div>${Z.kills}<br><span>zombies abattus</span></div><div>${Z.heads}<br><span>tirs à la tête</span></div><div>${fmt(r.stats.earned)} €<br><span>gagnés</span></div><div>${r.stats.deaths}<br><span>fois à terre</span></div>`;
+    $('end').classList.remove('hidden'); if (game) { scene.remove(game.root); world.dynamic.length = 0; game = null; } return; }
   if (!r) { if (game) { scene.remove(game.root); world.dynamic.length = 0; game = null; } $('menu').classList.remove('hidden'); lobby?.show(true); renderMenu(); return; }
   $('endTitle').textContent = r.draw ? 'ÉGALITÉ' : r.win ? 'VICTOIRE' : 'DÉFAITE';
   const s = r.stats; $('endStats').innerHTML = `<div>${r.score.ordre}<br><span>Brigade</span></div><div>—</div><div>${r.score.civils}<br><span>Frungz</span></div><div>${s.kills}<br><span>éliminations</span></div><div>${s.captures}<br><span>captures</span></div><div>${fmt(s.earned)} €<br><span>gagnés</span></div><div>${s.broken}<br><span>vitrines</span></div><div>${s.stolen}<br><span>vols</span></div><div>${s.deaths}<br><span>morts</span></div>`;

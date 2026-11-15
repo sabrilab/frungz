@@ -8,6 +8,17 @@ Jeu de tir à la troisième personne dans un quartier de Paris (Three.js) : mode
 
 Assets : personnages et armes Quaternius (CC0), sons CC0 (voir `public/assets/sfx/LICENCES.md`), voitures (voir `public/assets/cars/VEHICULES-LICENCES.md`). Motos et skateboards : modélisés dans le code (`src/deuxroues.js`), formes génériques sans marque.
 
+## Mode Zombies
+
+Choix du mode dans le salon (tuiles « Domination » / « Zombies »), ou `?mode=zombie`. Fonctionne sur toutes les cartes sans travail par carte : refuge, points d'apparition et trajets sont déduits de la carte (grille de navigation, zones, spawns, parkings, portes de boutiques).
+
+- Toi et trois équipiers (bots) tenez le quartier contre des vagues de plus en plus grosses : rôdeurs, coureurs, blindés (gilet), contaminés (éclatent en nuage toxique), et un Mastodonte toutes les 5 vagues. Entre deux vagues : prime, équipiers relevés, caisse de ravitaillement larguée (`E`).
+- Ambiance : brume, nappe sonore, cris, flashs FRUNGZ INFO dédiés, HUD de vague (`#zHud`), record par carte (`save.zBest`). Les séries de kills et leurs titres restent.
+- Réglage facultatif par carte dans `gameplay.json` : `"zombie": { "refuge": [x, z], "spawns": [[x, z], ...], "eviter": [[x0, z0, x1, z1], ...], "max": 24 }`.
+- Modèles et animations : Mixamo (bibliothèque `sabrilab/mixamo-library`), convertis en GLB par `tools/zombies/` (voir son README), dans `public/assets/zombies/`. Code : `src/zombie.js`.
+- Hors ligne seulement pour l'instant (pas de coop en ligne).
+- Tests : `node test/zombie.cjs http://localhost:8124/ paris,banlieue 6 1` (partie accélérée : vagues, zombies coincés, erreurs) et `node test/zombie-shots.cjs http://localhost:8124/ dossier paris` (captures).
+
 ## Voitures : nitro, bonus, saut en marche
 
 - Nitro : `Maj` (R1 / L3 à la manette, bouton Nitro au tactile). La jauge bleue sous la vitesse se remplit en dérapant et en frôlant voitures et passants.

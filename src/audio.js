@@ -70,7 +70,7 @@ export function createAudio() {
     ambience();
   }
   // ambiance de rue : lancée dès que ses sons sont décodés (avant : une seule tentative à 1,5 s, ratée si le réseau était lent → plus jamais d'ambiance)
-  function ambience() { loop('town', 0.5); loop('crowdFar', 0.35); }
+  function ambience() { loop('town', 0.5); loop('crowdFar', 0.35); if (zamb) { zd = null; zAmbience(true); } }
   // panoramique + atténuation
   // budget de voix : en 50 contre 50, des centaines de bruitages par seconde. Avant, chaque appel (même inaudible, même loin)
   // occupait une place pendant 1,5 s : au cœur d'un combat le compteur saturait et TOUS les sons placés (tirs proches,
@@ -263,7 +263,33 @@ export function createAudio() {
     tone(out, t, 0.9, 82, 46, 0.7, 'sine'); noise(out, t, 0.25, 'lowpass', 1600, 200, 0.8, 0.45);
     [[392, 0, 0.12], [392, 0.14, 0.12], [523, 0.28, 0.5]].forEach(([f, d, du]) => { tone(out, t + d, du, f * up, f * up, 0.16, 'sawtooth'); tone(out, t + d, du, f * up * 1.5, f * up * 1.5, 0.08, 'square'); });
     if (lv >= 2) tone(out, t + 0.28, 0.6, 659 * up, 659 * up, 0.1, 'sawtooth'); }
-  const api = { newsSting, material, sentry, hurt, armorBreak, ring, muffle, whistle, crack, firework, buzz, rotor, jet, cannon, water, init, play, gun, tink, click, mech, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state, journal: journal.slice() }), _ctx: () => ctx };
+  // --- mode Zombies (src/zombie.js) : nappe sourde à la place de la rumeur de la ville, début et fin de vague, cris
+  const LOOP_VOL = { town: 0.5, crowdFar: 0.35 }; let zamb = false, zd = null;
+  function zAmbience(on) {
+    zamb = !!on; if (!ctx) return; const t = ctx.currentTime;
+    for (const [k, L] of Object.entries(loops)) L.g.gain.setTargetAtTime(on ? (LOOP_VOL[k] ?? 0.4) * 0.08 : LOOP_VOL[k] ?? 0.4, t, 1.2);
+    if (on && !zd) {
+      const g = ctx.createGain(); g.gain.value = 0; g.connect(amb); const nodes = [];
+      for (const [f, ty, v] of [[43.65, 'sine', 0.32], [44.1, 'sine', 0.26], [65.4, 'triangle', 0.07], [87.3, 'sine', 0.04]]) { const o = ctx.createOscillator(); o.type = ty; o.frequency.value = f; const og = ctx.createGain(); og.gain.value = v; o.connect(og); og.connect(g); o.start(); nodes.push(o); }
+      // vent : bruit filtré qui ondule lentement
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf; n.loop = true; const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 420; bp.Q.value = 0.7; const ng = ctx.createGain(); ng.gain.value = 0.09; n.connect(bp); bp.connect(ng); ng.connect(g); n.start(); nodes.push(n);
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.07; const lg = ctx.createGain(); lg.gain.value = 260; lfo.connect(lg); lg.connect(bp.frequency); lfo.start(); nodes.push(lfo);
+      g.gain.setTargetAtTime(0.55, t, 2.5); zd = { g, nodes };
+    } else if (!on && zd) { const d = zd; zd = null; d.g.gain.setTargetAtTime(0, t, 0.6); setTimeout(() => { for (const x of d.nodes) try { x.stop(); } catch {} d.g.disconnect(); }, 3000); }
+  }
+  // début de vague : trois coups de timbale graves et une cloche fêlée ; fin : accord qui se pose ; fin de partie : glas
+  function zWave(n, start, end) {
+    if (!ctx) return; const out = spatial(null, 0.7), t = ctx.currentTime;
+    if (end) { for (let i = 0; i < 3; i++) { tone(out, t + i * 1.1, 2.4, 196, 194, 0.22, 'sine'); tone(out, t + i * 1.1, 2.4, 392 * 1.007, 390, 0.08, 'sine'); tone(out, t + i * 1.1, 0.5, 70, 40, 0.5, 'sine'); } return; }
+    if (start) {
+      [0, 0.42, 0.84].forEach((d, i) => { tone(out, t + d, 0.7, 62 - i * 4, 34, 0.85, 'sine'); noise(out, t + d, 0.35, 'lowpass', 900, 120, 0.8, 0.5); });
+      tone(out, t + 1.3, 3.2, 311, 309, 0.16, 'sine'); tone(out, t + 1.3, 3.2, 311 * 2.76, 311 * 2.7, 0.05, 'sine'); tone(out, t + 1.3, 2.4, 311 * 5.4, 311 * 5.3, 0.025, 'sine');
+      noise(out, t + 0.2, 3.5, 'bandpass', 300, 900, 1.2, 0.18); // la horde au loin
+    } else { [[220, 0], [277, 0.12], [330, 0.24], [440, 0.4]].forEach(([f, d]) => tone(out, t + d, 1.8, f, f, 0.12, 'triangle')); tone(out, t, 0.6, 90, 55, 0.4, 'sine'); }
+  }
+  function zScream(pos) { if (!ctx) return; play('voxWar', pos, 1.2, [0.62, 0.7], 0.2); const out = spatial(pos, 0.5, 14); if (!out) return; const t = ctx.currentTime; noise(out, t, 1.1, 'bandpass', 1400, 600, 3, 0.4); }
+  function zRoar(pos) { if (!ctx) return; play('voxWar', pos, 1.8, [0.36, 0.42], 0.2); play('voxPain', pos, 1.3, [0.33, 0.38], 0.2); const out = spatial(pos, 1.2, 30); if (!out) return; const t = ctx.currentTime; tone(out, t, 1.6, 70, 38, 0.8, 'sawtooth'); noise(out, t, 1.8, 'lowpass', 700, 90, 0.7, 0.7); }
+  const api = { zAmbience, zWave, zScream, zRoar, newsSting, material, sentry, hurt, armorBreak, ring, muffle, whistle, crack, firework, buzz, rotor, jet, cannon, water, init, play, gun, tink, click, mech, reload, glass, hitmark, kill, cash, rarity, capture, build, explode, engine, roll, horn, siren, listener, multi, streakReady, streakGo, boing, scope, bolt, heart, breath, whiz, get ready() { return !!ctx; }, debug: () => ({ voices: active.length, dropped, state: ctx?.state, journal: journal.slice() }), _ctx: () => ctx };
   // chaque bruitage : noté dans les derniers sons joués, et une erreur audio (valeur non finie refusée par le navigateur)
   // ne remonte plus dans le code du jeu, où elle interrompait l'action en cours
   for (const k of Object.keys(Object.getOwnPropertyDescriptors(api))) { const d = Object.getOwnPropertyDescriptor(api, k); if (typeof d.value !== 'function' || k === 'init' || k === 'debug' || k === '_ctx') continue; const f = d.value, quiet = k === 'engine' || k === 'roll' || k === 'muffle';
