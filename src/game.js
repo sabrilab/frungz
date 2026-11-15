@@ -25,6 +25,7 @@ import { installTurrets } from './tourelles.js';
 import { installConduite } from './conduite.js';
 import { createFeedback } from './feedback.js';
 import { installEntrainement } from './entrainement.js';
+import { installZombie } from './zombie.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
@@ -461,10 +462,10 @@ export class Game {
     for (const a of this.actors) {
       if (!a.alive || a === skip || (a.inCar && !a.inCar.kind)) continue;
       const fx = o.x - a.pos.x, fz = o.z - a.pos.z, A = d.x * d.x + d.z * d.z; if (A < 1e-8) continue;
-      const B = 2 * (fx * d.x + fz * d.z), R = 0.42, C = fx * fx + fz * fz - R * R, D = B * B - 4 * A * C; if (D < 0) continue;
+      const B = 2 * (fx * d.x + fz * d.z), R = a.hitR || 0.42, C = fx * fx + fz * fz - R * R, D = B * B - 4 * A * C; if (D < 0) continue;
       const sq = Math.sqrt(D); for (const t of [(-B - sq) / (2 * A), (-B + sq) / (2 * A)]) {
-        if (t <= 0 || t >= best) continue; const y = o.y + d.y * t - a.pos.y; const top = a.slideT > 0 ? 1.1 : 1.85 - (a.crouchK || 0) * 0.55;
-        if (y >= 0 && y <= top) { best = t; hit = { a, t, head: y > top - 0.32 }; break; }
+        if (t <= 0 || t >= best) continue; const y = o.y + d.y * t - a.pos.y; const top = a.hitTop || (a.slideT > 0 ? 1.1 : 1.85 - (a.crouchK || 0) * 0.55); // hitTop / headY : corps d'une autre taille (zombies, src/zombie.js)
+        if (y >= 0 && y <= top) { best = t; hit = { a, t, head: y > (a.headY || top - 0.32) }; break; }
       }
     }
     // voitures (boîte de collision)
@@ -2067,4 +2068,5 @@ installNotoriete(Game); // presque en dernier : enrobe addGalons, kill, multiKil
 installElimination(Game); // retour visuel des éliminations (src/elimination.js)
 installEntrainement(Game); // mode entraînement (carte La Salle, src/entrainement.js) : n'agit que si opts.training
 installReplay(Game); // kill-cam : ralenti en plusieurs plans, de temps en temps (src/replay.js)
+installZombie(Game); // mode Zombies (src/zombie.js) : n'agit que si opts.mode === 'zombie'
 installRegie(Game); // tout dernier : met en scène annonces, bandeau, gains, fil, flashs (src/regie.js)
