@@ -477,15 +477,6 @@
  "zones": [
   {
    "id": "A",
-   "nom": "Atrium",
-   "pos": [
-    50,
-    -42
-   ],
-   "niveau": 0
-  },
-  {
-   "id": "B",
    "nom": "Galerie nord",
    "pos": [
     -20,
@@ -494,7 +485,7 @@
    "niveau": 0
   },
   {
-   "id": "C",
+   "id": "B",
    "nom": "Passerelle est",
    "pos": [
     50,
@@ -503,16 +494,7 @@
    "niveau": 1
   },
   {
-   "id": "D",
-   "nom": "Parking",
-   "pos": [
-    -22,
-    24
-   ],
-   "niveau": 0
-  },
-  {
-   "id": "E",
+   "id": "C",
    "nom": "Kiosque",
    "pos": [
     -37,
