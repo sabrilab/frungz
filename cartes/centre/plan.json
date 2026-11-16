@@ -1,0 +1,576 @@
+{
+ "id": "centre",
+ "nom": "Frungz Plaza",
+ "desc": "centre commercial en L, deux niveaux, parking",
+ "unite": "mètre",
+ "axes": "x est, z sud",
+ "limites": {
+  "x0": -80,
+  "x1": 80,
+  "z0": -70,
+  "z1": 70
+ },
+ "secteur": 40,
+ "budget": {
+  "triangles": 450000,
+  "objets": 250
+ },
+ "joueurs": "20 contre 20",
+ "batiment": {
+  "niveaux": [
+   {
+    "nom": "rez-de-chaussée",
+    "y": 0
+   },
+   {
+    "nom": "étage",
+    "y": 5
+   }
+  ],
+  "toit": 10,
+  "ailes": [
+   {
+    "id": "nord",
+    "nom": "Aile nord",
+    "rect": [
+     -70,
+     -62,
+     30,
+     -22
+    ],
+    "galerie": [
+     -70,
+     -47,
+     30,
+     -37
+    ]
+   },
+   {
+    "id": "est",
+    "nom": "Aile est",
+    "rect": [
+     30,
+     -22,
+     70,
+     58
+    ],
+    "galerie": [
+     45,
+     -22,
+     55,
+     58
+    ]
+   }
+  ],
+  "atrium": {
+   "nom": "Atrium (verrière, fontaine)",
+   "rect": [
+    30,
+    -62,
+    70,
+    -22
+   ],
+   "fontaine": [
+    50,
+    -42,
+    5
+   ]
+  },
+  "arcade": {
+   "nom": "Arcade couverte, terrasse à l'étage",
+   "poly": [
+    [
+     -70,
+     -22
+    ],
+    [
+     30,
+     -22
+    ],
+    [
+     30,
+     58
+    ],
+    [
+     22,
+     58
+    ],
+    [
+     22,
+     -14
+    ],
+    [
+     -70,
+     -14
+    ]
+   ]
+  },
+  "boutiques": [
+   [
+    -70,
+    -62,
+    -45,
+    -47,
+    "Sport"
+   ],
+   [
+    -45,
+    -62,
+    -20,
+    -47,
+    "Mode"
+   ],
+   [
+    -20,
+    -62,
+    5,
+    -47,
+    "Bijoux"
+   ],
+   [
+    5,
+    -62,
+    30,
+    -47,
+    "Tech"
+   ],
+   [
+    -70,
+    -37,
+    -40,
+    -22,
+    "Supérette"
+   ],
+   [
+    -40,
+    -37,
+    -10,
+    -22,
+    "Café"
+   ],
+   [
+    -10,
+    -37,
+    30,
+    -22,
+    "Baskets"
+   ],
+   [
+    55,
+    -22,
+    70,
+    5,
+    "Luxe"
+   ],
+   [
+    55,
+    5,
+    70,
+    32,
+    "Jouets"
+   ],
+   [
+    55,
+    32,
+    70,
+    58,
+    "Maison"
+   ],
+   [
+    30,
+    -22,
+    45,
+    10,
+    "Parfums"
+   ],
+   [
+    30,
+    10,
+    45,
+    40,
+    "Librairie"
+   ],
+   [
+    30,
+    40,
+    45,
+    58,
+    "Receleur"
+   ]
+  ],
+  "montees": [
+   {
+    "type": "escalator",
+    "pos": [
+     -62,
+     -42
+    ],
+    "nom": "Escalators ouest"
+   },
+   {
+    "type": "escalator",
+    "pos": [
+     40,
+     -32
+    ],
+    "nom": "Escalators de l'atrium"
+   },
+   {
+    "type": "escalier",
+    "pos": [
+     50,
+     52
+    ],
+    "nom": "Escalier sud"
+   },
+   {
+    "type": "escalier",
+    "pos": [
+     -20,
+     -18
+    ],
+    "nom": "Escalier de l'arcade"
+   },
+   {
+    "type": "toit",
+    "pos": [
+     -66,
+     -26
+    ],
+    "nom": "Escalier du toit ouest"
+   },
+   {
+    "type": "toit",
+    "pos": [
+     66,
+     -58
+    ],
+    "nom": "Escalier du toit de l'atrium"
+   },
+   {
+    "type": "toit",
+    "pos": [
+     34,
+     54
+    ],
+    "nom": "Escalier du toit sud"
+   }
+  ],
+  "entrees": [
+   [
+    -70,
+    -42,
+    "ouest"
+   ],
+   [
+    -45,
+    -22,
+    "arcade 1"
+   ],
+   [
+    0,
+    -22,
+    "arcade 2"
+   ],
+   [
+    30,
+    15,
+    "arcade 3"
+   ],
+   [
+    50,
+    58,
+    "sud"
+   ],
+   [
+    30,
+    -30,
+    "angle"
+   ]
+  ],
+  "toit_accessible": true
+ },
+ "parking": {
+  "rect": [
+   -70,
+   -10,
+   18,
+   62
+  ],
+  "rangees": [
+   [
+    -62,
+    2,
+    6,
+    2
+   ],
+   [
+    -62,
+    14,
+    6,
+    14
+   ],
+   [
+    -62,
+    34,
+    6,
+    34
+   ],
+   [
+    -62,
+    46,
+    6,
+    46
+   ]
+  ],
+  "terre_plein": [
+   [
+    -62,
+    22,
+    6,
+    26
+   ]
+  ],
+  "abris": [
+   {
+    "type": "kiosque",
+    "rect": [
+     -44,
+     50,
+     -30,
+     60
+    ],
+    "nom": "Kiosque café"
+   },
+   {
+    "type": "chariots",
+    "rect": [
+     -20,
+     6,
+     -12,
+     10
+    ],
+    "nom": "Abri à chariots"
+   },
+   {
+    "type": "chariots",
+    "rect": [
+     -48,
+     38,
+     -40,
+     42
+    ],
+    "nom": "Abri à chariots"
+   },
+   {
+    "type": "camion",
+    "rect": [
+     8,
+     40,
+     12,
+     52
+    ],
+    "nom": "Camion de livraison"
+   },
+   {
+    "type": "muret",
+    "rect": [
+     -70,
+     30,
+     -66,
+     31
+    ],
+    "nom": "Muret"
+   },
+   {
+    "type": "muret",
+    "rect": [
+     -10,
+     -6,
+     10,
+     -5
+    ],
+    "nom": "Jardinières"
+   },
+   {
+    "type": "muret",
+    "rect": [
+     14,
+     20,
+     15,
+     34
+    ],
+    "nom": "Jardinières"
+   },
+   {
+    "type": "conteneur",
+    "rect": [
+     -66,
+     -6,
+     -54,
+     -3.5
+    ],
+    "nom": "Conteneur"
+   },
+   {
+    "type": "conteneur",
+    "rect": [
+     -30,
+     28,
+     -18,
+     30.5
+    ],
+    "nom": "Conteneurs empilés"
+   },
+   {
+    "type": "conteneur",
+    "rect": [
+     -4,
+     16,
+     -1.5,
+     28
+    ],
+    "nom": "Conteneur"
+   },
+   {
+    "type": "conteneur",
+    "rect": [
+     -60,
+     52,
+     -48,
+     54.5
+    ],
+    "nom": "Conteneur"
+   },
+   {
+    "type": "conteneur",
+    "rect": [
+     2,
+     54,
+     14,
+     56.5
+    ],
+    "nom": "Conteneur ouvert (on passe dedans)"
+   }
+  ]
+ },
+ "rues": [
+  {
+   "nom": "Rue ouest",
+   "rect": [
+    -80,
+    -70,
+    -72,
+    70
+   ]
+  },
+  {
+   "nom": "Rue sud",
+   "rect": [
+    -80,
+    62,
+    80,
+    70
+   ]
+  }
+ ],
+ "zones": [
+  {
+   "id": "A",
+   "nom": "Atrium",
+   "pos": [
+    50,
+    -42
+   ],
+   "niveau": 0
+  },
+  {
+   "id": "B",
+   "nom": "Galerie nord",
+   "pos": [
+    -20,
+    -42
+   ],
+   "niveau": 0
+  },
+  {
+   "id": "C",
+   "nom": "Passerelle est",
+   "pos": [
+    50,
+    18
+   ],
+   "niveau": 1
+  },
+  {
+   "id": "D",
+   "nom": "Parking",
+   "pos": [
+    -22,
+    24
+   ],
+   "niveau": 0
+  },
+  {
+   "id": "E",
+   "nom": "Kiosque",
+   "pos": [
+    -37,
+    46
+   ],
+   "niveau": 0
+  }
+ ],
+ "spawns": {
+  "ordre": {
+   "nom": "Brigade",
+   "rect": [
+    -79,
+    -58,
+    -73,
+    -26
+   ]
+  },
+  "civils": {
+   "nom": "Frungz",
+   "rect": [
+    36,
+    63,
+    66,
+    69
+   ]
+  }
+ },
+ "vues": [
+  [
+   [
+    -70,
+    -42
+   ],
+   [
+    30,
+    -42
+   ]
+  ],
+  [
+   [
+    50,
+    -22
+   ],
+   [
+    50,
+    58
+   ]
+  ],
+  [
+   [
+    -62,
+    24
+   ],
+   [
+    6,
+    24
+   ]
+  ]
+ ]
+}
