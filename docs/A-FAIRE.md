@@ -20,14 +20,16 @@ Mesures sur la carte de Paris (`public/assets/map.glb`), novembre 2026 :
 - La moitié sud (tour, bassin, parvis : z de −100 à −342) ne contient que 2 zones sur 10 (I et J) et aucun point d'apparition. Mais elle ne pèse que 322 000 triangles (18 %). La couper divise la surface par deux sans diviser la charge par deux.
 - Le centre (z de −100 à +100) pèse 1,18 million de triangles (66 %) : îlots B et N (630 000), feuillages du mobilier (162 000).
 - Décor lointain et horizon, hors limites jouables : 194 000 triangles (11 %).
-- 370 lampadaires et 279 terrasses cassables sont des objets séparés : environ 650 objets à dessiner à eux seuls.
+- Les 633 objets cassables (lampadaires, terrasses…) sont déjà fusionnés par matière au chargement (`src/cassables.js`) : une vingtaine d'objets à dessiner. Revers : chaque maillage fusionné couvre toute la carte, donc il est dessiné en entier à chaque image, même ce qui est derrière le joueur. Même défaut pour le mobilier (`mobilier_leaf` : 162 000 triangles en un seul bloc).
 
 Pistes, de la plus rentable à la moins rentable (à confirmer par une mesure sur une vraie carte graphique, `?bench=40`) :
 
 1. Personnages : 100 persos animés en 50 contre 50. Baisser le défaut (30 contre 30), animer moins souvent les persos lointains.
-2. Objets à dessiner : regrouper lampadaires et terrasses par instances, ne les séparer qu'au moment où ils cassent.
+2. Découpage en secteurs : fusionner mobilier et objets cassables par case d'environ 60 m au lieu d'un bloc pour toute la carte, pour que le moteur écarte les cases hors champ (et hors de la zone d'ombre).
 3. Îlots B et N : version simplifiée vue de loin.
 4. Carte : couper le sud (zones I et J), ou en faire une variante « Paris centre ». Gain modeste en triangles, net en téléchargement et en trajets à vide.
 5. Feuillages : moins de triangles par arbre.
+
+Déjà en place dans le jeu : fusion des objets cassables, persos lointains cachés et animés moins souvent, résolution qui s'adapte aux images/s.
 
 Déjà fait : la scène 3D n'est plus dessinée quand l'armurerie ou la boutique couvre l'écran.
