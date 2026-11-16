@@ -5,7 +5,7 @@ const { chromium } = require('playwright');
 (async () => {
   const [,, url = 'http://localhost:8124/', dir] = process.argv;
   const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
-  const errs = []; p.on('pageerror', (e) => errs.push('pageerror ' + e.message)); p.on('console', (m) => { if (m.type() === 'error' && !/api\/|Failed to load resource/.test(m.text())) errs.push('console ' + m.text().slice(0, 300)); });
+  const errs = []; p.on('pageerror', (e) => errs.push('pageerror ' + e.message)); p.on('console', (m) => { if (m.type() === 'error' && !/api\/|Failed to load resource|supabase\.co|WebSocket/.test(m.text()) /* salon en ligne injoignable en test : hors sujet */) errs.push('console ' + m.text().slice(0, 300)); });
   await p.goto(url + '?map=salle&q=bas&noreal&profil=bq' + Date.now()); await p.waitForFunction('window.__loaded', null, { timeout: 600000 });
   const ok = (c, m) => { console.log((c ? 'OK  ' : 'KO  ') + m); if (!c) process.exitCode = 1; };
   await p.click('#openBoutique'); await p.waitForTimeout(600);

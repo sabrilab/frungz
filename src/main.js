@@ -336,13 +336,13 @@ const WEB_URL = 'https://frungz.vercel.app/';
 // aperçu 3D à part : arme camouflée (ton arme principale) ou tenue au repos, qui tourne
 let bqPv = null;
 function bqSkinModel(id, camo) {
-  if (!chars[id]) return null; const t = TENUES.find((x) => x.id === id); const ch = makeCharacter(id); tintTeam(ch.model, id, t?.team || save.team);
+  if (!chars[id]) return null; const t = TENUES.find((x) => x.id === id); const ch = makeCharacter(id); tintTeam(ch.model, id, t?.team || save.team); ch.model.traverse((o) => { if (o.isMesh) o.frustumCulled = false; }); /* boîte englobante du perso animé fausse : sans ça il disparaît */
   try { attachGun(ch, myGun()); applyCamo(ch.gun, camo); } catch {}
   const idle = ch.actions.MX_IdleLow || ch.actions.MX_Idle || Object.values(ch.actions)[0]; idle?.play(); ch.mixer.update(0.3); ch.root.userData.mixer = ch.mixer; return ch.root;
 }
 const bqPreview = {
   show(aid) {
-    if (!bqPv) { try { bqPv = createPreview(); document.querySelector('#boutique .bq-pvbox')?.prepend(bqPv.canvas); } catch (e) { console.warn('aperçu boutique', e); return; } }
+    if (!bqPv) { try { bqPv = createPreview(); document.querySelector('#boutique .bq-pvbox')?.prepend(bqPv.canvas); bqPv.start(); /* l'ouverture a demandé start() avant que l'aperçu existe */ } catch (e) { console.warn('aperçu boutique', e); return; } }
     const [t, id] = aid.split(':'); let make = null;
     if (t === 'camo') make = () => applyCamo(gunInstance(myGun()), id);
     else if (t === 'tenue') make = () => bqSkinModel(id, save.cosm?.eq?.camo);
