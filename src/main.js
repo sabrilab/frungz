@@ -250,8 +250,9 @@ $('play').addEventListener('click', () => start());
 var NAV_PANELS = ['shop', 'boutique', 'pause']; // var : syncNav peut être appelé (setView) avant cette ligne
 function closeNavPanels(keep) { if (game) return; for (const id of NAV_PANELS) if (id !== keep && !$(id).classList.contains('hidden')) { if (id === 'shop') closeShop(); else if (id === 'boutique') boutique?.close(); else closePause(); } }
 function syncNav() { try { syncNav0(); } catch {} } // appelé tôt (setView) : game peut ne pas encore exister
+var sceneCovered = false; // armurerie ou boutique ouverte : écran opaque, inutile de dessiner la scène 3D derrière
 function syncNav0() {
-  if (!NAV_PANELS) return; const open = !game ? NAV_PANELS.find((id) => !$(id).classList.contains('hidden')) : null; const top = document.querySelector('.lb-top');
+  if (!NAV_PANELS) return; sceneCovered = !$('shop').classList.contains('hidden') || !$('boutique').classList.contains('hidden'); const open = !game ? NAV_PANELS.find((id) => !$(id).classList.contains('hidden')) : null; const top = document.querySelector('.lb-top');
   document.body.classList.toggle('navpanel', !!open); if (top) document.documentElement.style.setProperty('--navh', top.offsetHeight + 'px');
   const m = $('menu'), view = m.classList.contains('v-casier') ? 'casier' : 'salon';
   $('tabSalon').classList.toggle('on', !open && view === 'salon'); $('tabCasier').classList.toggle('on', !open && view === 'casier');
@@ -470,7 +471,9 @@ function showPv(k, id) {
   if (!pv) return; pvSel = [k, id];
   if (k === 'w') {
     const W = WEAPONS[id], K = classOf(save.team, save.cls[save.team]), kit = kitOf(save, save.team, K), free = K.primaries.includes(id) || (W.cat === 'pistolet' && !WEAPONS[id].paid), owned = free || save.unlocked.includes(id);
-    pv.show('w', id);
+    { const camo = save.cosm?.eq?.camo || 'aucun'; pv.show('w', id + '~' + camo, 0, () => applyCamo(gunInstance(id), camo)); } // avec ton camouflage
+    const eq = kit.p === id || kit.s === id;
+    $('pvAct').innerHTML = `<button data-w="${id}" ${eq || (!owned && save.bank < W.price) ? 'disabled' : ''}>${eq ? 'Équipée ' + svg('check') : owned ? 'Équiper' : 'Acheter · ' + fmt(W.price) + ' €'}</button>${!owned && save.bank < W.price ? `<small>Il te manque ${fmt(W.price - save.bank)} €</small>` : ''}`;
     $('pvinfo').innerHTML = `<h3>${svg(W.ico)} ${W.name}</h3><p class="pvtag">${kit.p === id || kit.s === id ? 'Équipée' : free ? 'Arme de la classe ' + K.name : owned ? 'Dans ta planque' : fmt(W.price) + ' €'}${W.scope ? ' · lunette ×4 / ×8' : ''}${W.auto ? ' · automatique' : W.burst ? ' · rafale de ' + W.burst : ''}${W.proj ? ' · explosif, rayon ' + W.proj.R + ' m, casse le décor' : W.veh > 1 ? ' · perce-blindage' : ''}</p>`
       + stat('Dégâts', (W.dmg * W.pellets) / 120, W.dmg + (W.pellets > 1 ? '×' + W.pellets : ''))
       + stat('Cadence', (W.burst ? W.burst / (W.burst / W.rps + (W.burstPause || 0.25)) : W.rps) / 12, (W.burst ? (W.burst / (W.burst / W.rps + (W.burstPause || 0.25))).toFixed(1) : W.rps) + ' coups/s')
@@ -482,49 +485,75 @@ function showPv(k, id) {
   } else if (k === 'c') {
     const K = classOf(save.team, id), kit = kitOf(save, save.team, K), P = WEAPONS[kit.p], S = WEAPONS[kit.s];
     pv.show('w', kit.p);
+    $('pvAct').innerHTML = `<button data-c="${id}" ${save.cls[save.team] === id ? 'disabled' : ''}>${save.cls[save.team] === id ? 'Ta classe ' + svg('check') : 'Choisir cette classe'}</button>`;
     $('pvinfo').innerHTML = `<h3>${svg(K.ico)} ${K.name}</h3><p class="pvtag">${K.role}${save.cls[save.team] === id ? ' · ta classe' : ''}</p><p class="pvdesc">${svg(P.ico)} ${P.name} · ${svg(S.ico)} ${S.name}</p><p class="pvdesc"><b>${K.perkName}</b> : ${K.perkDesc}</p><p class="pvdesc">Au choix : ${K.primaries.map((x) => WEAPONS[x].name).join(', ')}</p>`
       + stat('Protection', K.armor / 100, K.armor ? K.armor + ' / 100' : 'aucune') + stat('Vitesse', (K.speed - 0.8) / 0.35, Math.round(K.speed * 100) + ' %') + stat('Grenades', (K.nades + K.frags) / 4, `${K.nades} ${save.team === 'ordre' ? 'lacrymo' : 'fumigène'}${K.nades > 1 ? 's' : ''} · ${K.frags} grenade${K.frags > 1 ? 's' : ''}`);
   } else {
     const U = UPGRADES[id], l = save.upgrades[id] || 0;
     pv.show('u', id, id === 'gilet' ? Math.max(1, Math.min(U.max, l + 1)) : 0);
     const pips = Array.from({ length: U.max }, (_, i) => `<b class="${i < l ? 'on' : ''}"></b>`).join('');
+    $('pvAct').innerHTML = `<button data-u="${id}" ${l >= U.max || save.bank < U.price(l) ? 'disabled' : ''}>${l >= U.max ? 'Maximum' : 'Améliorer · ' + fmt(U.price(l)) + ' €'}</button>`;
     const next = id === 'gilet' ? `Armure au départ : ${25 * l} → ${25 * Math.min(U.max, l + 1)}` : U.desc;
     $('pvinfo').innerHTML = `<h3>${svg(U.ico)} ${U.name}</h3><p class="pvtag">${l >= U.max ? 'Niveau maximum' : 'Niveau ' + (l + 1) + ' : ' + fmt(U.price(l)) + ' €'}</p><div class="pips">${pips}</div><p class="pvdesc">${next}</p>${id === 'gilet' ? stat('Protection', (25 * l) / 100, 25 * l + ' / 100') : ''}`;
   }
 }
+// Armurerie murale : un mur de planches par catégorie, chaque arme accrochée et dessinée comme sur un plan technique
+// (tracé des arêtes du modèle : preview.js, blueprint). Survol ou clic : fiche technique à droite, où l'on achète et équipe.
+const wOwn = (id) => { const K = classOf(save.team, save.cls[save.team]), W = WEAPONS[id], free = K.primaries.includes(id) || (W.cat === 'pistolet' && !W.paid); return { free, owned: free || save.unlocked.includes(id) }; };
+function bpImg(k, id, l = 0) { const c = pv?.blueprintCached(k, id, l); return c ? `<img class="bp-img" src="${c.url}" style="aspect-ratio:${c.ratio.toFixed(3)}" alt="">` : `<img class="bp-img wait" data-bp="${k}|${id}|${l}" alt="">`; }
+// les plans se dessinent un par un, sans bloquer l'ouverture de l'écran ; ensuite ils sont en cache
+let bpBusy = false;
+function bpPump() {
+  if (bpBusy || !pv) return; bpBusy = true;
+  const step = () => { const t0 = performance.now();
+    for (;;) { const el = document.querySelector('#shopList img[data-bp]'); if (!el || $('shop').classList.contains('hidden')) { bpBusy = false; return; }
+      const [k, id, l] = el.dataset.bp.split('|'); el.removeAttribute('data-bp');
+      try { const c = pv.blueprint(k, id, +l); if (c) { el.src = c.url; el.style.aspectRatio = c.ratio.toFixed(3); el.classList.remove('wait'); } } catch (e) { console.warn('plan', id, e); }
+      if (performance.now() - t0 > 24) break; } // une vingtaine de millisecondes par passe : l'écran reste fluide
+    setTimeout(step, 0); };
+  step();
+}
 function renderShop() {
   document.querySelectorAll('.bankN').forEach((e) => (e.textContent = fmt(save.bank)));
   ensurePv();
-  const th = (k, id, l) => { const u = pv?.thumb(k, id, l); return u ? `<img class="th" src="${u}" alt="">` : ''; };
-  const head = (t) => `<h4 class="shead">${t}</h4>`;
-  const curCls = classOf(save.team, save.cls[save.team]).id;
-  const c = [head('Classes ' + TEAMS[save.team].short)].concat(Object.values(CLASSES[save.team]).map((K) => `<div class="card cls ${K.id === curCls ? 'owned' : ''}" data-k="c" data-id="${K.id}" style="--c:${K.id === curCls ? '#2f6' : TEAMS[save.team].color}">${th('w', kitOf(save, save.team, K).p, 0)}<b>${svg(K.ico)} ${K.name}</b><small>${K.role} · ${WEAPONS[kitOf(save, save.team, K).p].name} · ${K.perkName}</small><button data-c="${K.id}">${K.id === curCls ? 'Ta classe ' + svg('check') : 'Choisir'}</button></div>`));
-  const w = [], CK = classOf(save.team, curCls), ckit = kitOf(save, save.team, CK);
+  const curCls = classOf(save.team, save.cls[save.team]).id, CK = classOf(save.team, curCls), ckit = kitOf(save, save.team, CK);
+  let n = 0; const rail = [];
+  const planche = (id, titre, sub, inner) => { n++; rail.push(`<button data-go="${id}"><i>${String(n).padStart(2, '0')}</i>${titre}</button>`); return `<section class="bp-pl" id="bp-${id}"><header><i>PL. ${String(n).padStart(2, '0')}</i><b>${titre}</b><span>${sub}</span></header><div class="bp-row">${inner}</div></section>`; };
+  const dim = (W) => (W.len ? `<span class="bp-dim">${W.len.toFixed(2).replace('.', ',')} m</span>` : '');
+  const out = [];
   for (const [cat, label] of Object.entries(WEAPON_CATS)) {
-    const list = Object.entries(WEAPONS).filter(([id, W]) => W.cat === cat); if (!list.length) continue;
-    w.push(head(label));
-    for (const [id, W] of list) {
-      const free = CK.primaries.includes(id) || (cat === 'pistolet' && !WEAPONS[id].paid), owned = free || save.unlocked.includes(id), eq = ckit.p === id || ckit.s === id;
-      w.push(`<div class="card ${owned ? 'owned' : ''}" data-k="w" data-id="${id}" style="--c:${owned ? '#2f6' : '#777'}">${th('w', id, 0)}<b>${svg(W.ico)} ${W.name}</b><small>Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.burst ? 'rafale ×' + W.burst : W.rps + ' coups/s'} · ${W.proj ? 'zone ' + W.proj.R + ' m · ' + W.mag + ' × ' + W.ammo : 'chargeur ' + W.mag}</small><button data-w="${id}" ${!owned && save.bank < W.price ? 'disabled' : ''}>${owned ? (eq ? 'Équipée ' + svg('check') : 'Équiper') : fmt(W.price) + ' €'}</button>${free && cat !== 'pistolet' ? '<em class="free">' + CK.name + '</em>' : ''}</div>`);
-    }
+    const list = Object.entries(WEAPONS).filter(([, W]) => W.cat === cat); if (!list.length) continue; let have = 0;
+    const items = list.map(([id, W]) => { const { free, owned } = wOwn(id), eq = ckit.p === id || ckit.s === id; if (owned) have++;
+      const st = eq ? 'eq' : owned ? 'own' : save.bank >= W.price ? 'buy' : 'lock';
+      return `<button class="card bp-w ${st}" data-k="w" data-id="${id}" style="--w:${Math.round(118 + (W.len || 0.6) * 150)}px">${bpImg('w', id)}${dim(W)}<b>${W.name}</b><small>${eq ? 'Équipée' : free ? (cat === 'pistolet' ? 'En stock' : 'Classe ' + CK.name) : owned ? 'En stock' : fmt(W.price) + ' €'}</small></button>`; }).join('');
+    out.push(planche(cat, label, `${list.length} modèle${list.length > 1 ? 's' : ''} · ${have} en stock`, items));
   }
-  w.push(head('Planque'));
-  const u = Object.entries(UPGRADES).map(([id, U]) => { const l = save.upgrades[id] || 0; const max = l >= U.max; const p = U.price(l); return `<div class="card" data-k="u" data-id="${id}" style="--c:#57b6ff">${th('u', id, id === 'gilet' ? Math.max(1, l) : 0)}<b>${svg(U.ico)} ${U.name} · niv. ${l}/${U.max}</b><small>${U.desc}</small><button data-u="${id}" ${max || save.bank < p ? 'disabled' : ''}>${max ? 'Maximum' : fmt(p) + ' €'}</button></div>`; });
-  $('shopList').innerHTML = c.join('') + w.join('') + u.join('');
+  out.push(planche('classes', 'Classes ' + TEAMS[save.team].short, 'arme, protection et atout', Object.values(CLASSES[save.team]).map((K) => { const k = kitOf(save, save.team, K);
+    return `<button class="card bp-w cls ${K.id === curCls ? 'eq' : 'own'}" data-k="c" data-id="${K.id}" style="--w:230px">${bpImg('w', k.p)}<b>${svg(K.ico)} ${K.name}</b><small>${K.id === curCls ? 'Ta classe' : K.role + ' · ' + K.perkName}</small></button>`; }).join('')));
+  out.push(planche('planque', 'Planque', 'améliorations permanentes', Object.entries(UPGRADES).map(([id, U]) => { const l = save.upgrades[id] || 0, max = l >= U.max;
+    return `<button class="card bp-w up ${max ? 'eq' : save.bank >= U.price(l) ? 'own' : 'lock'}" data-k="u" data-id="${id}" style="--w:170px">${bpImg('u', id, id === 'gilet' ? Math.max(1, l) : 0)}<b>${svg(U.ico)} ${U.name}</b><small>${max ? 'Niveau maximum' : `niv. ${l}/${U.max} · ${fmt(U.price(l))} €`}</small></button>`; }).join('')));
+  const wall = $('shopList'), top = wall.scrollTop; wall.innerHTML = out.join(''); wall.scrollTop = top; $('shopRail').innerHTML = rail.join(''); railMark();
   const sel = pvSel || ['w', ckit.p];
   showPv(sel[0], sel[1]); markSel();
-  pv?.start();
+  pv?.start(); bpPump();
 }
 function markSel() { document.querySelectorAll('#shopList .card').forEach((c) => c.classList.toggle('sel', !!pvSel && c.dataset.k === pvSel[0] && c.dataset.id === pvSel[1])); }
-// survol à la souris ou focus à la manette : l'aperçu suit
+// la planche en haut du mur est surlignée dans la colonne des catégories
+function railMark() { const wall = $('shopList'), y = wall.getBoundingClientRect().top + 60; let cur = null; for (const s of wall.querySelectorAll('.bp-pl')) { if (s.getBoundingClientRect().top <= y) cur = s.id.slice(3); } cur ||= wall.querySelector('.bp-pl')?.id.slice(3); document.querySelectorAll('#shopRail [data-go]').forEach((b) => b.classList.toggle('on', b.dataset.go === cur)); }
+$('shopList').addEventListener('scroll', railMark, { passive: true });
+// survol à la souris ou focus à la manette : la fiche suit
 function pvFrom(el) { const c = el?.closest?.('#shopList .card'); if (c && (!pvSel || pvSel[0] !== c.dataset.k || pvSel[1] !== c.dataset.id)) { showPv(c.dataset.k, c.dataset.id); markSel(); } }
 $('shopList').addEventListener('pointerover', (e) => pvFrom(e.target));
 $('shopList').addEventListener('focusin', (e) => pvFrom(e.target));
-$('shopList').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b || b.disabled) return;
+$('shop').addEventListener('click', (e) => {
+  const go = e.target.closest('[data-go]'); if (go) { $('bp-' + go.dataset.go)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); audio.play('uiTick'); return; }
+  // clic sur le mur : la fiche s'ouvre ; une arme déjà en stock passe directement dans les mains (l'achat se fait sur la fiche)
+  const card = e.target.closest('#shopList .card');
+  if (card) { const { k, id } = card.dataset; showPv(k, id); markSel(); audio.play('uiTick'); if (k !== 'w' || !wOwn(id).owned) return; const K = classOf(save.team, save.cls[save.team]), kit = kitOf(save, save.team, K); if (kit.p === id || kit.s === id) return; setKit(WEAPONS[id].cat === 'pistolet' ? 's' : 'p', id); persist(); renderShop(); return; }
+  const b = e.target.closest('#pvAct button'); if (!b || b.disabled) return;
   if (b.dataset.c) { pickClass(b.dataset.c); }
-  if (b.dataset.w) { const id = b.dataset.w; const K = classOf(save.team, save.cls[save.team]), free = K.primaries.includes(id) || (WEAPONS[id].cat === 'pistolet' && !WEAPONS[id].paid); if (!free && !save.unlocked.includes(id)) { save.bank -= WEAPONS[id].price; save.unlocked.push(id); audio.cash(true); } setKit(WEAPONS[id].cat === 'pistolet' ? 's' : 'p', id); }
-  if (b.dataset.u) { const id = b.dataset.u; const l = save.upgrades[id] || 0; save.bank -= UPGRADES[id].price(l); save.upgrades[id] = l + 1; audio.cash(true); if (game) { game.player.cap = 20 + (save.upgrades.sac || 0) * 8; } }
+  if (b.dataset.w) { const id = b.dataset.w; if (!wOwn(id).owned) { if (save.bank < WEAPONS[id].price) return; save.bank -= WEAPONS[id].price; save.unlocked.push(id); audio.cash(true); } setKit(WEAPONS[id].cat === 'pistolet' ? 's' : 'p', id); }
+  if (b.dataset.u) { const id = b.dataset.u; const l = save.upgrades[id] || 0; if (l >= UPGRADES[id].max || save.bank < UPGRADES[id].price(l)) return; save.bank -= UPGRADES[id].price(l); save.upgrades[id] = l + 1; audio.cash(true); if (game) { game.player.cap = 20 + (save.upgrades.sac || 0) * 8; } }
   persist(); renderShop(); renderMenu();
 });
 
@@ -752,7 +781,7 @@ function frame() {
   touch?.sync(game);
   if (cine) cineState(raw);
   if (Q.has('norender')) { window.__frames = (window.__frames || 0) + 1; return; } // tests : simulation seule (plusieurs joueurs dans un même navigateur)
-  if (composer) composer.render(); else renderer.render(scene, camera); if (game && !game.paused) { game.renderPip(renderer, scene); game.renderNews?.(renderer, scene); } window.__frames = (window.__frames || 0) + 1;
+  if (sceneCovered) { /* rien à dessiner : l'écran ouvert cache tout */ } else if (composer) composer.render(); else renderer.render(scene, camera); if (game && !game.paused) { game.renderPip(renderer, scene); game.renderNews?.(renderer, scene); } window.__frames = (window.__frames || 0) + 1;
 }
 window.__cineState = (dt) => cine && cineState(dt);
 renderMenu(); frame();

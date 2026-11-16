@@ -163,12 +163,13 @@
   </div>
 </div>
 
-<div id="shop" class="screen panel hidden">
-  <h2>ARMURERIE & PLANQUE</h2>
-  <div class="bank">Banque : <b class="bankN">0</b> €</div>
-  <div id="shopPv"><div class="pvbox" id="pvbox"><span class="pvhint">glisse pour tourner</span></div><div class="pvinfo" id="pvinfo"></div></div>
-  <div id="shopList"></div>
-  <button class="ghost" id="closeShop">Fermer (B)</button>
+<div id="shop" class="screen panel hidden bp">
+  <div class="bp-head"><h2>ARMURERIE</h2><span class="bp-ref">PLAN N° FRZ-ARM · ÉCH. 1:4</span><div class="bank">Banque : <b class="bankN">0</b> €</div><button class="ghost" id="closeShop">Fermer (B)</button></div>
+  <div class="bp-main">
+    <nav class="bp-rail" id="shopRail" aria-label="Catégories"></nav>
+    <div class="bp-wall" id="shopList"></div>
+    <aside class="bp-fiche" id="shopPv"><div class="bp-ft">FICHE TECHNIQUE</div><div class="pvbox" id="pvbox"><span class="pvhint">glisse pour tourner</span></div><div class="pvinfo" id="pvinfo"></div><div id="pvAct"></div></aside>
+  </div>
 </div>
 
 <div id="boutique" class="screen panel hidden">

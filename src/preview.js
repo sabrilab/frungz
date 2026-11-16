@@ -89,6 +89,32 @@ export function createPreview() {
     return url;
   }
 
+  // plans techniques (armurerie murale) : tracé blanc des arêtes du modèle, vu de profil, arêtes cachées masquées ; image en cache
+  const bps = new Map(); const bpScene = new THREE.Scene(), bpCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 60);
+  const bpLine = new THREE.LineBasicMaterial({ color: '#ffffff', transparent: true });
+  const bpFill = new THREE.MeshBasicMaterial({ color: '#8fc4ff', transparent: true, opacity: 0.12, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+  const blueprintCached = (kind, id, level = 0) => bps.get(kind + id + ':' + level) || null;
+  function blueprint(kind, id, level = 0, px = 460) {
+    const key = kind + id + ':' + level; if (bps.has(key)) return bps.get(key);
+    const g = build(kind, id, level); if (!g) { bps.set(key, null); return null; }
+    if (kind !== 'w') g.rotation.set(0.32, 0.62, 0); // améliorations : vue de trois quarts ; armes : profil strict, canon à droite
+    g.updateMatrixWorld(true); const d = new THREE.Group(), geos = [];
+    g.traverse((m) => { if (!m.isMesh || !m.geometry?.attributes?.position) return;
+      const eg = new THREE.EdgesGeometry(m.geometry, 30); geos.push(eg);
+      const f = new THREE.Mesh(m.geometry, bpFill), l = new THREE.LineSegments(eg, bpLine); l.renderOrder = 1;
+      for (const o of [f, l]) { o.matrixAutoUpdate = false; o.matrix.copy(m.matrixWorld); d.add(o); } });
+    d.updateMatrixWorld(true); bpScene.add(d);
+    const bb = new THREE.Box3().setFromObject(d), sz = bb.getSize(new THREE.Vector3()), c = bb.getCenter(new THREE.Vector3());
+    const ratio = Math.min(6, Math.max(1.1, sz.x / Math.max(1e-4, sz.y))), W2 = px, H2 = Math.round(px / ratio);
+    let hw = sz.x / 2 * 1.05, hh = hw / ratio; if (hh < sz.y / 2 * 1.05) { hh = sz.y / 2 * 1.05; hw = hh * ratio; }
+    bpCam.left = -hw; bpCam.right = hw; bpCam.top = hh; bpCam.bottom = -hh; bpCam.position.set(c.x, c.y, c.z + 20); bpCam.lookAt(c); bpCam.updateProjectionMatrix();
+    r.setPixelRatio(1); r.setSize(W2, H2, false); r.render(bpScene, bpCam);
+    const out = { url: canvas.toDataURL('image/png'), ratio: W2 / H2 }; bps.set(key, out);
+    bpScene.remove(d); for (const e of geos) e.dispose();
+    r.setPixelRatio(Math.min(2, devicePixelRatio || 1)); r.setSize(W, H, false); frame(turn.children[0], W, H);
+    return out;
+  }
+
   let cur = '', raf = 0, last = 0, spin = 0, drag = null;
   function show(kind, id, level = 0, make = null) {
     const key = kind + id + ':' + level; if (key === cur) return; cur = key;
@@ -108,5 +134,5 @@ export function createPreview() {
   canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX }; canvas.setPointerCapture(e.pointerId); });
   canvas.addEventListener('pointermove', (e) => { if (!drag) return; const d = e.clientX - drag.x; drag.x = e.clientX; turn.rotation.y += d * 0.012; spin = d * 0.6; });
   canvas.addEventListener('pointerup', () => { drag = null; });
-  return { canvas, show, thumb, start, stop };
+  return { canvas, show, thumb, start, stop, blueprint, blueprintCached };
 }
