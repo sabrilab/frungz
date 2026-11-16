@@ -69,10 +69,12 @@
       <button class="tab on" id="tabSalon" data-view="salon"><i>1</i>Salon</button>
       <button class="tab" id="tabCasier" data-view="casier"><i>2</i>Casier</button>
       <button class="tab" id="openShop"><i>3</i>Armurerie</button>
-      <button class="tab" id="openSettings"><i>4</i>Réglages</button>
+      <button class="tab bq-tab" id="openBoutique"><i>4</i>Boutique</button>
+      <button class="tab" id="openSettings"><i>5</i>Réglages</button>
     </nav>
     <div class="lb-wallet">
       <div class="chip cash" title="Banque"><span class="eur">€</span><b id="bank">0</b></div>
+      <button class="chip jt" id="jetonsChip" title="Jetons : acheter"><span class="bq-jt"></span><b id="jetons">0</b><span class="plus">+</span></button>
       <button class="chip upd fsbtn" id="fsBtn" title="Jouer en plein écran"><span class="ic">⛶</span><span class="t">Plein écran</span></button>
       <button class="chip upd" id="updBtn" title="Recharger la dernière version du jeu"><span class="ic">↻</span><span class="t">Mettre à jour</span></button>
       <div class="chip lvl" title="Niveau"><span class="lv">NIV.</span><b id="lvl">1</b><i class="xp"><i id="xpbar"></i></i></div>
@@ -161,6 +163,16 @@
   <div id="shopPv"><div class="pvbox" id="pvbox"><span class="pvhint">glisse pour tourner</span></div><div class="pvinfo" id="pvinfo"></div></div>
   <div id="shopList"></div>
   <button class="ghost" id="closeShop">Fermer (B)</button>
+</div>
+
+<div id="boutique" class="screen panel hidden">
+  <div class="bq-top"><h2>BOUTIQUE</h2><div class="bq-wallet"></div><button class="ghost" data-close="1">Fermer (B)</button></div>
+  <nav class="bq-tabs"></nav>
+  <div class="bq-msg" role="status"></div>
+  <div class="bq-main">
+    <div class="bq-body"></div>
+    <aside class="bq-pv hidden"><div class="bq-pvbox"><span class="pvhint">glisse pour tourner</span></div><div class="bq-pvinfo"></div></aside>
+  </div>
 </div>
 
 <div id="inv" class="screen panel hidden">

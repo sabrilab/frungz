@@ -3,6 +3,7 @@
 // placés chaque image à l'aplomb des têtes (projection écran).
 import * as THREE from 'three';
 import { makeCharacter, attachGun, tintTeam, chars } from './assets.js';
+import { applyCamo } from './cosmetiques.js';
 import { holdPose } from './hold.js';
 import { TEAMS, WEAPONS, classOf } from './data.js';
 import { createDecor } from './salon-decor.js';
@@ -49,13 +50,13 @@ export function createLobby({ scene, camera, world, Q, sun, hemi, renderer, nigh
 
   function dress(p, m) {
     // m : { skin, team, gun, kind }
-    const k = m ? `${m.skin}|${m.team}|${m.gun}` : '';
+    const k = m ? `${m.skin}|${m.team}|${m.gun}|${m.camo || ''}` : '';
     if (k === p.key) return; p.key = k;
     if (p.ch) { p.g.remove(p.ch.root); p.ch = null; }
     if (!m || !chars[m.skin]) return;
     const ch = makeCharacter(m.skin); tintTeam(ch.model, m.skin, m.team);
     ch.model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
-    try { if (m.gun) { attachGun(ch, m.gun); ch.gunId = m.gun; } } catch (e) { console.warn('arme du salon', e); }
+    try { if (m.gun) { attachGun(ch, m.gun); applyCamo(ch.gun, m.camo); ch.gunId = m.gun; } } catch (e) { console.warn('arme du salon', e); }
     // repos arme basse (pas en joue : au salon, l'arme pointée au visage cachait les mains et la tête)
     const pistol = WEAPONS[m.gun]?.hand === 'pistol';
     const idle = ch.actions[pistol ? 'MXP_IdleLow' : 'MX_IdleLow'] || ch.actions.MX_IdleLow || ch.actions.MX_Idle || Object.values(ch.actions)[0];

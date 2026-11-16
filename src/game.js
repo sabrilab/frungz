@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { shoulderGun } from './hold.js';
 import { makeCharacter, attachGun, gunInstance, chars, tintTeam, teamMarkings } from './assets.js';
+import { applyCamo, tracerColor, killEffect } from './cosmetiques.js';
+import { TENUES } from './boutique-data.mjs';
 import { TEAMS, WEAPONS, CLASSES, classOf, kitOf, SECONDARIES, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COMMERCE_TYPES, SHOP_NAMES, SKIN_NAMES } from './data.js';
 import { shopCase, lootMesh, beam, socle, baseSign, receleur, grenadeMesh, headMarker, textTex } from './props.js';
 import { pointInPoly } from './world.js';
@@ -111,7 +113,7 @@ export class Game {
     if (this.opts.roster) return this.buildFromRoster(this.opts.roster);
     this.player = this.spawnActor(T, this.save.skin, false, this.opts.pseudo || 'Toi');
     // en ligne (chef d'équipe) : les amis connectés prennent les premières places de l'équipe ; leur perso est piloté par leur navigateur
-    for (const f of (this.opts.friends || []).slice(0, Math.max(0, N - 1))) { const sk = TEAMS[T].skins.includes(f.skin) ? f.skin : TEAMS[T].skins[0]; const b = this.spawnActor(T, sk, true, f.pseudo || 'Ami'); b.squad = true; b.puppet = true; b.owner = f.id; if (f.cls && CLASSES[T][f.cls]) { b.cls = f.cls; b.perk = classOf(T, f.cls).perk; } }
+    for (const f of (this.opts.friends || []).slice(0, Math.max(0, N - 1))) { const sk = TEAMS[T].skins.includes(f.skin) || TENUES.some((x) => x.id === f.skin && x.team === T && chars[x.id]) ? f.skin : TEAMS[T].skins[0]; const b = this.spawnActor(T, sk, true, f.pseudo || 'Ami'); b.squad = true; b.puppet = true; b.owner = f.id; if (f.cls && CLASSES[T][f.cls]) { b.cls = f.cls; b.perk = classOf(T, f.cls).perk; } }
     // équipe du salon : les premiers alliés prennent le nom et la tenue des équipiers choisis
     const nf = this.actors.length - 1; const squad = (this.opts.squad || []).slice(0, Math.max(0, Math.min(3 - nf, N - 1 - nf))); for (const m of squad) { const b = this.spawnActor(T, m.skin, true, m.name); b.squad = true; }
     for (const t of ['ordre', 'civils']) { const n = t === T ? N - 1 - nf - squad.length : N; for (let i = 0; i < n; i++) this.spawnActor(t, pick(TEAMS[t].skins), true, BOT_NAMES[t][i % 20] + (i >= 20 ? ' ' + (i / 20 | 0) : '')); }
@@ -169,7 +171,7 @@ export class Game {
     const c = Math.cos(a.pitch || 0), d = V(Math.sin(a.yaw) * c, Math.sin(a.pitch || 0), Math.cos(a.yaw) * c);
     const o = a.pos.clone().add(V(0, 1.45, 0)); if (W.proj) { this.launchProj(a, W, 1, muzzle, o, d); return; }
     const hw = this.world.ray(o, d, W.range || 120); const end = o.clone().addScaledVector(d, hw ? hw.t : (W.range || 120));
-    if (a.pos.distanceToSquared(this.player.pos) < 90 * 90) { for (let i = 0; i < Math.min(k, 2); i++) this.fx.tracer(muzzle, end); if (hw) this.fx.impact(end, hw.n, 'world'); }
+    if (a.pos.distanceToSquared(this.player.pos) < 90 * 90) { for (let i = 0; i < Math.min(k, 2); i++) this.fx.tracer(muzzle, end, this.tracerOf(a)); if (hw) this.fx.impact(end, hw.n, 'world'); }
     if (a !== this.player) this.notePing(a, muzzle);
   }
   // un ami a quitté le salon : son perso disparaît
@@ -277,13 +279,18 @@ export class Game {
     a.slots = [{ id: sec, rarity: a.bot ? 'commun' : 'rare', mag: WEAPONS[sec].mag }, { id: prim, rarity: a.bot ? rollRarity() : 'rare', mag: WEAPONS[prim].mag }]; a.cur = 1;
     this.equip(a, a.cur, true);
   }
+  // cosmétiques d'un perso : les tiens (sauvegarde), ceux d'un ami en ligne (annoncés dans le salon), rien pour les bots
+  cosmOf(a) { if (!a) return null; if (a === this.player) return this.save.cosm?.eq; if (a.owner && this.net) return this.net.members?.find((m) => m.id === a.owner)?.cosm || null; return null; }
+  tracerOf(a) { const t = this.cosmOf(a)?.trace; return t && t !== 'aucune' ? tracerColor(t) : null; }
   equip(a, i, silent) {
     if (!a.slots[i]) return; a.cur = i; a.reloadT = 0; a.burstLeft = 0; a.fireT = Math.max(a.fireT, 0.25);
-    attachGun(a.ch, a.slots[i].id, a !== this.player); if (!silent) Anim.swap(a); a.ch.meshes = null; a.lodShadow = undefined; const rc = RARITY[a.slots[i].rarity].color;
-    a.ch.gun.traverse((o) => { if (o.isMesh && a.slots[i].rarity !== 'commun') { o.material = o.material.map ? o.material : (Array.isArray(o.material) ? o.material.map((m) => tint(m, rc)) : tint(o.material, rc)); } });
+    const camo = this.cosmOf(a)?.camo, hasCamo = !!camo && camo !== 'aucun'; // camouflage (boutique) : arme détaillée même pour un ami vu de loin
+    attachGun(a.ch, a.slots[i].id, a !== this.player && !hasCamo); if (!silent) Anim.swap(a); a.ch.meshes = null; a.lodShadow = undefined; const rc = RARITY[a.slots[i].rarity].color;
+    if (hasCamo) applyCamo(a.ch.gun, camo);
+    else a.ch.gun.traverse((o) => { if (o.isMesh && a.slots[i].rarity !== 'commun') { o.material = o.material.map ? o.material : (Array.isArray(o.material) ? o.material.map((m) => tint(m, rc)) : tint(o.material, rc)); } });
     if (a.overs) a.overs = a.overs.filter((o) => o.name !== 'U_Reload'); if (!silent) this.overlay(a, 'U_Draw', 0.45, { busy: true });
     if (!a.bot) { this.viewGun(); if (!silent) this.audio.play('cloth', null, 0.5); }
-    function tint(m, c) { const n = m.clone(); if (/Main|Body|Wood|Metal|LOD|Tan|Green/i.test(m.name)) { n.emissive = new THREE.Color(c); n.emissiveIntensity = 0.12; } return n; }
+    function tint(m, c) { const n = m.clone(); n.onBeforeCompile = m.onBeforeCompile; n.customProgramCacheKey = m.customProgramCacheKey; /* clone() perd le shader de grain de l'arme */ if (/Main|Body|Wood|Metal|LOD|Tan|Green/i.test(m.name)) { n.emissive = new THREE.Color(c); n.emissiveIntensity = 0.12; } return n; }
   }
   respawn(a, first) {
     const sp = pick(this.world.spawns[a.team].slice(0, Math.max(20, this.opts.teamSize))); const [x, z] = this.world.randomFree(sp.x, sp.z, this.actors.length > 50 ? 4 : 2.5);
@@ -337,6 +344,7 @@ export class Game {
     if (t.hitBy) { for (const [h, at] of t.hitBy) if (h !== by && h !== t && h.team !== t.team && this.time - at < 8) { h.stats.a++; this.addGalons(h, 0.5); if (h === this.player) this.toast('+ Assistance', '#cfe3ff'); } t.hitBy.clear(); }
     const w = t.slots[t.cur]; if (w && WEAPONS[w.id].cat !== 'pistolet' && (Math.random() < 0.6 || !t.bot)) this.dropPile(t.pos.clone().add(V(rnd(-0.6, 0.6), 0, rnd(-0.6, 0.6))), [], { id: w.id, rarity: w.rarity });
     if (by && by !== t) {
+      { const ef = this.cosmOf(by)?.effet; if (ef && ef !== 'aucun') killEffect(this.fx, t.pos, ef); } // effet d'élimination (boutique)
       by.stats.k++; this.addGalons(by, opts.head ? 2 : 1); this.addStreak(by); if (by.inCar?.kind === 'heli') this.heliKill(by); if (by.bot && by.alive && Math.random() < 0.12) this.overlay(by, 'U_FistPump', 1.2, { busy: true });
       if (by === this.player) this.maybeKillcam(t, opts);
       if (by === this.player) { this.multiKill(opts); this.streakDirty = 1; }
@@ -509,7 +517,7 @@ export class Game {
         this.hitWorld(a, hw, d, end, D, mult);
       } else end = origin.clone().addScaledVector(d, D.range);
       if (a !== this.player && ha?.a !== this.player) this.fb.bullet(origin, d, ha ? ha.t : hw ? hw.t : D.range, a);
-      if (p < 3 || a === this.player) this.fx.tracer(muzzle, end);
+      if (p < 3 || a === this.player) this.fx.tracer(muzzle, end, this.tracerOf(a));
     }
     // les bots entendent les coups de feu
     for (const b of this.actors) if (b.bot && b.alive && b.team !== a.team && !b.ai.target && b.pos.distanceToSquared(a.pos) < 900) { b.ai.target = a; b.ai.seeT = 0.5; }
@@ -619,7 +627,7 @@ export class Game {
   launchBullet(a, origin, d, D, mult, W, muzzle, scoped) {
     const b = { p: origin.clone(), v: d.clone().multiplyScalar(BULLET_V), a, D, mult, W, t: 0, dist: 0, from: a.pos.clone() };
     const m = new THREE.Mesh(BULLET_GEO, BULLET_MAT); m.position.copy(b.p); m.lookAt(b.p.clone().add(d)); this.root.add(m); b.m = m;
-    (this.bullets ||= []).push(b); this.fx.tracer(muzzle, origin.clone().addScaledVector(d, 6));
+    (this.bullets ||= []).push(b); this.fx.tracer(muzzle, origin.clone().addScaledVector(d, 6), this.tracerOf(a));
     // caméra balle dans la bulle : seulement pour un tir lointain à la lunette
     const far = this.aimPt ? this.aimPt.distanceTo(origin) : 0;
     if (scoped && far > 45 && this.save.settings?.killcam !== false) this.startPip({ mode: 'bullet', bullet: b, dur: Math.min(2.6, far / BULLET_V + 1.1), label: 'CAM BALLE', title: `TIR À ${Math.round(far)} m`, sub: 'calibre .338 · ' + Math.round(BULLET_V) + ' m/s' });
@@ -634,7 +642,7 @@ export class Game {
         this.damage(ha.a, b.D.dmg * b.mult * (ha.head ? 2.2 : 1) * (dist > 120 ? 1.1 : 1), b.a, { head: ha.head, weapon: b.W.id, dist, sniper: true, dir: d });
         this.fx.impact(end, [-d.x, -d.y, -d.z], 'flesh'); this.fx.burst(end, 10, { color: '#b3122a', speed: 4, size: 0.05, life: 0.5 }); }
       else if (hw) { end = p0.clone().addScaledVector(d, hw.t); this.hitWorld(b.a, hw, d, end, b.D, b.mult); }
-      this.fx.tracer(p0, end || np); b.p.copy(end || np); b.dist += len; b.m.position.copy(b.p); b.m.lookAt(b.p.clone().add(d));
+      this.fx.tracer(p0, end || np, this.tracerOf(b.a)); b.p.copy(end || np); b.dist += len; b.m.position.copy(b.p); b.m.lookAt(b.p.clone().add(d));
       // balle qui frôle un ennemi : sifflement
       if (end || b.dist > 340 || b.t > 2) { this.root.remove(b.m); L.splice(i, 1); b.done = true; const K = this.killcam; if (K?.bullet === b) { K.hitPt = (end || np).clone(); if (!K.keep) K.dur = Math.min(K.dur, K.t + 0.55); } }
     }
@@ -1700,7 +1708,7 @@ export class Game {
   viewGun() {
     /* la caméra survit d'une partie à l'autre : on retire tout ce qu'une partie précédente y a laissé (arme et bras en vue subjective), sinon l'ancienne arme se superpose à la nouvelle */
     for (const c of [...this.camera.children]) if (c.userData.viewModel) this.camera.remove(c);
-    const W = this.weapon(this.player); if (!W) return; const g = gunInstance(W.id); g.rotation.y = Math.PI / 2; g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 5; } });
+    const W = this.weapon(this.player); if (!W) return; const g = applyCamo(gunInstance(W.id), this.save.cosm?.eq?.camo); g.rotation.y = Math.PI / 2; g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 5; } });
     this.vgun = new THREE.Group(); this.vgun.userData.viewModel = true; this.vgun.add(g); this.vgun.userData.muzzle = g.userData.muzzle; this.camera.add(this.vgun);
     // encombrement de l'arme dans le repère de la vue (canon vers -z, poignée à l'origine)
     g.updateMatrixWorld(true); const bb = new THREE.Box3(); g.traverse((o) => { if (o.isMesh) { o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld.clone().premultiply(this.vgun.matrixWorld.clone().invert()))); } });
