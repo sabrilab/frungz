@@ -16,6 +16,7 @@
     "@capacitor/haptics": "^8.0.2",
     "@supabase/realtime-js": "^2.119.0",
     "esbuild": "^0.25.10",
+    "meshoptimizer": "^0.22.0",
     "three": "^0.180.0"
   },
   "devDependencies": {
@@ -26,7 +27,6 @@
     "@gltf-transform/extensions": "^4.2.1",
     "@gltf-transform/functions": "^4.2.1",
     "http-server": "^14.1.1",
-    "meshoptimizer": "^0.22.0",
     "ws": "^8.22.2"
   },
   "private": true

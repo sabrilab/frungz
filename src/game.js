@@ -5,6 +5,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { shoulderGun } from './hold.js';
 import { makeCharacter, attachGun, gunInstance, chars, tintTeam, teamMarkings } from './assets.js';
 import { applyCamo, tracerColor, killEffect } from './cosmetiques.js';
+import { bodyLods, lodLevel } from './lod.js';
 import { TENUES } from './boutique-data.mjs';
 import { TEAMS, WEAPONS, CLASSES, classOf, kitOf, SECONDARIES, RARITY, RARITY_ORDER, rollRarity, LOOT, LUXE_TYPES, COMMERCE_TYPES, SHOP_NAMES, SKIN_NAMES } from './data.js';
 import { shopCase, lootMesh, beam, socle, baseSign, receleur, grenadeMesh, headMarker, textTex } from './props.js';
@@ -255,6 +256,8 @@ export class Game {
   // ---------------------------------------------------------------- acteurs
   spawnActor(team, skin, bot, name) {
     const ch = makeCharacter(skin); this.root.add(ch.root);
+    // perso pas vu : le moteur ne recalcule pas ses 65 os à chaque image (seulement pendant le rendu ; le code du jeu, lui, obtient toujours des positions à jour)
+    { const G = this, mw = ch.model.updateMatrixWorld; ch.model.updateMatrixWorld = function (force) { if (G.inRender && a.unseen) return; mw.call(this, force); }; }
     const a = { team, skin, bot, name, ch, pos: V(), vel: V(), yaw: 0, pitch: 0, hp: 100, armor: 0, alive: false, onGround: true, slots: [], cur: 0, fireT: 0, reloadT: 0, bag: [], bagKg: 0, mats: 30, nades: 2, momentum: 0, slideT: 0, rollT: 0, climb: null, respawnT: 0, lastHit: 0, anim: null, inCar: null, stats: { k: 0, d: 0, a: 0, cap: 0, sac: 0 }, streak: 0, rewards: [], spotted: 0, gasT: 0, channel: null, cash: 0, regenT: 0, id: this.actors.length };
     a.cls = bot ? pickClass(team) : (this.save.cls?.[team] || Object.keys(CLASSES[team])[0]); a.perk = classOf(team, a.cls).perk;
     a.cap = 20 + (bot ? 8 : (this.save.upgrades.sac || 0) * 8) + (a.perk.kg || 0);
@@ -1195,6 +1198,8 @@ export class Game {
     return null;
   }
   animate(a, dt) {
+    if (a.unseen) { a.animWait = (a.animWait || 0) + dt; a.ch.root.position.copy(a.pos); if (a.animWait < 0.16) return; dt = a.animWait; a.animWait = 0; }
+    else if (a.animWait) { dt += a.animWait; a.animWait = 0; }
     const ch = a.ch; const sp = this.feetSpeed(a);
     a.ch.root.position.copy(a.pos); a.ch.root.rotation.y = lerp_angle(a.ch.root.rotation.y, a.slideT > 0 ? Math.atan2(a.slideDir.x, a.slideDir.z) : a.rollT > 0 ? Math.atan2(a.rollDir.x, a.rollDir.z) : a.yaw, 1 - Math.exp(-dt * 18));
     let name = 'Idle_Gun', speed = 1, fade = 0.15;
@@ -1316,15 +1321,28 @@ export class Game {
     M.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); F.setFromProjectionMatrix(M);
     for (const a of this.actors) { if (a === this.player) { a.offscreen = false; continue; } S.center.set(a.pos.x, a.pos.y + 0.9, a.pos.z); S.radius = 2; a.offscreen = !F.intersectsSphere(S); }
     const K = this.killcam; if (K) { if (K.target) K.target.offscreen = false; if (K.by) K.by.offscreen = false; } // vus dans la bulle
+    // « pas vu » : hors champ (et trop loin pour que son ombre entre dans l'image) ou caché par la distance. Son squelette n'est alors plus
+    // recalculé à chaque image et sa pose n'est rafraîchie que 6 fois par seconde. Une bulle (kill-cam, journal) filme sous un autre angle :
+    // tant qu'elle est ouverte, tout le monde reste à jour.
+    const inset = !!K || (this.news?.K && this.news.K.i >= 0) || this.noUnseen;
+    for (const a of this.actors) { if (a === this.player || a.gone) { a.unseen = false; continue; } a.unseen = !inset && (a.lodHidden || (a.offscreen && !a.lodShadow)); a.ch.model.visible = !(a.lodHidden || a.unseen); }
   }
   updateLod() {
-    const cp = this.camera.position;
+    const cp = this.camera.position, K = this.killcam, zoomK = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / Math.tan(THREE.MathUtils.degToRad(35)); // 1 pour un champ de 70°, 0,25 à la lunette ×4
     for (const a of this.actors) {
       if (a === this.player || a.gone) continue; const d2 = a.pos.distanceToSquared(cp);
-      const L = this.opts.lod || 200, LS = this.opts.lodShadow ?? 45; a.lodHidden = d2 > L * L; a.ch.model.visible = !a.lodHidden; const sh = d2 < LS * LS;
+      const L = this.opts.lod || 200, LS = this.opts.lodShadow ?? 45; a.lodHidden = d2 > L * L; a.ch.model.visible = !(a.lodHidden || a.unseen); const sh = d2 < LS * LS;
       if (!a.ch.meshes) { a.ch.meshes = []; a.ch.root.traverse((o) => { if (o.isMesh) a.ch.meshes.push(o); }); }
       if (a.lodShadow !== sh) { a.lodShadow = sh; for (const m of a.ch.meshes) m.castShadow = sh; }
+      // niveau de détail du corps (src/lod.js) : distance ressentie = distance × ouverture du champ (une lunette ×4 rapproche d'autant)
+      if (!a.lodHidden) { const want = this.lodForce ?? ((K && (a === K.target || a === K.by)) || this.news?.K?.st?.subject === a ? Math.min(1, lodLevel(Math.sqrt(d2) * zoomK, a.lodK || 0, this.opts.lodScale || 1)) /* filmé par la kill-cam ou le journal : jamais en version lointaine */ : lodLevel(Math.sqrt(d2) * zoomK, a.lodK || 0, this.opts.lodScale || 1)); if (want !== a.lodK) this.setBodyLod(a, want); }
     }
+  }
+  setBodyLod(a, k) {
+    const ch = a.ch; a.lodK = k;
+    if (ch.body === undefined) { ch.body = null; ch.marks = null; ch.model.traverse((o) => { if (o.isSkinnedMesh && o.name === 'corps') ch.body = o; else if (o.isSkinnedMesh && o.name === 'marquages') ch.marks = o; }); if (ch.body) ch.geo0 = ch.body.geometry; }
+    if (!ch.body) return; const L = bodyLods(ch.geo0); ch.body.geometry = L[Math.min(k, L.length - 1)];
+    if (ch.marks) ch.marks.visible = k < 3; // « POLICE » et brassard : illisibles de loin
   }
   // point visé : celui du réticule pour le joueur, sinon devant soi selon yaw/pitch
   aimPoint(a) {

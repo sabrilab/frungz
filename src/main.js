@@ -22,6 +22,7 @@ import { TEAMS, WEAPONS, WEAPON_CATS, CLASSES, classOf, classWeapons, kitOf, UPG
 import { svg } from './icons.js';
 import { createNet, ONLINE_MAX_TEAM } from './net.js';
 import { loadZombies, zombiesReady } from './zombie.js';
+import { lodReady } from './lod.js';
 import { createBoutique, initCosm, owns } from './boutique.js';
 import { TENUES, ARTICLES, SAISON, CAMOS, TRACANTES, EFFETS, RARETES } from './boutique-data.mjs';
 import { applyCamo } from './cosmetiques.js';
@@ -181,7 +182,7 @@ async function loadAll() {
   const gp = MAP.build ? salleGameplay() : await fetch(MAP.gp).then((r) => r.json());
   const [{ root, ground, cassables, rame }] = await Promise.all([
     MAP.build ? (async () => { const s = buildSalle(); s.root.userData.slots = s.slots; progress.map = 1; showProgress(); return { root: s.root, ground: s.ground, cassables: [], rame: null }; })() : loadMap(MAP.glb, (p) => { progress.map = p; showProgress(); }),
-    Promise.all([loadSkinBases(), loadMx()]).then(([, mx]) => { for (const d of ALL_SKINS) { try { registerSkin(chars, d, mx, 1.8, { tex: 512 }); } catch (e) { console.warn('skin', d.id, e); } progress.chars++; showProgress(); } }),
+    Promise.all([loadSkinBases(), loadMx(), lodReady]).then(([, mx]) => { for (const d of ALL_SKINS) { try { registerSkin(chars, d, mx, 1.8, { tex: 512 }); } catch (e) { console.warn('skin', d.id, e); } progress.chars++; showProgress(); } }),
     loadGuns(() => { progress.guns++; showProgress(); }),
     (async () => { const hq = QN !== 'bas' && QN !== 'mobile'; for (const spec of CARS) { await new Promise((r) => setTimeout(r, 0)); try { const s = buildCar(spec, { hq, lod: hq ? 1 : 0.6 }), far = buildCar(spec, { hq: false, lod: 0.32 }); carDefs.push({ scene: s, far, classe: spec[2], nom: spec[3], size: s.userData.size, R: s.children[0].userData.wheels['wheel-front-left'].radius }); } catch (e) { console.warn('voiture', spec[0], e); } progress.cars++; showProgress(); } })(),
   ]);
@@ -694,7 +695,7 @@ function start() {
   const zombie = modeId() === 'zombie';
   const online = !MAP.training && !zombie && net.online && net.friends().length > 0, friends = online ? net.friends().slice(0, 3) : [];
   let teamSize = +(Q.get('n') || save.settings.teamSize); if (online) teamSize = Math.max(friends.length + 1, Math.min(teamSize, ONLINE_MAX_TEAM));
-  game = new Game({ mapRoot, renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts: { squad: window.__squad(), friends, net: online ? net : null, pseudo: save.pseudo, teamSize, botSkill: 1, cars: carDefs, lod: QS.lod, lodShadow: QS.lodShadow, training: !!MAP.training, mode: zombie ? 'zombie' : 'domination', zmax: ZMAX[QN] || 22 } });
+  game = new Game({ mapRoot, renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts: { squad: window.__squad(), friends, net: online ? net : null, pseudo: save.pseudo, teamSize, botSkill: 1, cars: carDefs, lod: QS.lod, lodShadow: QS.lodShadow, lodScale: ({ bas: 0.8, mobile: 0.8, haut: 1.5 })[QN] || 1, training: !!MAP.training, mode: zombie ? 'zombie' : 'domination', zmax: ZMAX[QN] || 22 } });
   game.onShop = openShop; game.onPause = openPause; game.onEnd = (r) => endGame(r);
   game.build(); window.__game = game; if (online) net.attach(game);
   renderer.domElement.requestPointerLock?.();
@@ -710,7 +711,7 @@ function startGuest() {
   if (!!save.settings.night !== !!m.night) { save.settings.night = !!m.night; night?.set(save.settings.night); }
   audio.init(); persist(); net.startHost = m.host; net.hostId = m.host;
   $('menu').classList.add('hidden'); $('hud').classList.remove('hidden'); lobby?.show(false);
-  game = new Game({ mapRoot, renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts: { roster: m.roster, net, pseudo: save.pseudo, teamSize: m.n, botSkill: 1, cars: carDefs, lod: QS.lod, lodShadow: QS.lodShadow } });
+  game = new Game({ mapRoot, renderer, scene, camera, world, fx, audio, input, sun, followShadow, save, persist, opts: { roster: m.roster, net, pseudo: save.pseudo, teamSize: m.n, botSkill: 1, cars: carDefs, lod: QS.lod, lodShadow: QS.lodShadow, lodScale: ({ bas: 0.8, mobile: 0.8, haut: 1.5 })[QN] || 1 } });
   game.onShop = openShop; game.onPause = openPause; game.onEnd = (r) => endGame(r);
   net.attach(game); game.build(); window.__game = game;
   renderer.domElement.requestPointerLock?.();
@@ -781,7 +782,9 @@ function frame() {
   touch?.sync(game);
   if (cine) cineState(raw);
   if (Q.has('norender')) { window.__frames = (window.__frames || 0) + 1; return; } // tests : simulation seule (plusieurs joueurs dans un même navigateur)
-  if (sceneCovered) { /* rien à dessiner : l'écran ouvert cache tout */ } else if (composer) composer.render(); else renderer.render(scene, camera); if (game && !game.paused) { game.renderPip(renderer, scene); game.renderNews?.(renderer, scene); } window.__frames = (window.__frames || 0) + 1;
+  if (game) game.inRender = true; // les persos que personne ne voit ne sont pas recalculés pendant ce rendu (game.js : cullActors)
+  if (sceneCovered) { /* rien à dessiner : l'écran ouvert cache tout */ } else if (composer) composer.render(); else renderer.render(scene, camera);
+  if (game) game.inRender = false; if (game && !game.paused) { game.renderPip(renderer, scene); game.renderNews?.(renderer, scene); } window.__frames = (window.__frames || 0) + 1;
 }
 window.__cineState = (dt) => cine && cineState(dt);
 renderMenu(); frame();
