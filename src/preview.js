@@ -58,9 +58,10 @@ export function createPreview() {
   const turn = new THREE.Group(); scene.add(turn);
 
   // fabrique l'objet 3D d'une entrée de l'armurerie, centré et mis à l'échelle
-  function build(kind, id, level = 0) {
+  function build(kind, id, level = 0, make = null) {
     let o = null;
-    if (kind === 'w') { if (!guns[id]) return null; o = gunInstance(id); o.traverse((m) => { if (m.isMesh) m.castShadow = false; }); }
+    if (make) o = make(); // objet fourni (boutique : arme camouflée, tenue)
+    else if (kind === 'w') { if (!guns[id]) return null; o = gunInstance(id); o.traverse((m) => { if (m.isMesh) m.castShadow = false; }); }
     else if (id === 'gilet') o = vest(level);
     else if (id === 'sac') o = bag();
     else if (id === 'mats') o = toolbox();
@@ -70,7 +71,7 @@ export function createPreview() {
     const bb = new THREE.Box3().setFromObject(o), sz = bb.getSize(new THREE.Vector3()), c = bb.getCenter(new THREE.Vector3());
     const k = 1.3 / Math.max(sz.x, sz.y * 1.6, sz.z); o.position.sub(c).multiplyScalar(k); o.scale.multiplyScalar(k);
     o.position.y += (sz.y * k) / 2 + 0.06; // posé sur le plateau
-    g.userData.h = sz.y * k;
+    g.userData.h = sz.y * k; g.userData.mixer = o.userData?.mixer || null;
     return g;
   }
   function frame(g, w, h, d = 2.5) { const hh = g?.userData.h || 0.4; cam.aspect = w / h; cam.position.set(0, 0.35 + hh * 0.6, d); cam.lookAt(0, hh * 0.5 + 0.04, 0); cam.updateProjectionMatrix(); }
@@ -78,9 +79,9 @@ export function createPreview() {
 
   // vignettes : image fixe de trois quarts, en cache
   const thumbs = new Map();
-  function thumb(kind, id, level) {
+  function thumb(kind, id, level, make) {
     const key = kind + id + ':' + level; if (thumbs.has(key)) return thumbs.get(key);
-    const g = build(kind, id, level); if (!g) return '';
+    const g = build(kind, id, level, make); if (!g) return ''; g.userData.mixer?.update(0.4);
     const prev = turn.children[0]; const ry = turn.rotation.y; setObj(g); turn.rotation.y = kind === 'w' ? -0.5 : 0.6;
     r.setPixelRatio(1); r.setSize(320, 184, false); frame(g, 320, 184, 2.0); plate.visible = ring.visible = false; r.render(scene, cam);
     const url = canvas.toDataURL('image/png'); thumbs.set(key, url);
@@ -89,16 +90,16 @@ export function createPreview() {
   }
 
   let cur = '', raf = 0, last = 0, spin = 0, drag = null;
-  function show(kind, id, level = 0) {
+  function show(kind, id, level = 0, make = null) {
     const key = kind + id + ':' + level; if (key === cur) return; cur = key;
-    const g = build(kind, id, level); setObj(g); frame(g, W, H); spin = 0.9; // petit élan à chaque changement
+    const g = build(kind, id, level, make); setObj(g); frame(g, W, H); spin = 0.9; // petit élan à chaque changement
     turn.scale.setScalar(0.85);
   }
   function loop(t) {
     raf = requestAnimationFrame(loop); const dt = Math.min(0.05, (t - last) / 1000 || 0); last = t;
     if (!drag) { spin += (0.45 - spin) * Math.min(1, dt * 2); turn.rotation.y += spin * dt; }
     turn.scale.setScalar(turn.scale.x + (1 - turn.scale.x) * Math.min(1, dt * 10));
-    turn.position.y = Math.sin(t / 900) * 0.015;
+    turn.position.y = Math.sin(t / 900) * 0.015; turn.children[0]?.userData.mixer?.update(dt);
     r.render(scene, cam);
   }
   function start() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); } }

@@ -127,7 +127,7 @@ export function createNet({ local = false } = {}) { // local : false (Supabase),
       const gen = this.gen; this.tries++; this.status = this.tries > 4 ? 'error' : 'joining'; this.on.status?.(this.status);
       clearTimeout(this._rt); this._rt = setTimeout(() => { if (gen === this.gen && this.room) this.connect(); }, Math.min(10000, 1000 * this.tries));
     },
-    metaOf() { const { pseudo, skin, team, cls, gun, ingame, map, mode } = this.me; return { pseudo, skin, team, cls, gun, ingame, map, mode }; },
+    metaOf() { const { pseudo, skin, team, cls, gun, ingame, map, mode, cosm } = this.me; return { pseudo, skin, team, cls, gun, ingame, map, mode, cosm }; },
     sendMeta(force) {
       const m = this.metaOf(), s = JSON.stringify(m); if (!force && s === this._lastMeta) return;
       clearTimeout(this._mt); this._mt = setTimeout(() => { if (this.status !== 'on') return; this._lastMeta = JSON.stringify(this.metaOf()); this.send('meta', { m: this.metaOf() }); }, force ? 50 : 400);

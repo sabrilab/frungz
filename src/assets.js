@@ -136,6 +136,7 @@ export function gunMaterial(name, unit = 1) {
   const key = name + '|' + unit.toFixed(5); if (gunMatCache[key]) return gunMatCache[key];
   const P = GUN_MATS[name] || GUN_MATS.Black, kind = /Metal|Brass/.test(name) ? 1 : /Wood/.test(name) ? 2 : /Glass|GlowDot|LOD/.test(name) ? 3 : name === 'Grip' ? 4 : 0;
   const m = new THREE.MeshStandardMaterial({ color: P[0], roughness: P[1], metalness: P[2], envMapIntensity: P[2] > 0.5 ? 1.7 : 1.0, name });
+  m.userData.gun = { kind, unit }; // lu par les camouflages (src/cosmetiques.js)
   if (name === 'GlassLens') { m.transparent = true; m.opacity = 0.16; m.depthWrite = false; m.envMapIntensity = 2.5; } else if (name === 'GlowDot') { m.emissive = new THREE.Color('#9dffb0'); m.emissiveIntensity = 1.4; } else if (name === 'LOD') m.vertexColors = true;
   if (kind !== 3) { const wear = { DarkMetal: 0.85, Metal: 0.55, LightMetal: 0.3, Brass: 0.45, Black: 0.7, Black2: 0.45, Main: 0.8, MainDark: 0.7, Tan: 0.8, Green: 0.8 }[name] ?? 0.5;
     m.onBeforeCompile = (sh) => { sh.uniforms.gUnit = { value: unit }; sh.uniforms.gWear = { value: wear };

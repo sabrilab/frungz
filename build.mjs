@@ -11,6 +11,7 @@ fs.writeFileSync('dist/index.html', fs.readFileSync('index.html', 'utf8').replac
 fs.writeFileSync('dist/version.json', JSON.stringify({ id: BUILD, date: new Date().toISOString() })); fs.copyFileSync('style.css', 'dist/style.css');
 fs.cpSync('public/assets', 'dist/assets', { recursive: true });
 fs.copyFileSync('public/manifest.webmanifest', 'dist/manifest.webmanifest');
+fs.cpSync('public/legal', 'dist/legal', { recursive: true }); // CGV, confidentialité, mentions légales (liens de la boutique)
 // carte pré-compressée (le CDN ne compresse pas les .glb)
 const zlib = await import('zlib');
 for (const d of ['dist/assets', 'dist/assets/chars', 'dist/assets/banlieue', 'dist/assets/zombies']) for (const f of fs.readdirSync(d)) if (f.endsWith('.glb')) fs.writeFileSync(`${d}/${f}.gz`, zlib.gzipSync(fs.readFileSync(`${d}/${f}`), { level: 9 }));
