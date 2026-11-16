@@ -12,7 +12,7 @@ import { NATIVE } from './natif.js';
 import { createNight } from './night.js';
 import { createCassables } from './cassables.js';
 import { createMetro } from './metro.js';
-import { Game } from './game.js';
+import { Game, STREAKS } from './game.js';
 import { createPreview } from './preview.js';
 import { createLobby } from './lobby.js';
 import { applyRealism, skyEnvironment, realismUniforms } from './realisme.js';
@@ -23,7 +23,7 @@ import { svg } from './icons.js';
 import { createNet, ONLINE_MAX_TEAM } from './net.js';
 import { loadZombies, zombiesReady } from './zombie.js';
 import { createBoutique, initCosm, owns } from './boutique.js';
-import { TENUES, ARTICLES, SAISON } from './boutique-data.mjs';
+import { TENUES, ARTICLES, SAISON, CAMOS, TRACANTES, EFFETS, RARETES } from './boutique-data.mjs';
 import { applyCamo } from './cosmetiques.js';
 
 const $ = (id) => document.getElementById(id);
@@ -218,8 +218,9 @@ function renderMenu() {
   $('classes').innerHTML = Object.values(CLASSES[save.team]).map((K) => `<button data-cls="${K.id}" class="${K.id === cur ? 'on' : ''}"><em>${svg(K.ico)}</em><b>${K.name}</b><small>${K.role}</small></button>`).join('');
   const K = classOf(save.team, cur), kit = kitOf(save, save.team, K), { prim, sec } = classWeapons(K, save.unlocked);
   const chip = (slot, id) => { const W = WEAPONS[id]; return `<button data-slot="${slot}" data-wid="${id}" class="${kit[slot] === id ? 'on' : ''}" title="${W.name}">${svg(W.ico)}<span>${W.name}</span>${K.primaries.includes(id) || slot === 's' && !WEAPONS[id].paid ? '' : '<i>planque</i>'}</button>`; };
-  $('clsInfo').innerHTML = `<div class="kitrow"><label>Arme principale</label>${prim.map((id) => chip('p', id)).join('')}</div><div class="kitrow"><label>Arme de poing</label>${sec.map((id) => chip('s', id)).join('')}</div>`
+  $('clsInfo').innerHTML = ``
     + `<p><span>${svg('vest')} ${K.armor ? 'Gilet ' + K.armor : 'Sans gilet'}</span><span>${svg('target')} <b>${K.perkName}</b> : ${K.perkDesc}</span></p>`;
+  renderCasier(K, kit, prim, sec);
   $('nightBtn').classList.toggle('night', !!save.settings.night);
   { const W = WEAPONS[kit.p] || WEAPONS[K.primary]; $('ldIco').innerHTML = svg(K.ico); $('ldTeam').textContent = TEAMS[save.team].short + ' · ' + String(SKIN_NAMES[save.skin] || 'Tenue perso').split(' · ')[0]; $('ldClass').textContent = K.name; $('ldGun').textContent = `${W.name}${kit.s && WEAPONS[kit.s] ? ' + ' + WEAPONS[kit.s].name : ''}`; }
   $('mapName').textContent = MAP.nom.toUpperCase(); document.querySelectorAll('#mapBtn [data-map]').forEach((b) => b.classList.toggle('on', b.dataset.map === MAP_ID));
@@ -244,14 +245,74 @@ function setKit(slot, id) {
 $('skins').addEventListener('click', (e) => { if (e.target.dataset?.lock) { openBoutique('tenue'); return; } const s = e.target.dataset?.skin; if (!s) return; save.skin = s; persist(); renderMenu(); audio.init(); audio.play('uiTick'); });
 $('play').disabled = true;
 $('play').addEventListener('click', () => start());
-$('openShop').addEventListener('click', () => openShop());
-$('openBoutique')?.addEventListener('click', () => openBoutique());
+// navigation du salon : Armurerie, Boutique et Réglages s'ouvrent sous la barre d'onglets, qui reste cliquable ;
+// un clic sur un autre onglet ferme l'écran ouvert et va directement à l'autre (pas de « Fermer » à chaque fois)
+var NAV_PANELS = ['shop', 'boutique', 'pause']; // var : syncNav peut être appelé (setView) avant cette ligne
+function closeNavPanels(keep) { if (game) return; for (const id of NAV_PANELS) if (id !== keep && !$(id).classList.contains('hidden')) { if (id === 'shop') closeShop(); else if (id === 'boutique') boutique?.close(); else closePause(); } }
+function syncNav() { try { syncNav0(); } catch {} } // appelé tôt (setView) : game peut ne pas encore exister
+function syncNav0() {
+  if (!NAV_PANELS) return; const open = !game ? NAV_PANELS.find((id) => !$(id).classList.contains('hidden')) : null; const top = document.querySelector('.lb-top');
+  document.body.classList.toggle('navpanel', !!open); if (top) document.documentElement.style.setProperty('--navh', top.offsetHeight + 'px');
+  const m = $('menu'), view = m.classList.contains('v-casier') ? 'casier' : 'salon';
+  $('tabSalon').classList.toggle('on', !open && view === 'salon'); $('tabCasier').classList.toggle('on', !open && view === 'casier');
+  $('openShop').classList.toggle('on', open === 'shop'); $('openBoutique')?.classList.toggle('on', open === 'boutique'); $('openSettings').classList.toggle('on', open === 'pause');
+}
+{ const mo = new MutationObserver(syncNav); for (const id of NAV_PANELS) { const el = $(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class'] }); } addEventListener('resize', syncNav); }
+$('openShop').addEventListener('click', () => { closeNavPanels('shop'); openShop(); });
+$('openBoutique')?.addEventListener('click', () => { closeNavPanels('boutique'); openBoutique(); });
 $('jetonsChip')?.addEventListener('click', () => openBoutique('jetons'));
 // deux vues : Salon (l'équipe) et Casier (camp, classe, armes, tenue)
-function setView(v) { const m = $('menu'); m.classList.toggle('v-salon', v === 'salon'); m.classList.toggle('v-casier', v === 'casier'); $('tabSalon').classList.toggle('on', v === 'salon'); $('tabCasier').classList.toggle('on', v === 'casier'); lobby?.setView(v); audio.init(); audio.play('uiTick'); }
+function setView(v) { const m = $('menu'); m.classList.toggle('v-salon', v === 'salon'); m.classList.toggle('v-casier', v === 'casier'); $('tabSalon').classList.toggle('on', v === 'salon'); $('tabCasier').classList.toggle('on', v === 'casier'); lobby?.setView(v); audio.init(); audio.play('uiTick'); syncNav?.(); }
 window.__view = setView;
-$('tabSalon').addEventListener('click', () => setView('salon')); $('tabCasier').addEventListener('click', () => setView('casier'));
+$('tabSalon').addEventListener('click', () => { closeNavPanels(); setView('salon'); }); $('tabCasier').addEventListener('click', () => { closeNavPanels(); setView('casier'); });
 $('loadoutBtn').addEventListener('click', () => setView('casier')); $('backSalon').addEventListener('click', () => setView('salon'));
+// ---------- casier : sous-onglets Classe · Armes · Camo · Tenue · Effets · Séries ----------
+// Tout se règle ici sans passer par l'armurerie ni la boutique : armes (achat sur place avec la banque), camouflage, tenue, traçante,
+// effet d'élimination ; le perso du salon change en direct. L'onglet Séries explique l'échelle de ton camp.
+let csMoreOpen = false; document.addEventListener('toggle', (e) => { if (e.target.classList?.contains('cs-more')) csMoreOpen = e.target.open; }, true);
+const CS_TABS = ['classe', 'armes', 'camo', 'tenue', 'effets', 'series'];
+const csTab = () => (CS_TABS.includes(save.settings.csTab) ? save.settings.csTab : 'classe');
+function setCsTab(t) { if (save.settings.csTab !== t) { save.settings.csTab = t; persist(); } document.querySelectorAll('#csTabs [data-cs]').forEach((b) => b.classList.toggle('on', b.dataset.cs === t)); document.querySelectorAll('.lb-left .cs-p').forEach((c) => c.classList.toggle('on', c.dataset.cs === t)); }
+$('csTabs').addEventListener('click', (e) => { const b = e.target.closest('[data-cs]'); if (!b) return; setCsTab(b.dataset.cs); audio.init(); audio.play('uiTick'); });
+const escH = (x) => String(x).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+function camoSw(id) { const C = CAMOS[id]; if (!C?.c) return '<i class="bq-sw def"></i>'; return `<i class="bq-sw camo t-${C.type}" style="--a:${C.c[0]};--b:${C.c[1]};--c:${C.c[2]};--d:${C.c[3]}"></i>`; }
+function traceSw(id) { const c = TRACANTES[id].c; return `<i class="bq-sw trace ${c === 'arcenciel' ? 'rb' : c === 'tricolore' ? 'tri' : ''}" style="--a:${/^#/.test(c) ? c : '#fff'}"></i>`; }
+function csCard({ sw, nom, sub, rar, on, owned, attrs }) {
+  const R = RARETES[rar] || RARETES.commun;
+  return `<button class="cs-card${on ? ' on' : ''}${owned ? '' : ' lock'}" style="--r:${R.couleur}" ${attrs}>${sw}<b>${escH(nom)}</b><small>${owned ? (on ? 'Équipé' : escH(sub || R.nom)) : escH(sub)}</small></button>`;
+}
+function renderCasier(K, kit, prim, sec) {
+  setCsTab(csTab());
+  if (!window.__loaded) return;
+  // armes : celles de la classe et celles achetées, puis les autres avec leur prix (achat sur place)
+  const thumb = (id) => { try { ensurePv(); const u = pv?.thumb('w', id, 0); return u ? `<img class="cs-th" src="${u}" alt="">` : ''; } catch { return ''; } };
+  const free = (id) => K.primaries.includes(id) || (WEAPONS[id].cat === 'pistolet' && !WEAPONS[id].paid);
+  const wcard = (slot, id) => { const W = WEAPONS[id], owned = free(id) || save.unlocked.includes(id), on = kit[slot] === id;
+    return `<button class="cs-card w${on ? ' on' : ''}${owned ? '' : ' lock'}" data-cw="${id}" data-slot="${slot}">${thumb(id)}<b>${escH(W.name)}</b><small>${owned ? (on ? 'Équipée' : `Dégâts ${W.dmg}${W.pellets > 1 ? '×' + W.pellets : ''} · ${W.rps} coups/s`) : `${fmt(W.price)} €${save.bank < W.price ? ' · banque trop juste' : ''}`}</small></button>`; };
+  const others = (pistol) => Object.keys(WEAPONS).filter((id) => (WEAPONS[id].cat === 'pistolet') === pistol && !(pistol ? sec : prim).includes(id));
+  $('csArmes').innerHTML = `<h3 class="sticker">Arme principale</h3><div class="cs-grid">${prim.map((id) => wcard('p', id)).join('')}</div>`
+    + `<details class="cs-more"${csMoreOpen ? ' open' : ''}><summary>Autres armes principales (${others(false).length}) · achat avec la banque</summary><div class="cs-grid">${others(false).map((id) => wcard('p', id)).join('')}</div></details>`
+    + `<h3 class="sticker cs-sub">Arme de poing</h3><div class="cs-grid">${sec.map((id) => wcard('s', id)).join('')}${others(true).map((id) => wcard('s', id)).join('')}</div>`;
+  // camouflage : appliqué à toutes tes armes ; ceux qu'on n'a pas mènent à la boutique
+  const eq = save.cosm.eq; const lockSub = (X) => (X.passe ? 'Passe de saison' : 'Boutique');
+  $('csCamo').innerHTML = `<h3 class="sticker">Camouflage</h3><p class="cs-note">Sur toutes tes armes, visible par tes amis en ligne.</p><div class="cs-grid">${Object.keys(CAMOS).map((id) => { const aid = 'camo:' + id, own = owns(save, aid);
+    return csCard({ sw: camoSw(id), nom: CAMOS[id].nom, sub: own ? '' : lockSub(CAMOS[id]), rar: CAMOS[id].rarete, on: eq.camo === id, owned: own, attrs: `data-ceq="${aid}"` }); }).join('')}</div>`;
+  $('csFx').innerHTML = `<h3 class="sticker">Traçante</h3><div class="cs-grid">${Object.keys(TRACANTES).map((id) => { const aid = 'trace:' + id, own = owns(save, aid); return csCard({ sw: traceSw(id), nom: TRACANTES[id].nom, sub: own ? '' : lockSub(TRACANTES[id]), rar: TRACANTES[id].rarete, on: eq.trace === id, owned: own, attrs: `data-ceq="${aid}"` }); }).join('')}</div>`
+    + `<h3 class="sticker cs-sub">Effet d'élimination</h3><div class="cs-grid">${Object.keys(EFFETS).map((id) => { const aid = 'effet:' + id, own = owns(save, aid); return csCard({ sw: `<i class="bq-sw effet ${EFFETS[id].fx ? 'fx-' + EFFETS[id].fx : 'def'}"></i>`, nom: EFFETS[id].nom, sub: own ? '' : lockSub(EFFETS[id]), rar: EFFETS[id].rarete, on: eq.effet === id, owned: own, attrs: `data-ceq="${aid}"` }); }).join('')}</div>`;
+  // séries : toutes s'enchaînent ; on explique l'échelle et comment choisir en partie
+  const L = STREAKS[save.team], X = input.label('streak'), R = input.label('reload');
+  $('csSeries').innerHTML = `<h3 class="sticker">Séries d'élimination</h3><p class="cs-note">Élimine sans mourir : chaque palier te donne une série, et tu les gardes toutes. En partie, <kbd>${X}</kbd> lance la série entourée en bas de l'écran ; avec plusieurs séries prêtes, <kbd>${X}</kbd> puis <kbd>${R}</kbd> pour choisir laquelle.</p>`
+    + `<ol class="cs-series">${L.map((r) => `<li><span class="n">${r.n}</span><span class="ic">${svg(r.ico)}</span><span class="t"><b>${escH(r.nom)}</b><small>${escH(r.desc)}</small></span></li>`).join('')}</ol><p class="cs-note">Après ${L[L.length - 1].n} : une grosse série toutes les 5 éliminations.</p>`;
+}
+document.querySelector('.lb-left').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.cw) { const id = b.dataset.cw, W = WEAPONS[id], K = classOf(save.team, save.cls[save.team]), free = K.primaries.includes(id) || (W.cat === 'pistolet' && !W.paid);
+    audio.init();
+    if (!free && !save.unlocked.includes(id)) { if (save.bank < W.price) { audio.play('uiTick'); b.classList.remove('nope'); void b.offsetWidth; b.classList.add('nope'); return; } save.bank -= W.price; save.unlocked.push(id); audio.cash(true); }
+    setKit(b.dataset.slot, id); audio.play('uiTick'); return; }
+  if (b.dataset.ceq) { const [t, id] = b.dataset.ceq.split(':'); if (!owns(save, b.dataset.ceq)) { openBoutique(t === 'camo' ? 'camo' : t === 'tenue' ? 'tenue' : t === 'passe' ? 'passe' : 'fx'); return; } save.cosm.eq[t] = id; persist(); renderMenu(); audio.init(); audio.play('uiSelect'); }
+});
+
 $('mapBtn').addEventListener('click', (e) => { const b = e.target.closest('[data-map]'); if (!b || b.dataset.map === MAP_ID) return; if (net.guest) { $('inviteNote').textContent = 'En ligne, c\'est le chef qui choisit la carte.'; return; } audio.init(); audio.play('uiSelect'); switchMap(b.dataset.map, net.online ? net.room : null); });
 $('modeBtn')?.addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (!b || MAP.training || b.dataset.mode === modeId()) return; if (net.guest) { $('inviteNote').textContent = 'En ligne, c\'est le chef qui choisit le mode.'; return; } save.settings.mode = b.dataset.mode; persist(); audio.init(); audio.play('uiSelect'); renderMenu(); net.update(netMeta()); renderNet(); if (save.settings.mode === 'zombie') loadZombies().catch(() => {}); });
 $('nightBtn').addEventListener('click', () => { save.settings.night = !save.settings.night; persist(); night?.set(save.settings.night); renderMenu(); audio.init(); audio.play('uiTick'); });
@@ -363,7 +424,7 @@ const bqPreview = {
 };
 let boutique = null;
 try { boutique = createBoutique({ save, persist, audio, root: $('boutique'), base: /^https?:$/.test(location.protocol) && !NATIVE ? '' : WEB_URL.replace(/\/$/, ''), native: NATIVE, preview: bqPreview, onChange: () => { if (!window.__loaded) return; renderMenu(); if (!$('shop').classList.contains('hidden')) renderShop(); } }); } catch (e) { console.warn('boutique', e); }
-function openBoutique(tab) { audio.init(); audio.play('uiSelect'); if (game && !game.over) { game.paused = true; document.exitPointerLock?.(); } boutique?.open(tab); }
+function openBoutique(tab) { closeNavPanels('boutique'); audio.init(); audio.play('uiSelect'); if (game && !game.over) { game.paused = true; document.exitPointerLock?.(); } boutique?.open(tab); }
 $('boutique')?.addEventListener('click', (e) => { if (e.target.closest('[data-close]') && game && !game.over) { game.paused = false; renderer.domElement.requestPointerLock?.(); } });
 const inviteLink = () => `${/^https?:$/.test(location.protocol) && !NATIVE ? location.origin + location.pathname : WEB_URL}?equipe=${net.guest ? net.room : save.teamCode}`;
 async function copyText(t) { try { await navigator.clipboard.writeText(t); return true; } catch { return false; } }
@@ -389,7 +450,7 @@ function joinCode(c) {
 $('joinBtn').addEventListener('click', () => joinCode($('joinCode').value));
 $('netLeave')?.addEventListener('click', () => { net.leave(); $('teamCode').textContent = save.teamCode; goOnline(save.teamCode, true); renderParty(); });
 if (Q.get('equipe')) { const c = Q.get('equipe').toUpperCase().slice(0, 8); $('joinCode').value = c; setTimeout(() => { joinCode(c); openInvite(); }, 50); }
-$('openSettings').addEventListener('click', () => openSettings());
+$('openSettings').addEventListener('click', () => { closeNavPanels('pause'); openSettings(); });
 // glisser sur le décor pour faire tourner ton perso
 { let px = null; const m = $('menu');
   m.addEventListener('pointerdown', (e) => { if (e.target === m) { px = e.clientX; m.setPointerCapture?.(e.pointerId); } });
@@ -402,6 +463,7 @@ function openShop() {
 }
 function closeShop() { $('shop').classList.add('hidden'); pv?.stop(); if (game && !game.over) { game.paused = false; renderer.domElement.requestPointerLock?.(); } }
 let pv = null, pvSel = null;
+function ensurePv() { if (pv) return pv; try { pv = createPreview(); $('pvbox').prepend(pv.canvas); } catch (e) { console.warn('aperçu 3D indisponible', e); $('shopPv').style.display = 'none'; } return pv; }
 function stat(label, v, txt) { return `<div class="st"><span>${label}</span><i><b style="width:${Math.round(Math.max(0.04, Math.min(1, v)) * 100)}%"></b></i><em>${txt}</em></div>`; }
 // fiche de l'objet affiché en grand (modèle 3D qui tourne + caractéristiques)
 function showPv(k, id) {
@@ -432,7 +494,7 @@ function showPv(k, id) {
 }
 function renderShop() {
   document.querySelectorAll('.bankN').forEach((e) => (e.textContent = fmt(save.bank)));
-  if (!pv) { try { pv = createPreview(); $('pvbox').prepend(pv.canvas); } catch (e) { console.warn('aperçu 3D indisponible', e); $('shopPv').style.display = 'none'; } }
+  ensurePv();
   const th = (k, id, l) => { const u = pv?.thumb(k, id, l); return u ? `<img class="th" src="${u}" alt="">` : ''; };
   const head = (t) => `<h4 class="shead">${t}</h4>`;
   const curCls = classOf(save.team, save.cls[save.team]).id;
@@ -472,7 +534,7 @@ $('shopList').addEventListener('click', (e) => {
 let padFocus = null, navRep = 0;
 function activeScreen() { for (const id of ['pause', 'boutique', 'shop', 'invite', 'end', 'menu']) { const el = $(id); if (el && !el.classList.contains('hidden')) return el; } return null; }
 const offView = (e) => { const m = e.closest('.lobby'); if (!m) return false; return m.classList.contains('v-salon') ? !!e.closest('.lb-left') : !!e.closest('.lb-right, .lb-dock, #plates'); }; // vue cachée du salon
-function focusables(scr) { return [...scr.querySelectorAll('button, input, select')].filter((e) => !e.disabled && e.offsetParent !== null && !offView(e)); }
+function focusables(scr) { return [...scr.querySelectorAll('button, input, select'), ...(document.body.classList.contains('navpanel') && scr.id !== 'menu' ? document.querySelectorAll('.lb-top button') : [])].filter((e) => !e.disabled && e.offsetParent !== null && !offView(e)); }
 function setPadFocus(el) { padFocus?.classList.remove('padfocus'); padFocus = el; if (el) { el.classList.add('padfocus'); el.scrollIntoView?.({ block: 'nearest' }); if (el.closest?.('#shopList')) pvFrom(el); } }
 function padMenu(dt) {
   if (!input.st.pad) { setPadFocus(null); return; }

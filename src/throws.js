@@ -146,7 +146,7 @@ export function installThrows(Game) {
   P.throwCount = function (a, kind) { return THROWS[kind].spell ? a.rewards.filter((r) => r === kind).length : kind === 'frag' ? a.frags : a.nades; };
   P.startThrow = function (a, kind, spell) {
     this.arcInit(); this.thr = { kind, spell: !!spell, hold: !spell, t: 0 }; this.thrPower ??= 0.55; this.audio.click?.();
-    if (spell) this.toast(`${THROWS[kind].icon} ${THROWS[kind].nom} : vise la zone, ${this.input.label('fire')} pour lancer, ${this.input.label('aim')} pour annuler`, THROWS[kind].col);
+    if (spell) { this.streakSel = kind; const multi = this.streakReady?.(a).length > 1, I = this.input; this.toast(`${THROWS[kind].nom} : ${THROWS[kind].instant ? '' : 'vise la zone, '}${I.label('fire')} pour lancer${multi ? `, ${I.label('reload')} pour changer de série` : ''}, ${I.label('aim')} pour annuler`, THROWS[kind].col); }
   };
   P.throwVel = function (a) {
     const d = V(); this.camera.getWorldDirection(d); const sp = 7 + this.thrPower * 21; const v = d.multiplyScalar(sp); v.y += sp * 0.2; return v;
@@ -162,10 +162,14 @@ export function installThrows(Game) {
     // force : molette / croix haut-bas
     if (I.st.wheel) this.thrPower = Math.min(1, Math.max(0, this.thrPower + (I.st.wheel < 0 ? 0.08 : -0.08)));
     if (I.padHit?.(12)) this.thrPower = Math.min(1, this.thrPower + 0.1); if (I.padHit?.(13)) this.thrPower = Math.max(0, this.thrPower - 0.1);
+    // série : R / ← passe à la série prête suivante
+    if (S.spell && I.pressed('reload')) { const k = this.streakCycle(a); if (k) { S.kind = k; S.t = Math.min(S.t, 0.1); this.audio.click?.(); } }
         // changer de projectile (R / ←)
     if (!S.spell && I.pressed('reload')) { const ks = this.throwKinds(a); const i = ks.indexOf(S.kind); if (ks.length > 1) { S.kind = ks[(i + 1) % ks.length]; this.thrLast = S.kind; this.audio.click?.(); } }
     // annuler (clic droit / L2)
     if (I.pressed('aim') || (I.st.triggerL > 0.5 && S.t > 0.15 && !S._lWas)) { this.thr = null; this.arcHide(); this.drawThrowHud(); return; } S._lWas = I.st.triggerL > 0.5;
+    // série sans visée (canonnière, assaut général) choisie dans la liste : pas d'arc, on confirme
+    if (S.spell && THROWS[S.kind].instant) { this.arcHide(); this.drawThrowHud(); const go = I.pressed('fire') || (I.st.triggerR > 0.4 && !S._rWas) || (I.pressed('streak') && S.t > 0.1); S._rWas = I.st.triggerR > 0.4; if (go) { this.thr = null; this.drawThrowHud(); this.activateStreak(a, S.kind); } return; }
     const v = this.throwVel(a), o = this.throwOrigin(a); const T = THROWS[S.kind];
     const sim = simThrow(this.world, o, v, { fuse: T.spell ? 4 : T.fuse, impact: !!T.spell, step: 1 / 40 });
     this.arcShow(sim, S.kind, a.team, dt); this.drawThrowHud();
@@ -177,9 +181,12 @@ export function installThrows(Game) {
     const S = this.thr; if (!S) { el.classList.remove('on'); return; }
     const T = THROWS[S.kind], a = this.player, I = this.input; const n = this.throwCount(a, S.kind);
     const bars = Array.from({ length: 10 }, (_, i) => `<i class="${i < Math.round(this.thrPower * 10) ? 'on' : ''}"></i>`).join('');
-    const key = `${T.icon}${S.kind}${n}${Math.round(this.thrPower * 10)}`; if (el.dataset.k === key) return; el.dataset.k = key;
+    const ids = S.spell && this.streakReady ? this.streakReady(a) : [];
+    const key = `${T.icon}${S.kind}${n}${Math.round(this.thrPower * 10)}${ids.join()}`; if (el.dataset.k === key) return; el.dataset.k = key;
+    const pick = ids.length > 1 ? `<div class="spick">${ids.map((id) => `<span class="${id === S.kind ? 'on' : ''}">${svg(THROWS[id]?.ico || this.streakDef(a, id)?.ico)} ${this.streakDef(a, id)?.nom || id}</span>`).join('')}<em><kbd>${I.label('reload')}</kbd> changer</em></div>` : '';
     el.style.setProperty('--c', T.col);
-    el.innerHTML = `<b>${svg(T.ico)} ${T.nom}${T.spell ? '' : ' × ' + n}</b><div class="pw"><span>Force</span>${bars}</div><small>${I.st.usingTouch ? '' : (I.st.usingPad ? '↑↓' : 'molette') + ' force · '}viser plus haut = plus court et en cloche${S.spell ? ` · <kbd>${I.label('fire')}</kbd> lancer` : ` · lâche <kbd>${I.label('grenade')}</kbd> pour lancer · <kbd>${I.label('reload')}</kbd> changer`} · <kbd>${I.label('aim')}</kbd> annuler</small>`;
+    if (T.instant) { el.innerHTML = `<b>${svg(T.ico)} ${T.nom}</b>${pick}<small><kbd>${I.label('fire')}</kbd> lancer · <kbd>${I.label('aim')}</kbd> annuler</small>`; el.classList.add('on'); return; }
+    el.innerHTML = `<b>${svg(T.ico)} ${T.nom}${T.spell ? '' : ' × ' + n}</b>${pick}<div class="pw"><span>Force</span>${bars}</div><small>${I.st.usingTouch ? '' : (I.st.usingPad ? '↑↓' : 'molette') + ' force · '}viser plus haut = plus court et en cloche${S.spell ? ` · <kbd>${I.label('fire')}</kbd> lancer` : ` · lâche <kbd>${I.label('grenade')}</kbd> pour lancer · <kbd>${I.label('reload')}</kbd> changer`} · <kbd>${I.label('aim')}</kbd> annuler</small>`;
     el.classList.add('on');
   };
 

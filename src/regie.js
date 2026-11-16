@@ -206,11 +206,7 @@ export function installRegie(Game) {
 
   // ------------------------------------------------------------------ barre des séries, véhicules
   P.drawStreakbar = function () {
-    const k0 = this._sbKey; drawStreakbar.call(this); if (this._sbKey === k0) return;
-    const a = this.player, el = $('streakbar'); if (!el || !a?.rewards.length) return;
-    const nom = this.streakDef(a, a.rewards[a.rewards.length - 1])?.nom; const cards = [...el.querySelectorAll('.sk.ready')]; if (cards.length < 2) return;
-    const mine = [...cards].reverse().find((c) => c.querySelector('.nm')?.textContent.startsWith(nom)) || cards[cards.length - 1];
-    for (const c of cards) if (c !== mine) { const k = c.querySelector('.key'); if (k) { k.className = 'key alt'; k.textContent = 'PRÊT'; } }
+    drawStreakbar.call(this); // la série choisie porte déjà la touche (game.js : streakPick)
   };
   P.updateHud = function (...args) {
     const r = updateHud.apply(this, args); const a = this.player, hud = $('hud');

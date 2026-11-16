@@ -414,10 +414,16 @@ export class Game {
     } else this.toast(`${a.name} : ${name} (série de ${a.streak})`, a.team === this.player.team ? TEAMS[a.team].color : '#ff4a4a');
   }
   streakDef(a, id) { return STREAKS[a.team].find((r) => r.id === id) || STREAK_BY_ID[id]; }
+  // série choisie : celle que la touche Série lance (carte entourée dans la barre) ; par défaut la dernière gagnée
+  streakPick(a) { const r = a.rewards; if (!r.length) return null; return a === this.player && r.includes(this.streakSel) ? this.streakSel : r[r.length - 1]; }
+  // séries prêtes, de la plus petite à la plus grosse (une entrée par série, même en plusieurs exemplaires)
+  streakReady(a) { return [...new Set(a.rewards)].sort((p, q) => (this.streakDef(a, p)?.n || 0) - (this.streakDef(a, q)?.n || 0)); }
+  // passer à la série prête suivante (pendant la visée : R / ←)
+  streakCycle(a, dir = 1) { const ids = this.streakReady(a); if (ids.length < 2) return null; const i = ids.indexOf(this.streakPick(a)); this.streakSel = ids[(i + dir + ids.length) % ids.length]; this.streakDirty = 1; this._sbKey = null; return this.streakSel; }
   useStreak(a) {
     if (!a.alive || !a.rewards.length || this.over || a.inCar) return;
-    const id = a.rewards[a.rewards.length - 1];
-    if (THROWS[id]?.instant) { this.activateStreak(a, id); return; } // canonnière, assaut final : pas de visée
+    const id = this.streakPick(a), multi = a === this.player && this.streakReady(a).length > 1;
+    if (THROWS[id]?.instant && !multi) { this.activateStreak(a, id); return; } // canonnière, assaut final : pas de visée (sauf s'il faut d'abord choisir)
     if (a === this.player) { this.startThrow(a, id, true); return; }
     // bot : vise le groupe d'ennemis le plus proche (ou devant lui pour les renforts)
     const foes = this.actors.filter((t) => t.alive && !t.gone && t.team !== a.team && !t.inCar && t.pos.distanceTo(a.pos) < 45).sort((p, q) => p.pos.distanceToSquared(a.pos) - q.pos.distanceToSquared(a.pos));
@@ -1925,19 +1931,20 @@ export class Game {
     $('hud').classList.remove('shake'); void $('hud').offsetWidth; $('hud').classList.add('shake'); this.cam.trauma = Math.min(1, this.cam.trauma + 0.2 * M.n);
     this.earn(25 * M.n, names[k].replace(/ !+/, '').charAt(0) + names[k].replace(/ !+/, '').slice(1).toLowerCase());
   }
-  // barre des séries : progression vers chaque bonus, bonus prêt mis en avant avec la touche à presser
+  // barre des séries : l'échelle complète de ton camp (paliers passés, prêts, prochain), les séries prêtes en cartes
+  // (celle qui partira est entourée, avec sa touche) et la prochaine avec le nombre d'éliminations qui manquent
   drawStreakbar() {
-    const a = this.player, el = $('streakbar'); if (!el) return; const L = streakTiers(a.team, a.streak);
-    const key = `${a.streak}|${a.rewards.join(',')}|${this.input.st.usingPad}${this.input.st.usingTouch}|${this.streakUsed || ''}`; if (key === this._sbKey) return; this._sbKey = key;
-    // 7 paliers : on montre les bonus prêts et les 3 prochains (le reste se devine dans le sac)
-    let prev = 0;
-    const shown = new Set(); for (const id of new Set(a.rewards)) { const c = L.filter((r) => r.id === id && r.n <= a.streak).pop() || L.find((r) => r.id === id); if (c) shown.add(c); }
-    if (shown.size > 4) { const keep = [...shown].sort((p, q) => q.n - p.n).slice(0, 4); shown.clear(); keep.forEach((c) => shown.add(c)); } // les 4 plus gros bonus prêts ; les autres restent utilisables
-    const locked = L.filter((r) => r.n > a.streak).slice(0, shown.size >= 4 ? 1 : 3); const cnt = (id) => a.rewards.filter((x) => x === id).length; const cards = L.map((r) => { const ready = shown.has(r); // un bonus prêt = une seule carte
-      const seg = r.n - prev, got = Math.max(0, Math.min(seg, a.streak - prev)); prev = r.n;
-      const next = !ready && a.streak < r.n && L.find((x) => x.n > a.streak) === r;
-      return `<div class="sk${ready ? ' ready' : next ? ' next' : ''}${this.streakUsed === r.id ? ' used' : ''}">${ready ? `<span class="key">${this.input.label('streak')} ACTIVER</span>` : ''}<div class="ic">${svg(r.ico)}</div><div class="nm">${r.nom}${ready && cnt(r.id) > 1 ? ` ×${cnt(r.id)}` : ''}</div><div class="pips">${Array.from({ length: seg }, (_, i) => `<i class="${i < got || ready ? 'f' : ''}"></i>`).join('')}</div></div>`; }).filter((c, i) => { const r = L[i]; return shown.has(r) || locked.includes(r) || (this.streakUsed === r.id && r.n <= a.streak && !shown.size); });
-    el.innerHTML = `<div class="count">${a.streak}<small>SÉRIE</small></div>` + cards.join(''); this.streakUsed = null;
+    const a = this.player, el = $('streakbar'); if (!el) return; const L = streakTiers(a.team, a.streak), I = this.input;
+    const sel = this.streakPick(a), ready = this.streakReady(a);
+    const key = `${a.streak}|${a.rewards.join(',')}|${sel}|${I.st.usingPad}${I.st.usingTouch}|${this.streakUsed || ''}`; if (key === this._sbKey) return; this._sbKey = key;
+    const base = STREAKS[a.team], next = L.find((r) => r.n > a.streak);
+    const ladder = base.map((r) => { const st = ready.includes(r.id) ? (r.id === sel ? 'sel' : 'rdy') : r === next ? 'nx' : r.n <= a.streak ? 'ok' : ''; return `<i class="${st}" title="${r.nom}">${svg(r.ico)}<b>${r.n}</b></i>`; }).join('');
+    const def = (id) => this.streakDef(a, id), cnt = (id) => a.rewards.filter((x) => x === id).length;
+    const cards = ready.slice(-4).map((id) => { const r = def(id), on = id === sel;
+      return `<div class="sk ready${on ? ' sel' : ''}${this.streakUsed === id ? ' used' : ''}">${on ? `<span class="key">${I.label('streak')} LANCER</span>` : ''}<div class="ic">${svg(r.ico)}</div><div class="nm">${r.nom}${cnt(id) > 1 ? ` ×${cnt(id)}` : ''}</div></div>`; });
+    if (next) { const left = next.n - a.streak; cards.push(`<div class="sk next"><span class="key alt">ENCORE ${left}</span><div class="ic">${svg(next.ico)}</div><div class="nm">${next.nom}</div><div class="pips">${((seg) => Array.from({ length: seg }, (_, i) => `<i class="${i < seg - left ? 'f' : ''}"></i>`).join(''))(Math.min(8, next.n - (L.filter((r) => r.n < next.n).pop()?.n || 0)))}</div></div>`); }
+    const hint = ready.length > 1 ? `<div class="skhint">${ready.length} séries prêtes · ${I.label('streak')} puis ${I.label('reload')} pour choisir</div>` : '';
+    el.innerHTML = `<div class="count">${a.streak}<small>SÉRIE</small></div><div class="skcol">${hint}<div class="skrow">${cards.join('')}</div><div class="ladder">${ladder}</div></div>`; this.streakUsed = null;
   }
   medal(big, small, gold) { const el = $('medal'); if (!el) return; el.innerHTML = `<b>${svg(gold ? 'target' : 'skull')} ${big}</b><small>${small}</small>`; el.className = gold ? 'gold' : ''; void el.offsetWidth; el.classList.add('on'); clearTimeout(this._medT); this._medT = setTimeout(() => el.classList.remove('on'), 1600); }
   flashBody(t) { t.ch.model.traverse((o) => { if (o.isSkinnedMesh && o.name === 'corps') { o.material.emissive.set('#ffffff'); o.material.emissiveIntensity = 0.55; } }); t.flashT = 0.07; }
@@ -2001,7 +2008,7 @@ export class Game {
     const i = all.indexOf(a), from = Math.max(0, Math.min(i - 3, all.length - 7)), rows = all.slice(from, from + 7);
     const esc = (t) => String(t).replace(/[<&]/g, '');
     const next = streakTiers(a.team, a.streak).find((r) => r.n > a.streak);
-    const ready = a.rewards.length ? `<span class="rdy">${svg(this.streakDef(a, a.rewards[a.rewards.length - 1]).ico)} ${this.streakDef(a, a.rewards[a.rewards.length - 1]).nom} · ${this.input.label('streak')}</span>` : '';
+    const ready = a.rewards.length ? `<span class="rdy">${svg(this.streakDef(a, this.streakPick(a)).ico)} ${this.streakDef(a, this.streakPick(a)).nom} · ${this.input.label('streak')}</span>` : '';
     el.innerHTML = `<div class="top"><div class="kills">${svg('skull')} ${a.stats.k}<small>ÉLIM.</small></div><div class="pos">#${i + 1}<small>SUR ${all.length}</small></div></div>`
       + `<div class="sub"><span>Assist. <b>${a.stats.a}</b></span><span>Captures <b>${a.stats.cap}</b></span><span>Saccage <b>${a.stats.sac}</b></span></div>`
       + `<table>${rows.map((x, j) => `<tr class="${x.team === 'ordre' ? 'o' : 'c'}${x === a ? ' me' : ''}"><td class="n">${from + j + 1}</td><td class="nm">${esc(x.name)}${this.notoTag?.(x) || ''}</td><td class="k">${x.stats.k}</td><td class="p">${fmt(contrib(x))}</td></tr>`).join('')}</table>`

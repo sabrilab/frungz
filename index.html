@@ -83,22 +83,28 @@
 
   <!-- casier : camp, classe, armes, tenue (le perso passe en gros plan à droite) -->
   <aside class="lb-left">
-    <section class="lb-card">
-      <h3 class="sticker">1 · Ton camp</h3>
+    <nav class="cs-tabs" id="csTabs" aria-label="Équipement">
+      <button data-cs="classe">Classe</button><button data-cs="armes">Armes</button><button data-cs="camo">Camo</button>
+      <button data-cs="tenue">Tenue</button><button data-cs="effets">Effets</button><button data-cs="series">Séries</button>
+    </nav>
+    <section class="lb-card cs-p" data-cs="classe">
+      <h3 class="sticker">Ton camp</h3>
       <div class="pick">
         <button class="side ordre" data-team="ordre"><b>LA BRIGADE</b><span>Tiens les zones, coffre les casseurs.</span></button>
         <button class="side civils" data-team="civils"><b>LES FRUNGZ</b><span>Casse, remplis ta planque, revends.</span></button>
       </div>
-    </section>
-    <section class="lb-card">
-      <h3 class="sticker">2 · Classe et armes</h3>
+      <h3 class="sticker cs-sub">Classe</h3>
       <div class="classes" id="classes"></div>
       <div class="clsinfo" id="clsInfo"></div>
     </section>
-    <section class="lb-card">
-      <h3 class="sticker">3 · Tenue</h3>
+    <section class="lb-card cs-p" data-cs="armes"><div id="csArmes"></div></section>
+    <section class="lb-card cs-p" data-cs="camo"><div id="csCamo"></div></section>
+    <section class="lb-card cs-p" data-cs="tenue">
+      <h3 class="sticker">Tenue</h3>
       <div class="skins" id="skins"></div>
     </section>
+    <section class="lb-card cs-p" data-cs="effets"><div id="csFx"></div></section>
+    <section class="lb-card cs-p" data-cs="series"><div id="csSeries"></div></section>
     <button class="chunky backsalon" id="backSalon">Retour au salon</button>
   </aside>
 
