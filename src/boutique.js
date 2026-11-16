@@ -32,6 +32,7 @@ export function createBoutique({ save, persist, audio, root, base = '', native =
   function applyWallet(w) { if (!w) return; C.jetons = w.jetons | 0; C.owned = [...new Set([...(C.owned || []).filter((a) => ARTICLES[a]?.prix?.eur), ...(w.owned || [])])]; C.passe.premium = !!(w.passes || []).includes(SAISON.id); C.starter = !!w.starter; const pr = w.pris?.[SAISON.id] || {}; C.passe.pris.g = [...new Set([...(C.passe.pris.g || []).filter((n) => /^eur:/.test(SAISON.paliers.find((r) => r[0] === n)?.[1] || '')), ...(pr.g || [])])]; C.passe.pris.p = pr.p || []; persist(); }
   async function connect() {
     try {
+      if (save.test) throw 0; // mode test (?test=max) : toujours en démo, rien ne part au serveur
       const r = await fetch(base + '/api/boutique?a=status', { cache: 'no-store' }); const j = await r.json(); if (!j.ok) throw 0;
       mode = 'serveur'; paiement = !!j.paiement && !native; // dans l'app iPhone, Apple impose ses propres achats intégrés : pas de Stripe
       if (!C.compte?.id) { C.compte = await api({ a: 'register' }); persist(); }

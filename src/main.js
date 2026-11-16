@@ -23,7 +23,7 @@ import { svg } from './icons.js';
 import { createNet, ONLINE_MAX_TEAM } from './net.js';
 import { loadZombies, zombiesReady } from './zombie.js';
 import { createBoutique, initCosm, owns } from './boutique.js';
-import { TENUES, ARTICLES } from './boutique-data.mjs';
+import { TENUES, ARTICLES, SAISON } from './boutique-data.mjs';
 import { applyCamo } from './cosmetiques.js';
 
 const $ = (id) => document.getElementById(id);
@@ -32,11 +32,21 @@ const Q = new URLSearchParams(location.search);
 
 // ---------- sauvegarde ----------
 const DEFAULT = { bank: 0, unlocked: ['pistol'], primary: null, cls: { ordre: 'intervention', civils: 'casseur' }, upgrades: {}, xp: 0, lvl: 1, team: 'civils', skin: 'Bloc_Cagoule', settings: { sens: 1, padSens: 1, touchSens: 1, fireAds: true, autoSprint: true, assist: true, fps: false, teamSize: 50, invertY: false, dynres: true } };
-const SAVE_KEY = 'frungz-save' + (Q.get('profil') ? '-' + Q.get('profil').replace(/\W/g, '').slice(0, 12) : ''); // ?profil=x : une autre sauvegarde (tester à plusieurs dans le même navigateur)
+const TEST_MAX = Q.get('test') === 'max'; // ?test=max : tout débloqué pour essayer (sauvegarde à part, voir plus bas)
+const SAVE_KEY = 'frungz-save' + (Q.get('profil') ? '-' + Q.get('profil').replace(/\W/g, '').slice(0, 12) : TEST_MAX ? '-test' : ''); // ?profil=x : une autre sauvegarde (tester à plusieurs dans le même navigateur)
 let save; try { save = { ...DEFAULT, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; save.settings = { ...DEFAULT.settings, ...save.settings }; save.upgrades ||= {}; save.cls = { ...DEFAULT.cls, ...save.cls }; save.kit ||= {}; } catch { save = structuredClone(DEFAULT); }
 const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {} };
 if ((save.sv || 1) < 2) { save.sv = 2; save.settings.teamSize = 50; } // passage au 50 contre 50 par défaut
 initCosm(save); // cosmétiques et portefeuille de la boutique (src/boutique.js)
+// mode test : niveau 50, banque pleine, toutes les armes et améliorations, tous les cosmétiques, passe premium au dernier palier.
+// Sauvegarde séparée (frungz-save-test) : ta vraie progression n'est pas touchée. La boutique y reste en démo (aucun appel au serveur).
+if (TEST_MAX) {
+  save.test = true; save.xp = Math.max(save.xp || 0, 100 * 49 ** 2); save.lvl = 1 + Math.floor(Math.sqrt(save.xp / 100)); save.bank = Math.max(save.bank || 0, 9999999);
+  save.unlocked = Object.keys(WEAPONS); for (const [id, U] of Object.entries(UPGRADES)) save.upgrades[id] = U.max;
+  const C = save.cosm; C.jetons = Math.max(C.jetons, 99999); C.owned = [...new Set([...C.owned, ...Object.keys(ARTICLES).filter((a) => !a.startsWith('lot:'))])]; C.starter = true;
+  C.passe.premium = true; C.passe.xp0 = save.xp - SAISON.paliers.length * SAISON.xpPalier;
+  persist();
+}
 
 // ---------- cartes ----------
 // deux maps au même format (glb + gameplay.json) : on en charge une seule ; en changer recharge la page
