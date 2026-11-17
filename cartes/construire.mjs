@@ -246,4 +246,52 @@ for (const p of parts) if (p.name) pyMesh(p.name, p.mat, [p]);
 for (const [k, g] of groups) pyMesh(k, g.mat, g.list);
 py.push(`result = {"objets": len(col.objects), "triangles": sum(len(o.data.polygons) for o in col.objects)}`);
 fs.writeFileSync(new URL(`./${P.id}/scene.py`, import.meta.url), py.join('\n') + '\n');
+// version compacte pour Higgsfield (le service limite la taille d'un envoi) : volumes décrits par quelques nombres, compressés ;
+// Blender les redéploie lui-même (cartes/<id>/scene-compact.py)
+{ const zlib = await import('zlib'); const R = (v) => Math.round(v * 100) / 100;
+  const enc = (p) => (p.kind === 'box' ? ['b', ...p.b.map(R)] : p.kind === 'quad' ? ['q', ...p.q.flat().map(R), R(p.t)] : ['p', R(p.x), R(p.z), R(p.r), R(p.r1 ?? p.r), R(p.y0), R(p.y1), p.n]);
+  const data = { mats: Object.fromEntries(Object.keys(mats).map((m) => [m, MATS[m]])), objs: [...parts.filter((p) => p.name).map((p) => [p.name, p.mat, [enc(p)]]), ...[...groups].map(([k, g]) => [k, g.mat, g.list.map(enc)])] };
+  const b64 = zlib.deflateSync(Buffer.from(JSON.stringify(data)), { level: 9 }).toString('base64');
+  fs.writeFileSync(new URL(`./${P.id}/scene-compact.py`, import.meta.url), `# Frungz : carte « ${P.nom} » pour Blender / Higgsfield, version compacte (générée par cartes/construire.mjs).
+import bpy, json, zlib, base64, math
+D = json.loads(zlib.decompress(base64.b64decode("${b64}")))
+for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+col = bpy.data.collections.get("FRUNGZ_MAP") or bpy.data.collections.new("FRUNGZ_MAP")
+if col.name not in bpy.context.scene.collection.children: bpy.context.scene.collection.children.link(col)
+def mat(n):
+    m = bpy.data.materials.get(n)
+    if m: return m
+    c, r, me = D["mats"][n][:3]; m = bpy.data.materials.new(n); m.use_nodes = True; b = m.node_tree.nodes["Principled BSDF"]
+    lin = lambda h: [pow(int(h[i:i+2], 16) / 255, 2.2) for i in (1, 3, 5)]
+    b.inputs["Base Color"].default_value = (*lin(c), 1); b.inputs["Roughness"].default_value = r; b.inputs["Metallic"].default_value = me
+    if len(D["mats"][n]) > 3: b.inputs["Emission Color"].default_value = (*lin(D["mats"][n][3]), 1); b.inputs["Emission Strength"].default_value = 1.5
+    if n in ("glass", "glassRail", "verriere", "eau"): b.inputs["Alpha"].default_value = 0.45
+    return m
+def geo(p, V, F):
+    o = len(V)
+    if p[0] == "b":
+        x0, y0, z0, x1, y1, z1 = p[1:]; V += [(x, y, z) for x in (x0, x1) for y in (y0, y1) for z in (z0, z1)]
+        F += [[o+a, o+b, o+c, o+d] for a, b, c, d in ((0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3))]
+    elif p[0] == "q":
+        q = [p[1+3*i:4+3*i] for i in range(4)]; t = p[13]
+        e1 = [q[1][i]-q[0][i] for i in range(3)]; e2 = [q[3][i]-q[0][i] for i in range(3)]
+        n = [e1[1]*e2[2]-e1[2]*e2[1], e1[2]*e2[0]-e1[0]*e2[2], e1[0]*e2[1]-e1[1]*e2[0]]; l = math.sqrt(sum(c*c for c in n)) or 1; n = [c/l*t for c in n]
+        V += [tuple(v) for v in q] + [tuple(v[i]-n[i] for i in range(3)) for v in q]
+        F += [[o, o+1, o+2, o+3], [o+7, o+6, o+5, o+4]] + [[o+4+i, o+4+(i+1)%4, o+(i+1)%4, o+i] for i in range(4)]
+    else:
+        x, z, r, r1, y0, y1, n = p[1:]
+        for i in range(n):
+            a = 2*math.pi*i/n; V += [(x+math.cos(a)*r, y0, z+math.sin(a)*r), (x+math.cos(a)*r1, y1, z+math.sin(a)*r1)]
+        F += [[o+2*i, o+2*((i+1)%n), o+2*((i+1)%n)+1, o+2*i+1] for i in range(n)] + [[o+2*i+1 for i in range(n)][::-1]]
+for name, m, plist in D["objs"]:
+    V, F = [], []
+    for p in plist: geo(p, V, F)
+    me = bpy.data.meshes.new(name); me.from_pydata([(v[0], -v[2], v[1]) for v in V], [], F); me.update(); me.validate()
+    for poly in me.polygons: poly.use_smooth = False
+    ob = bpy.data.objects.new(name, me); ob.data.materials.append(mat(m)); col.objects.link(ob)
+# repère du jeu (x est, y haut, z sud) → Blender (x, -z, y) ; faces orientées vers l'extérieur
+for ob in col.objects:
+    import bmesh; bm = bmesh.new(); bm.from_mesh(ob.data); bmesh.ops.recalc_face_normals(bm, faces=bm.faces); bm.to_mesh(ob.data); bm.free()
+result = {"objets": len(col.objects), "triangles": sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in col.objects)}
+`); }
 console.log(`${P.nom} : ${groups.size + parts.filter((p) => p.name).length} objets, ${Math.round(tris / 1000)} k triangles, ${colliders.length} collisions, ${plats.length} plateformes, ${rampes.length} escaliers, ${boutiques.length} boutiques, ${parkings.length} places de voiture · scene.py ${Math.round(fs.statSync(new URL(`./${P.id}/scene.py`, import.meta.url)).size / 1024)} Ko`);
