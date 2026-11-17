@@ -200,60 +200,137 @@
   ],
   "montees": [
    {
+    "id": "escalator_ouest",
     "type": "escalator",
+    "nom": "Escalators ouest",
     "pos": [
-     -62,
+     -61,
      -42
     ],
-    "nom": "Escalators ouest"
+    "a": [
+     -66,
+     0.15,
+     -42
+    ],
+    "b": [
+     -56,
+     5,
+     -42
+    ]
    },
    {
+    "id": "escalator_atrium",
     "type": "escalator",
+    "nom": "Escalators de l'atrium",
     "pos": [
-     40,
+     41,
      -32
     ],
-    "nom": "Escalators de l'atrium"
+    "a": [
+     46,
+     0.15,
+     -32
+    ],
+    "b": [
+     36,
+     5,
+     -32
+    ]
    },
    {
+    "id": "escalier_sud",
     "type": "escalier",
+    "nom": "Escalier sud",
     "pos": [
-     50,
+     53,
      52
     ],
-    "nom": "Escalier sud"
+    "a": [
+     53,
+     0.15,
+     57
+    ],
+    "b": [
+     53,
+     5,
+     47.8
+    ]
    },
    {
+    "id": "escalier_arcade",
     "type": "escalier",
+    "nom": "Escalier de l'arcade",
     "pos": [
+     -15,
+     -15.5
+    ],
+    "a": [
+     -10,
+     0.12,
+     -15.5
+    ],
+    "b": [
      -20,
+     5,
+     -15.5
+    ]
+   },
+   {
+    "id": "toit_ouest",
+    "type": "toit",
+    "nom": "Escalier du toit ouest (terrasse)",
+    "pos": [
+     -64,
      -18
     ],
-    "nom": "Escalier de l'arcade"
+    "a": [
+     -64,
+     5,
+     -15
+    ],
+    "b": [
+     -64,
+     10,
+     -22.6
+    ]
    },
    {
+    "id": "toit_est",
     "type": "toit",
+    "nom": "Escalier du toit est (rue)",
     "pos": [
-     -66,
-     -26
+     74,
+     -3
     ],
-    "nom": "Escalier du toit ouest"
+    "a": [
+     74,
+     0,
+     -14
+    ],
+    "b": [
+     74,
+     10,
+     8
+    ]
    },
    {
+    "id": "toit_sud",
     "type": "toit",
+    "nom": "Escalier du toit sud (terrasse)",
     "pos": [
-     66,
-     -58
+     26,
+     50
     ],
-    "nom": "Escalier du toit de l'atrium"
-   },
-   {
-    "type": "toit",
-    "pos": [
-     34,
-     54
+    "a": [
+     22.6,
+     5,
+     50
     ],
-    "nom": "Escalier du toit sud"
+    "b": [
+     30.6,
+     10,
+     50
+    ]
    }
   ],
   "entrees": [
@@ -281,11 +358,6 @@
     50,
     58,
     "sud"
-   ],
-   [
-    30,
-    -30,
-    "angle"
    ]
   ],
   "toit_accessible": true
@@ -520,6 +592,12 @@
     63,
     66,
     69
+   ],
+   "base": [
+    72,
+    30,
+    79,
+    62
    ]
   }
  },
@@ -554,5 +632,36 @@
     24
    ]
   ]
+ ],
+ "toitAcces": [
+  {
+   "id": "ouest",
+   "axis": "x",
+   "k": -22,
+   "c": -64
+  },
+  {
+   "id": "est",
+   "axis": "z",
+   "k": 70,
+   "c": 10,
+   "palier": [
+    70.2,
+    8,
+    78,
+    12
+   ]
+  },
+  {
+   "id": "sud",
+   "axis": "z",
+   "k": 30,
+   "c": 50
+  }
+ ],
+ "salon": [
+  -30,
+  20,
+  0
  ]
 }

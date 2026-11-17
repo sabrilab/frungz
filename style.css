@@ -1008,3 +1008,28 @@ body.navpanel #menu > :not(.lb-top) { visibility: hidden; }
 #pvAct button:disabled { background: rgba(190,220,255,.16); color: var(--line); box-shadow: none; } #pvAct small { text-align: center; color: #ffb3a8; font-weight: 700; }
 #pvAct button svg { vertical-align: -2px; }
 @media (max-width: 980px) { .bp-main { flex-direction: column; overflow-y: auto; } .bp-rail { flex: 0 0 auto; flex-direction: row; overflow-x: auto; } .bp-rail button { white-space: nowrap; } #shop.bp #shopPv { flex: 0 0 auto; order: -1; flex-direction: row; flex-wrap: wrap; } #shop.bp .pvbox { width: 42%; } #shop.bp .pvinfo { flex: 1; } .bp-ft { display: none; } #pvAct { flex-basis: 100%; } #shop.bp #shopList { overflow: visible; flex: 0 0 auto; } .bp-ref { display: none; } }
+
+/* ---------- réglages en onglets, configuration des touches (main.js : renderBinds) ---------- */
+#pause { justify-content: flex-start; padding-top: 22px; gap: 12px; }
+.st-head { display: flex; align-items: center; gap: 22px; width: min(1000px, 100%); flex-wrap: wrap; }
+.st-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.st-tabs button { padding: 8px 14px; border-radius: 10px; background: rgba(255,255,255,.08); font-weight: 800; }
+.st-tabs button.on { background: linear-gradient(180deg, #ffe17a, #ff9a2a); color: #2a1300; }
+.st-body { width: min(1000px, 100%); flex: 1; min-height: 0; overflow-y: auto; }
+.st-pane { display: none; } .st-pane.on { display: block; } .st-pane.settings.on { display: grid; max-width: 640px; margin: 0 auto; }
+.st-presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.st-presets button { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: 10px; text-align: left; background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 2px rgba(255,255,255,.08); }
+.st-presets button b { font-size: 14px; } .st-presets button small { color: var(--dim); font-size: 11.5px; line-height: 1.3; }
+.st-presets button.on { box-shadow: inset 0 0 0 2px var(--gold); background: rgba(255,204,61,.12); } .st-presets button:disabled { cursor: default; opacity: 1; }
+.st-binds { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 0 26px; text-align: left; }
+.st-binds h4 { grid-column: 1 / -1; margin: 12px 0 4px; font: 13px Bungee; color: var(--gold); }
+.st-row { display: grid; grid-template-columns: 1fr 110px 110px; gap: 6px; align-items: center; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 13px; }
+.st-row em { display: block; font-style: normal; font-size: 11px; color: #ff9a8a; }
+.st-row.clash span { color: #ffb3a8; }
+.kb-capture { padding: 6px 8px; border-radius: 7px; background: rgba(255,255,255,.1); font: 800 12px Inter; box-shadow: 0 2px 0 rgba(0,0,0,.4); min-height: 30px; }
+.kb-capture:hover { background: rgba(255,255,255,.2); } .kb-capture.wait { background: var(--gold); color: #2a1300; animation: skready .6s ease-in-out infinite alternate; }
+.st-note { grid-column: 1 / -1; font-size: 12px; color: var(--dim); margin: 10px 0; }
+.st-binds .ghost { grid-column: 1 / -1; justify-self: start; }
+@media (max-width: 760px) { .st-binds { grid-template-columns: 1fr; } .st-row { grid-template-columns: 1fr 90px 90px; } }
+#pause { background: radial-gradient(ellipse at 50% 20%, #1c2232, #07080c); }
+#hud ~ #pause, body:has(#hud:not(.hidden)) #pause { background: radial-gradient(ellipse at 50% 30%, rgba(20,24,36,.92), rgba(5,6,10,.96)); }
